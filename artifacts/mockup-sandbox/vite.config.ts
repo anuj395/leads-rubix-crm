@@ -1,71 +1,42 @@
-import { defineConfig } from "vite";
-import react from "@vitejs/plugin-react";
-import tailwindcss from "@tailwindcss/vite";
-import path from "path";
-import runtimeErrorOverlay from "@replit/vite-plugin-runtime-error-modal";
-import { mockupPreviewPlugin } from "./mockupPreviewPlugin";
+import { defineConfig } from 'vite'
+import react from '@vitejs/plugin-react'
+import path from 'node:path'
 
-const rawPort = process.env.PORT;
+const devApiTarget = process.env.VITE_API_PROXY_TARGET || 'http://localhost:8080'
+const port = Number(process.env.PORT || 5173)
 
-if (!rawPort) {
-  throw new Error(
-    "PORT environment variable is required but was not provided.",
-  );
-}
+// BASE_PATH is provided by the Replit artifact runtime (e.g. "/__mockup").
+// Default to "/" so plain `vite dev` outside Replit also works.
+const basePath = (() => {
+  const raw = process.env.BASE_PATH || '/'
+  const trimmed = raw.replace(/\/+$/g, '')
+  return trimmed === '' ? '/' : `${trimmed}/`
+})()
 
-const port = Number(rawPort);
-
-if (Number.isNaN(port) || port <= 0) {
-  throw new Error(`Invalid PORT value: "${rawPort}"`);
-}
-
-const basePath = process.env.BASE_PATH;
-
-if (!basePath) {
-  throw new Error(
-    "BASE_PATH environment variable is required but was not provided.",
-  );
-}
-
+// https://vite.dev/config/
 export default defineConfig({
   base: basePath,
-  plugins: [
-    mockupPreviewPlugin(),
-    react(),
-    tailwindcss(),
-    runtimeErrorOverlay(),
-    ...(process.env.NODE_ENV !== "production" &&
-    process.env.REPL_ID !== undefined
-      ? [
-          await import("@replit/vite-plugin-cartographer").then((m) =>
-            m.cartographer({
-              root: path.resolve(import.meta.dirname, ".."),
-            }),
-          ),
-        ]
-      : []),
-  ],
+  plugins: [react()],
   resolve: {
     alias: {
-      "@": path.resolve(import.meta.dirname, "src"),
+      '@': path.resolve(__dirname, './src'),
     },
   },
-  root: path.resolve(import.meta.dirname),
-  build: {
-    outDir: path.resolve(import.meta.dirname, "dist"),
-    emptyOutDir: true,
-  },
   server: {
+    host: true,
     port,
-    host: "0.0.0.0",
+    strictPort: true,
     allowedHosts: true,
-    fs: {
-      strict: true,
+    proxy: {
+      '/api': {
+        target: devApiTarget,
+        changeOrigin: true,
+      },
     },
   },
   preview: {
+    host: true,
     port,
-    host: "0.0.0.0",
     allowedHosts: true,
   },
-});
+})

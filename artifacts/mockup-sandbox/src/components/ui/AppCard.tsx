@@ -1,0 +1,73 @@
+import Box from '@mui/material/Box'
+import Card from '@mui/material/Card'
+import CardContent from '@mui/material/CardContent'
+import Stack from '@mui/material/Stack'
+import Typography from '@mui/material/Typography'
+import { useTheme } from '@mui/material/styles'
+import type { ReactNode } from 'react'
+
+interface AppCardProps {
+  action?: ReactNode
+  children: ReactNode
+  subtitle?: string
+  title: string
+}
+
+export function AppCard({ action, children, subtitle, title }: AppCardProps) {
+  const theme = useTheme()
+
+  return (
+    <Card sx={{ width: '100%', minWidth: 0 }}>
+      <CardContent>
+        <Stack
+          direction={{ xs: 'column', sm: 'row' }}
+          justifyContent="space-between"
+          alignItems={{ xs: 'stretch', sm: 'flex-start' }}
+          spacing={{ xs: 1.5, sm: 2 }}
+          sx={{ mb: 2, minWidth: 0, flexWrap: 'wrap' }}
+        >
+          {/* <Stack sx={{ minWidth: 0, flex: '1 1 12rem' }}> */}
+          <Stack sx={{ minWidth: 0, flex: { xs: '1 1 4rem', sm: '1 1 12rem' } }}>
+            <Typography
+              variant="overline"
+              sx={{
+                color: theme.palette.secondary.main,
+                fontWeight: 700,
+                letterSpacing: '0.08em',
+                lineHeight: 1.4,
+                mb: subtitle ? 0.5 : 0,
+              }}
+            >
+              {title}
+            </Typography>
+            {subtitle && (
+              <Typography
+                variant="body2"
+                sx={{
+                  color: theme.palette.text.secondary,
+                  lineHeight: 1.55,
+                }}
+              >
+                {subtitle}
+              </Typography>
+            )}
+          </Stack>
+
+          {action && (
+            <Box sx={{
+              flexShrink: 0,
+              maxWidth: '100%',
+              // On mobile, actions sit below title (column layout above handles it)
+              // On sm+, they float right
+              alignSelf: { xs: 'stretch', sm: 'flex-start' },
+            }}>
+              {action}
+            </Box>
+          )}
+        </Stack>
+
+        {children}
+      </CardContent>
+    </Card>
+  )
+}
