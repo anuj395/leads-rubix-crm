@@ -91,8 +91,47 @@ on its async effects so rapid industry/role switching can't apply stale data.
 A dev-only superAdmin (`dev@rubixcrm.dev` / `rubix1234`) is re-seeded on every API boot **only
 when `NODE_ENV !== 'production'`** to keep the in-memory mongo workflow testable.
 
+## Dynamic Screen Configuration System
+
+Per-screen tables and forms are configured per (industry × role) via 3 normalized collections.
+This replaced the legacy single-document `/api/table-configs` and `/api/form-configs` endpoints,
+which have been deleted entirely.
+
+| Collection | Purpose | Notable fields |
+|---|---|---|
+| `screens` | Modules whose UI is configurable | `key` (unique), `name`, `is_active` |
+| `screen_fields` | Master field catalog per screen | `screen_id`, `field_key` (unique within screen), `label`, `type`, `is_table_visible`, `is_form_visible`, `is_required`, `sortable`, `order` |
+| `screen_permissions` | Per (screen × role × industry × field) toggle | `is_enabled`, unique on (screen_id, role_id, industry_id, field_id) |
+
+REST endpoints (all behind `authenticate`; writes require `permit('superAdmin')`):
+- `/api/screens`, `/api/screen-fields`, `/api/screen-permissions` — CRUD
+- `POST /api/screen-permissions/bulk` `{ screen_id, role_id, industry_id, field_ids[] }` — overwrite enabled set; validates that the role belongs to the industry and that every field belongs to the screen
+- `POST /api/screens/resolve` `{ screen_key, industry_code?, role_key? }` — composes `{ screen, table_headers[], form_fields[] }` for the caller. Non-superAdmins cannot pass an explicit `industry_code` / `role_key`; those are forced to fall back to `req.user`, preventing cross-scope config exposure.
+
+The frontend `useTableConfig(screen, industry_id)` hook is the only consumer in client pages
+(ContactsList, TasksList) and feeds DataTable columns directly from the resolve response.
+
+Cascade rules:
+- delete screen → deletes its fields and all its permissions
+- delete field → deletes its permissions
+- delete role → deletes both sidebar and screen permissions for that role
+- delete industry → deletes its roles, sidebar permissions, and screen permissions
+
+Boot-time `seedScreens()` runs once on a fresh DB (skipped if `screens` is non-empty). It
+creates two screens (`contacts`, `tasks`) with sensible default fields and enables every field
+for industry `temp001` × all 4 seeded roles, so the existing client pages keep working.
+
+SuperAdmin UI lives under `/configuration/{screens,screen-fields,screen-permissions}` and is
+wired into `menuConfig.ts` + `superAdminRouteMap.ts`. All three pages use cancellation guards
+on chained selectors (screen → fields, industry → roles, etc.) so rapid switching can't apply
+stale data.
+
 ## Recent changes
 
+- Added the Dynamic Screen Configuration System above (3 normalized collections, REST API with
+  resolve composer, SuperAdmin UI, cascade deletes through role/industry, FK-aware bulkSet
+  validation, IDOR-safe resolve, boot-time seed for contacts/tasks). Removed legacy
+  `/api/table-configs`, `/api/form-configs`, and the old HeadersConfig page entirely.
 - Added the role+industry sidebar system above (4 collections, REST API, SuperAdmin UI, idempotent
   migration, cascade deletes, race-safe Permissions Matrix).
 - Integrated user-supplied `leads-rubix-backend` and `leads-rubix-crm-web` zips into the monorepo.

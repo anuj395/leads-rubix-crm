@@ -1,6 +1,7 @@
 const industryModel = require('../models/industryModel');
 const roleModel = require('../models/roleModel');
 const permissionModel = require('../models/sidebarPermissionModel');
+const screenPermissionModel = require('../models/screenPermissionModel');
 
 exports.list = (opts) => industryModel.list(opts);
 
@@ -76,6 +77,13 @@ exports.remove = async (id) => {
         await permissionModel.removeByRole(rid);
       }
     }
+  }
+
+  // 1b. cascade screen-permissions for this industry too.
+  if (typeof screenPermissionModel.removeByIndustry === 'function') {
+    await screenPermissionModel.removeByIndustry(id);
+  } else if (typeof screenPermissionModel.deleteMany === 'function') {
+    await screenPermissionModel.deleteMany({ industry_id: id });
   }
 
   // 2. delete the roles themselves.

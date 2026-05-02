@@ -1,0 +1,49 @@
+const service = require('../services/screenFieldService');
+
+exports.list = async (req, res, next) => {
+  try {
+    const items = await service.list({
+      screen_id: req.query.screen_id,
+      activeOnly: req.query.active === 'true',
+    });
+    res.json({ items });
+  } catch (err) {
+    next(err);
+  }
+};
+
+exports.get = async (req, res, next) => {
+  try {
+    const item = await service.get(req.params.id);
+    res.json(item);
+  } catch (err) {
+    next(err);
+  }
+};
+
+exports.create = async (req, res, next) => {
+  try {
+    const item = await service.create(req.body);
+    res.status(201).json(item);
+  } catch (err) {
+    next(err);
+  }
+};
+
+exports.update = async (req, res, next) => {
+  try {
+    const item = await service.update(req.params.id, req.body);
+    res.json(item);
+  } catch (err) {
+    next(err);
+  }
+};
+
+exports.remove = async (req, res, next) => {
+  try {
+    await service.remove(req.params.id);
+    res.status(204).end();
+  } catch (err) {
+    next(err);
+  }
+};

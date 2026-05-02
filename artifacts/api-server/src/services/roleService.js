@@ -1,6 +1,7 @@
 const roleModel = require('../models/roleModel');
 const industryModel = require('../models/industryModel');
 const permissionModel = require('../models/sidebarPermissionModel');
+const screenPermissionModel = require('../models/screenPermissionModel');
 
 exports.list = (opts) => roleModel.list(opts);
 
@@ -66,6 +67,14 @@ exports.remove = async (id) => {
     await permissionModel.removeByRole(id);
   } else if (typeof permissionModel.deleteMany === 'function') {
     await permissionModel.deleteMany({ role_id: id });
+  }
+
+  // Cascade: also wipe screen-permission rows for this role so the normalized
+  // screen-config tables don't keep orphans either.
+  if (typeof screenPermissionModel.removeByRole === 'function') {
+    await screenPermissionModel.removeByRole(id);
+  } else if (typeof screenPermissionModel.deleteMany === 'function') {
+    await screenPermissionModel.deleteMany({ role_id: id });
   }
 
   await roleModel.remove(id);

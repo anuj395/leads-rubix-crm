@@ -1,0 +1,177 @@
+import { api } from './api'
+
+// ── Types ────────────────────────────────────────────────────────────────────
+export interface Screen {
+  _id: string
+  key: string
+  name: string
+  description?: string
+  is_active: boolean
+  createdAt?: string
+  updatedAt?: string
+}
+
+export interface ScreenInput {
+  key: string
+  name: string
+  description?: string
+  is_active?: boolean
+}
+
+export type ScreenFieldType =
+  | 'text'
+  | 'number'
+  | 'select'
+  | 'date'
+  | 'email'
+  | 'textarea'
+  | 'checkbox'
+  | 'badge'
+  | 'avatar'
+
+export const SCREEN_FIELD_TYPES: ScreenFieldType[] = [
+  'text', 'number', 'select', 'date', 'email', 'textarea', 'checkbox', 'badge', 'avatar',
+]
+
+export interface ScreenField {
+  _id: string
+  screen_id: string
+  field_key: string
+  label: string
+  type: ScreenFieldType
+  options: string[]
+  is_table_visible: boolean
+  is_form_visible: boolean
+  is_required: boolean
+  sortable: boolean
+  order: number
+  is_active: boolean
+}
+
+export interface ScreenFieldInput {
+  screen_id: string
+  field_key: string
+  label: string
+  type?: ScreenFieldType
+  options?: string[]
+  is_table_visible?: boolean
+  is_form_visible?: boolean
+  is_required?: boolean
+  sortable?: boolean
+  order?: number
+  is_active?: boolean
+}
+
+export interface ScreenPermission {
+  _id: string
+  screen_id: string
+  role_id: string
+  industry_id: string
+  field_id: string
+  is_enabled: boolean
+}
+
+export interface ResolvedTableHeader {
+  key: string
+  label: string
+  type: ScreenFieldType
+  sortable: boolean
+  order: number
+  options: string[]
+  visible: boolean
+}
+
+export interface ResolvedFormField {
+  key: string
+  label: string
+  type: ScreenFieldType
+  required: boolean
+  options: string[]
+  order: number
+}
+
+export interface ResolvedScreen {
+  screen: { _id: string; key: string; name: string }
+  industry_id: string
+  role_id: string
+  table_headers: ResolvedTableHeader[]
+  form_fields: ResolvedFormField[]
+}
+
+// ── Helpers ──────────────────────────────────────────────────────────────────
+async function safeList<T>(path: string): Promise<T[]> {
+  const res = await api.get(path)
+  return (res.data?.items ?? []) as T[]
+}
+
+// ── Screens CRUD ─────────────────────────────────────────────────────────────
+export async function getScreens(): Promise<Screen[]> {
+  return safeList<Screen>('screens')
+}
+export async function createScreen(data: ScreenInput): Promise<Screen> {
+  const res = await api.post('screens', data)
+  return res.data as Screen
+}
+export async function updateScreen(id: string, data: Partial<ScreenInput>): Promise<Screen> {
+  const res = await api.put(`screens/${id}`, data)
+  return res.data as Screen
+}
+export async function deleteScreen(id: string): Promise<void> {
+  await api.delete(`screens/${id}`)
+}
+
+// ── Fields CRUD ──────────────────────────────────────────────────────────────
+export async function getScreenFields(screen_id?: string): Promise<ScreenField[]> {
+  const qs = screen_id ? `?screen_id=${encodeURIComponent(screen_id)}` : ''
+  return safeList<ScreenField>(`screen-fields${qs}`)
+}
+export async function createScreenField(data: ScreenFieldInput): Promise<ScreenField> {
+  const res = await api.post('screen-fields', data)
+  return res.data as ScreenField
+}
+export async function updateScreenField(
+  id: string,
+  data: Partial<ScreenFieldInput>,
+): Promise<ScreenField> {
+  const res = await api.put(`screen-fields/${id}`, data)
+  return res.data as ScreenField
+}
+export async function deleteScreenField(id: string): Promise<void> {
+  await api.delete(`screen-fields/${id}`)
+}
+
+// ── Permissions ──────────────────────────────────────────────────────────────
+export async function getScreenPermissions(params: {
+  screen_id?: string
+  role_id?: string
+  industry_id?: string
+  enabledOnly?: boolean
+} = {}): Promise<ScreenPermission[]> {
+  const search = new URLSearchParams()
+  if (params.screen_id) search.set('screen_id', params.screen_id)
+  if (params.role_id) search.set('role_id', params.role_id)
+  if (params.industry_id) search.set('industry_id', params.industry_id)
+  if (params.enabledOnly) search.set('enabled', 'true')
+  const qs = search.toString()
+  return safeList<ScreenPermission>(qs ? `screen-permissions?${qs}` : 'screen-permissions')
+}
+
+export async function bulkSetScreenPermissions(input: {
+  screen_id: string
+  role_id: string
+  industry_id: string
+  field_ids: string[]
+}): Promise<ScreenPermission[]> {
+  const res = await api.post('screen-permissions/bulk', input)
+  return (res.data?.items ?? []) as ScreenPermission[]
+}
+
+// ── Resolve (used by client pages to get their dynamic columns/forms) ────────
+export async function resolveScreen(input: {
+  screen_key: string
+  industry_code?: string
+  role_key?: string
+}): Promise<ResolvedScreen> {
+  const res = await api.post('screens/resolve', input)
+  return res.data as ResolvedScreen
+}

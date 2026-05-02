@@ -9,7 +9,9 @@ import BookingsListPage from '@/features/superAdmin/leads/pages/BookingsList'
 import SortedListPage from '@/features/superAdmin/leads/pages/SortedList'
 
 import SidebarConfigPage from '@/features/superAdmin/config/pages/SidebarConfig'
-import HeadersConfigPage from '@/features/superAdmin/config/pages/HeadersConfig'
+import ScreensPage from '@/features/superAdmin/config/pages/Screens'
+import ScreenFieldsPage from '@/features/superAdmin/config/pages/ScreenFields'
+import ScreenPermissionsPage from '@/features/superAdmin/config/pages/ScreenPermissions'
 import ProjectsListPage from '@/features/superAdmin/config/pages/ProjectsList'
 import ApiListPage from '@/features/superAdmin/config/pages/ApiList'
 import BookingFormPage from '@/features/superAdmin/config/pages/BookingForm'
@@ -39,7 +41,9 @@ export const routeComponentMap: Record<string, any> = {
   "/leads/sorted": SortedListPage,
 
   "/configuration/sidebar": SidebarConfigPage,
-  "/configuration/headers": HeadersConfigPage,
+  "/configuration/screens": ScreensPage,
+  "/configuration/screen-fields": ScreenFieldsPage,
+  "/configuration/screen-permissions": ScreenPermissionsPage,
   "/configuration/projects": ProjectsListPage,
   "/configuration/api": ApiListPage,
   "/configuration/booking-form": BookingFormPage,

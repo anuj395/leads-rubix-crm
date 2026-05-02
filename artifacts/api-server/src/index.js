@@ -10,8 +10,11 @@ require('./models/industryModel');
 require('./models/roleModel');
 require('./models/sidebarMenuModel');
 require('./models/sidebarPermissionModel');
+require('./models/screenModel');
+require('./models/screenFieldModel');
+require('./models/screenPermissionModel');
 
-const { seedUsers, migrateAndSeedSidebar } = require('./seed');
+const { seedUsers, migrateAndSeedSidebar, seedScreens } = require('./seed');
 
 const PORT = config.port || 3001;
 
@@ -28,6 +31,12 @@ const PORT = config.port || 3001;
     await migrateAndSeedSidebar();
   } catch (err) {
     console.error('[seed] failed to migrate/seed sidebar:', err.message || err);
+  }
+
+  try {
+    await seedScreens();
+  } catch (err) {
+    console.error('[seed] failed to seed screens:', err.message || err);
   }
 
   app.listen(PORT, () => {

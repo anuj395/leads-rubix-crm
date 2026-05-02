@@ -245,4 +245,120 @@ async function migrateAndSeedSidebar() {
   );
 }
 
-module.exports = { seedUsers, migrateAndSeedSidebar };
+// ─────────────────────────────────────────────────────────────────────────────
+// Screen / field / permission seed
+// ─────────────────────────────────────────────────────────────────────────────
+
+const SCREEN_DEFAULTS = [
+  {
+    key: 'contacts',
+    name: 'Contacts',
+    description: 'Customer / lead contact list',
+    fields: [
+      { field_key: 'customer_name', label: 'Name',   type: 'text',  is_required: true,  order: 1 },
+      { field_key: 'email',         label: 'Email',  type: 'email', is_required: false, order: 2 },
+      { field_key: 'contact_no',    label: 'Phone',  type: 'text',  is_required: false, order: 3 },
+      { field_key: 'status',        label: 'Status', type: 'badge', is_required: false, order: 4 },
+      { field_key: 'project',       label: 'Project',type: 'text',  is_required: false, order: 5 },
+    ],
+  },
+  {
+    key: 'tasks',
+    name: 'Tasks',
+    description: 'Lead / follow-up tasks',
+    fields: [
+      { field_key: 'task_type',     label: 'Type',          type: 'text',  is_required: true,  order: 1 },
+      { field_key: 'status',        label: 'Status',        type: 'badge', is_required: false, order: 2 },
+      { field_key: 'assigned_to',   label: 'Assigned To',   type: 'text',  is_required: false, order: 3 },
+      { field_key: 'next_follow_up',label: 'Next Follow-up',type: 'date',  is_required: false, order: 4 },
+      { field_key: 'notes',         label: 'Notes',         type: 'textarea', is_required: false, order: 5 },
+    ],
+  },
+];
+
+async function seedScreens() {
+  const Screen = mongoose.model('Screen');
+  const ScreenField = mongoose.model('ScreenField');
+  const ScreenPermission = mongoose.model('ScreenPermission');
+  const Industry = mongoose.model('Industry');
+  const Role = mongoose.model('Role');
+
+  const existing = await Screen.estimatedDocumentCount();
+  if (existing > 0) {
+    console.log(`[seed] screens already populated (${existing}) — skipping screen seed`);
+    return;
+  }
+
+  // Upsert screens + fields.
+  const fieldsByScreen = new Map();
+  for (const spec of SCREEN_DEFAULTS) {
+    const screen = await Screen.findOneAndUpdate(
+      { key: spec.key },
+      { $set: { name: spec.name, description: spec.description, is_active: true } },
+      { upsert: true, new: true },
+    );
+    const fieldDocs = [];
+    for (const f of spec.fields) {
+      const doc = await ScreenField.findOneAndUpdate(
+        { screen_id: screen._id, field_key: f.field_key },
+        {
+          $set: {
+            label: f.label,
+            type: f.type,
+            is_table_visible: true,
+            is_form_visible: true,
+            is_required: !!f.is_required,
+            sortable: true,
+            order: f.order || 0,
+            is_active: true,
+          },
+          $setOnInsert: { screen_id: screen._id, field_key: f.field_key },
+        },
+        { upsert: true, new: true },
+      );
+      fieldDocs.push(doc);
+    }
+    fieldsByScreen.set(String(screen._id), { screen, fields: fieldDocs });
+  }
+
+  // Enable all fields for every (industry × role) combo we know about, so the
+  // existing ContactsList / TasksList pages have data out of the box.
+  const industries = await Industry.find({ is_active: true }).lean().exec();
+  const roles = await Role.find({ is_active: true }).lean().exec();
+
+  let permCount = 0;
+  for (const [, { screen, fields }] of fieldsByScreen) {
+    for (const industry of industries) {
+      const industryRoles = roles.filter((r) => String(r.industry_id) === String(industry._id));
+      for (const role of industryRoles) {
+        for (const field of fields) {
+          await ScreenPermission.updateOne(
+            {
+              screen_id: screen._id,
+              role_id: role._id,
+              industry_id: industry._id,
+              field_id: field._id,
+            },
+            {
+              $set: { is_enabled: true },
+              $setOnInsert: {
+                screen_id: screen._id,
+                role_id: role._id,
+                industry_id: industry._id,
+                field_id: field._id,
+              },
+            },
+            { upsert: true },
+          );
+          permCount += 1;
+        }
+      }
+    }
+  }
+
+  console.log(
+    `[seed] screens seeded: ${SCREEN_DEFAULTS.length} screens, ${permCount} permission rows`,
+  );
+}
+
+module.exports = { seedUsers, migrateAndSeedSidebar, seedScreens };
