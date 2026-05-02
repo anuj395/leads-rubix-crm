@@ -15,6 +15,10 @@ import ApiListPage from '@/features/superAdmin/config/pages/ApiList'
 import BookingFormPage from '@/features/superAdmin/config/pages/BookingForm'
 import ResourcesPage from '@/features/superAdmin/config/pages/Resources'
 import WhatsappApiPage from '@/features/superAdmin/config/pages/WhatsappApi'
+import IndustriesPage from '@/features/superAdmin/config/pages/Industries'
+import RolesPage from '@/features/superAdmin/config/pages/Roles'
+import MenusPage from '@/features/superAdmin/config/pages/Menus'
+import PermissionsMatrixPage from '@/features/superAdmin/config/pages/PermissionsMatrix'
 
 import NewsListPage from '@/features/superAdmin/support/pages/NewsList'
 import FaqListPage from '@/features/superAdmin/support/pages/FaqList'
@@ -41,6 +45,10 @@ export const routeComponentMap: Record<string, any> = {
   "/configuration/booking-form": BookingFormPage,
   "/configuration/resources": ResourcesPage,
   "/configuration/whatsapp": WhatsappApiPage,
+  "/configuration/industries": IndustriesPage,
+  "/configuration/roles": RolesPage,
+  "/configuration/menus": MenusPage,
+  "/configuration/permissions": PermissionsMatrixPage,
 
   "/support/news": NewsListPage,
   "/support/faq": FaqListPage,

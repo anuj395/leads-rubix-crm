@@ -137,8 +137,36 @@ export const superAdminMenuConfig: SuperAdminMenuItem[] = [
     module: "Leads"
   },
   {
+    key: "configuration.industries",
+    name: "Industries",
+    route: "/configuration/industries",
+    icon: "organization",
+    module: "Configuration"
+  },
+  {
+    key: "configuration.roles",
+    name: "Roles",
+    route: "/configuration/roles",
+    icon: "shield",
+    module: "Configuration"
+  },
+  {
+    key: "configuration.menus",
+    name: "Sidebar Menus",
+    route: "/configuration/menus",
+    icon: "sidebar",
+    module: "Configuration"
+  },
+  {
+    key: "configuration.permissions",
+    name: "Permissions Matrix",
+    route: "/configuration/permissions",
+    icon: "settings",
+    module: "Configuration"
+  },
+  {
     key: "configuration.sidebar",
-    name: "Side Bar",
+    name: "Side Bar (Legacy)",
     route: "/configuration/sidebar",
     icon: "sidebar",
     module: "Configuration"

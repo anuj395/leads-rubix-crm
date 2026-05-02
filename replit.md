@@ -56,8 +56,45 @@ curl -X POST http://localhost:80/api/auth/signup \
 - Frontend uses path alias `@/` → `src/`.
 - The Replit cartographer Vite plugin is intentionally disabled in `artifacts/web/vite.config.ts` because it injects JSX attributes that break TypeScript generic component syntax (`<Component<TypeArg> ...>`).
 
+## Role + Industry-based dynamic sidebar
+
+The legacy single-document `sidebar_configs` collection was replaced with a normalized
+4-table model managed entirely from the SuperAdmin UI:
+
+| Collection | Purpose | Notable fields |
+|---|---|---|
+| `industries` | Tenants / verticals | `code` (unique), `name`, `is_active` |
+| `roles` | Roles per industry | `industry_id`, `key`, `name`, unique on (industry_id, key) |
+| `sidebar_menus` | Master menu catalog (tree) | `key` (unique), `parent_id` self-FK, `icon`, `route`, `module`, `order` |
+| `sidebar_permissions` | Visibility per (role × industry × menu) | `is_visible`, `order_override`, unique on (role_id, industry_id, menu_id) |
+
+REST endpoints (all behind `authenticate`; writes also `permit('superAdmin')`):
+
+- `/api/industries`, `/api/roles`, `/api/sidebar-menus`, `/api/sidebar-permissions` — CRUD
+- `POST /api/sidebar-permissions/bulk` `{ role_id, industry_id, menu_ids[] }` — overwrite visible perms
+- `POST /api/sidebar/resolve` `{ industry_code, role_key }` — compose a flat tree for a user
+- Legacy `POST /api/sidebar`, `GET /api/sidebar/:industry_id`, `POST /api/sidebar/user` are kept as compat shims that read/write through the normalized tables
+
+Boot-time migration in `seed.js` is idempotent: when `industries` is empty it parses the legacy
+seed JSON (dot-notation keys → parent/child via the `module` field) and populates all 4 tables
+(currently 26 menus + 43 perms across 4 roles), then drops the legacy collection.
+
+Cascade rules in services:
+- delete industry → deletes its permissions and roles first
+- delete role → deletes its permissions first
+- delete menu → detaches direct children (`parent_id → null`), deletes its permissions, then the menu
+
+SuperAdmin UI lives under `/configuration/{industries,roles,menus,permissions}` and is wired into
+`menuConfig.ts` + `superAdminRouteMap.ts`. The Permissions Matrix page uses cancellation guards
+on its async effects so rapid industry/role switching can't apply stale data.
+
+A dev-only superAdmin (`dev@rubixcrm.dev` / `rubix1234`) is re-seeded on every API boot **only
+when `NODE_ENV !== 'production'`** to keep the in-memory mongo workflow testable.
+
 ## Recent changes
 
+- Added the role+industry sidebar system above (4 collections, REST API, SuperAdmin UI, idempotent
+  migration, cascade deletes, race-safe Permissions Matrix).
 - Integrated user-supplied `leads-rubix-backend` and `leads-rubix-crm-web` zips into the monorepo.
 - Added in-memory MongoDB fallback (`mongodb-memory-server`) and `/api/healthz`.
 - Added permissive-in-dev / strict-in-prod CORS using `FRONTEND_ORIGINS`.

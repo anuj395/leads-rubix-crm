@@ -6,6 +6,10 @@ const authRoutes = require('./authRoutes');
 const sidebarRoutes = require('./sidebarRoutes');
 const tableConfigRoutes = require('./tableConfigRoutes');
 const formConfigRoutes = require('./formConfigRoutes');
+const industryRoutes = require('./industryRoutes');
+const roleRoutes = require('./roleRoutes');
+const sidebarMenuRoutes = require('./sidebarMenuRoutes');
+const sidebarPermissionRoutes = require('./sidebarPermissionRoutes');
 
 const router = express.Router();
 
@@ -14,5 +18,9 @@ router.use('/users', userRoutes);
 router.use('/sidebar', sidebarRoutes);
 router.use('/table-configs', tableConfigRoutes);
 router.use('/form-configs', formConfigRoutes);
+router.use('/industries', industryRoutes);
+router.use('/roles', roleRoutes);
+router.use('/sidebar-menus', sidebarMenuRoutes);
+router.use('/sidebar-permissions', sidebarPermissionRoutes);
 
 module.exports = router;

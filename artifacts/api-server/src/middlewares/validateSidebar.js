@@ -1,5 +1,5 @@
 // Validation for new sidebar APIs
-const ALLOWED_ROLES = ['admin', 'leadManager', 'teamLead', 'sales'];
+const ALLOWED_ROLES = ['superAdmin', 'admin', 'leadManager', 'teamLead', 'sales'];
 
 function isMenuItemValid(m) {
   if (!m || typeof m !== 'object') return false;
@@ -59,6 +59,25 @@ module.exports.validateUserRequest = (req, res, next) => {
   }
   if (!role || typeof role !== 'string' || !ALLOWED_ROLES.includes(role)) {
     const err = new Error(`role is required and must be one of: ${ALLOWED_ROLES.join(', ')}`);
+    err.status = 400;
+    return next(err);
+  }
+  next();
+};
+
+// Validator for the new POST /sidebar/resolve endpoint, which accepts either
+// {industry_code, role_key} (preferred) or {industry_id, role} (legacy).
+module.exports.validateResolve = (req, res, next) => {
+  const body = req.body || {};
+  const industry = body.industry_code || body.industry_id;
+  const role = body.role_key || body.role;
+  if (!industry || typeof industry !== 'string') {
+    const err = new Error('industry_code (or industry_id) is required and must be a string');
+    err.status = 400;
+    return next(err);
+  }
+  if (!role || typeof role !== 'string' || !ALLOWED_ROLES.includes(role)) {
+    const err = new Error(`role_key (or role) must be one of: ${ALLOWED_ROLES.join(', ')}`);
     err.status = 400;
     return next(err);
   }
