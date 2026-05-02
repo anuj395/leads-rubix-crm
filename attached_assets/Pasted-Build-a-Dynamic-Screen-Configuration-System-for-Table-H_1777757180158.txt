@@ -1,0 +1,125 @@
+Build a Dynamic Screen Configuration System for Table Headers and Form Fields based on industry_id and role_id.
+
+Requirements:
+
+1. Super Admin can create dynamic screens (modules) like:
+
+   * Contacts
+   * Tasks
+   * API
+   * Deals
+   * etc.
+
+2. Each screen will have:
+
+   * Table headers (list view)
+   * Form fields (create/edit view)
+
+3. Super Admin can configure:
+
+   * Field label (e.g., Name, Phone, Email)
+   * Field type (text, number, select, date, etc.)
+   * Column visibility (table)
+   * Form visibility
+   * Field order
+   * Required / optional
+   * उद्योग (industry_id)
+   * Role आधारित control (role_id)
+
+4. When user logs in:
+
+   * System detects user's role_id and industry_id
+   * Fetch screen configuration based on:
+     role_id + industry_id + screen_name
+
+5. Database Design:
+
+Tables:
+
+* industries (id, name)
+
+* roles (id, name, industry_id)
+
+* users (id, name, role_id, industry_id)
+
+* screens (id, name)
+  Example: contacts, tasks, api
+
+* screen_fields (
+  id,
+  screen_id,
+  field_key,
+  label,
+  type,
+  is_table_visible,
+  is_form_visible,
+  is_required,
+  order
+  )
+
+* screen_permissions (
+  id,
+  screen_id,
+  role_id,
+  industry_id,
+  field_id
+  )
+
+6. Logic:
+
+Super Admin:
+
+* Creates screen (e.g., "contacts")
+* Adds fields (name, phone, email)
+* Assigns fields to role + industry
+
+On Login:
+
+* Identify user role_id & industry_id
+* Fetch allowed fields:
+
+SELECT fields
+FROM screen_permissions
+JOIN screen_fields
+ON field_id = screen_fields.id
+WHERE role_id = user.role_id
+AND industry_id = user.industry_id
+AND screen_id = requested_screen
+
+7. API Response Example:
+
+{
+"table_headers": [
+{ "label": "Name", "key": "name" },
+{ "label": "Phone", "key": "phone" }
+],
+"form_fields": [
+{ "label": "Name", "type": "text", "required": true },
+{ "label": "Phone", "type": "number" }
+]
+}
+
+8. Frontend Behavior:
+
+* Table headers dynamically render
+* Form inputs dynamically generate
+* No hardcoding allowed
+
+9. Must Support:
+
+* Multi-industry system
+* Multi-role system
+* Dynamic UI without code changes
+* Field-level permission control
+
+10. Optional Enhancements:
+
+* Dropdown options table
+* Field validation rules
+* Custom labels per industry
+* Hide/show fields per role
+* Drag & drop ordering
+
+Goal:
+Super Admin defines screens, fields, and permissions.
+Users see dynamic table headers and form fields based on their role_id and industry_id.
