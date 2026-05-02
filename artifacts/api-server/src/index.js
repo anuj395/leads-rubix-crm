@@ -4,7 +4,8 @@ const app = require('./app');
 const config = require('./config');
 const db = require('./db');
 require('./models/userModel'); // ensure User model is registered before seeding
-const { seedUsers } = require('./seed');
+require('./models/sidebarModel'); // ensure SidebarConfig model is registered before seeding
+const { seedUsers, seedSidebarConfigs } = require('./seed');
 
 const PORT = config.port || 3001;
 
@@ -15,6 +16,11 @@ const PORT = config.port || 3001;
     await seedUsers();
   } catch (err) {
     console.error('[seed] failed to seed users:', err.message || err);
+  }
+  try {
+    await seedSidebarConfigs();
+  } catch (err) {
+    console.error('[seed] failed to seed sidebar configs:', err.message || err);
   }
   app.listen(PORT, () => {
     console.log(`Server is running on port ${PORT}`);

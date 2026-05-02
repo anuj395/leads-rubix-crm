@@ -9,6 +9,7 @@ const fs = require('fs');
 const mongoose = require('mongoose');
 
 const SEED_FILE = path.join(__dirname, '..', 'seed-data', 'users.json');
+const SIDEBAR_SEED_FILE = path.join(__dirname, '..', 'seed-data', 'sidebar_configs.json');
 
 function reviveEjson(value) {
   if (Array.isArray(value)) return value.map(reviveEjson);
@@ -48,4 +49,24 @@ async function seedUsers() {
   console.log(`[seed] inserted ${result.insertedCount} user(s) from seed-data/users.json`);
 }
 
-module.exports = { seedUsers };
+async function seedSidebarConfigs() {
+  if (!fs.existsSync(SIDEBAR_SEED_FILE)) {
+    console.log('[seed] no seed-data/sidebar_configs.json found — skipping');
+    return;
+  }
+
+  const SidebarConfig = mongoose.model('SidebarConfig');
+  const existing = await SidebarConfig.estimatedDocumentCount();
+  if (existing > 0) {
+    console.log(`[seed] sidebar_configs already has ${existing} doc(s) — skipping seed`);
+    return;
+  }
+
+  const raw = JSON.parse(fs.readFileSync(SIDEBAR_SEED_FILE, 'utf8'));
+  const docs = (Array.isArray(raw) ? raw : [raw]).map(reviveEjson);
+
+  const result = await SidebarConfig.collection.insertMany(docs, { ordered: false });
+  console.log(`[seed] inserted ${result.insertedCount} sidebar config(s) from seed-data/sidebar_configs.json`);
+}
+
+module.exports = { seedUsers, seedSidebarConfigs };
