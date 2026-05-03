@@ -1,0 +1,435 @@
+You are a senior backend developer working on a CRM system called "Leads Rubix".
+
+## Tech Stack:
+- Node.js + Express.js
+- MongoDB with Mongoose
+- JWT Authentication (x-access-token header)
+- MVC pattern: routes → controllers → models
+- Existing project structure:
+  src/
+  ├── models/
+  ├── controllers/
+  ├── routes/
+  └── middlewares/auth.js
+
+## Your Task:
+Implement complete REST APIs for ALL the following collections:
+1. contacts
+2. users
+3. organizations
+4. tasks
+5. calllogs
+6. booking
+7. paymentsDetails
+8. newOrganizationResources
+9. newprojectResources
+10. newapiTokens
+11. newApiData
+12. branch
+13. teams
+14. industries
+15. headers
+16. sms
+17. notification
+18. Query (support tickets)
+19. newFAQ
+20. newNews
+21. errors
+22. buildversion
+23. newfcmTokens
+24. newuserList
+25. countriesStateMasters
+
+---
+
+## Rules to Follow:
+
+### 1. Model
+- Use exact field names, types, and defaults as defined in schema
+- Add indexes on: organization_id, uid, created_at
+- Use { timestamps: true } where applicable
+
+### 2. Routes (for each collection)
+- GET    /[collection]/getAll
+- GET    /[collection]/getById/:id
+- GET    /[collection]/getByOrg/:organization_id
+- POST   /[collection]/create
+- POST   /[collection]/update
+- POST   /[collection]/delete
+
+### 3. Controller (for each collection)
+- Use async/await with try/catch
+- Always return this response format:
+  {
+    "status": true | false,
+    "message": "description",
+    "data": {} | [] | null
+  }
+- Add pagination: ?page=1&limit=10
+- Always filter by organization_id for multi-tenant security
+- Validate required fields before saving
+
+### 4. Auth Middleware
+- Verify JWT from header: x-access-token
+- Attach user data to req.user
+- Protect all routes except public ones
+
+### 5. Error Handling
+- 400 → Validation error
+- 401 → Unauthorized / token missing or invalid
+- 404 → Record not found
+- 500 → Internal server error
+
+---
+
+## Database Schemas:
+
+### 1. contacts (MongoDB collection: contacts)
+Fields:
+- _id: ObjectId (auto)
+- Id: String, default ""
+- customer_name: String, default ""
+- contact_no: String, default ""
+- alternate_no: String, default ""
+- country_code: String, default ""
+- email: String, default ""
+- customer_image: String, default ""
+- uid: String, default ""
+- contact_owner_email: String, default ""
+- organization_id: String, default ""
+- stage: String, default "" (FRESH | INTERESTED | CALLBACK | NOT_INTERESTED | LOST | BOOKED)
+- lead_type: String, default "Data"
+- lead_source: String, default ""
+- source_status: Boolean, default false
+- associate_status: Boolean, default false
+- transfer_status: Boolean, default false
+- transfer_reason: String, default ""
+- project: String, default ""
+- location: String, default ""
+- budget: String, default ""
+- property_type: String, default ""
+- property_stage: String, default ""
+- property_sub_type: String, default ""
+- inventory_type: String, default ""
+- lost_reason: String, default ""
+- other_lost_reason: String, default ""
+- not_int_reason: String, default ""
+- other_not_int_reason: String, default ""
+- call_back_reason: String, default ""
+- next_follow_up_date_time: Date, default ""
+- next_follow_up_type: String, default ""
+- feedback_time: Date, default ""
+- call_response_time: Date, default ""
+- is_button_called: Boolean, default false
+- campaign: String, default ""
+- addset: String, default ""
+- previous_owner: String, default ""
+- previous_owner_1: String, default ""
+- previous_owner_2: String, default ""
+- transfer_by_1: String, default ""
+- transfer_by_2: String, default ""
+- previous_stage_1: String, default ""
+- previous_stage_2: String, default ""
+- created_by: String, default ""
+- created_at: Date, default now
+- modified_at: Date, default now
+- stage_change_at: Date, default now
+- lead_assign_time: Date, default now
+- latitude: Number, default null
+- longitude: Number, default null
+- field_one: String, default ""
+- field_two: String, default ""
+- field_three: String, default ""
+- field_four: String, default ""
+- field_five: String, default ""
+- field_six: String, default ""
+
+### 2. users (MongoDB collection: users)
+Fields:
+- _id: ObjectId (auto)
+- uid: String, required, unique
+- user_email: String, required, unique
+- user_first_name: String, required
+- user_last_name: String, default ""
+- contact_no: String, default ""
+- admin_contact_code: Number
+- user_image: String, default ""
+- organization_id: String, default ""
+- profile: String, default "" (Lead Manager | Team Lead | organization | superAdmin)
+- designation: String, default ""
+- team: String, default ""
+- branch: String, default ""
+- reporting_to: String, default ""
+- status: String, default "" (Active | Inactive)
+- device_id: String, default ""
+- branchPermission: Array, default []
+- leadView: Object, default {}
+- latestUpdateProfile: Boolean, default false
+- created_by: String, default ""
+- created_at: Date, default now
+- activated_at: Date, default now
+- deactivated_at: Date, default now
+
+### 3. organizations (MongoDB collection: Orgaizations)
+Fields:
+- _id: ObjectId (auto)
+- organization_id: String, default ""
+- organization_name: String, default ""
+- admin_first_name: String, default ""
+- admin_last_name: String, default ""
+- admin_email_id: String, default ""
+- admin_contact_number: String, default ""
+- admin_contact_code: Number
+- email_id: String, default ""
+- mobile_number: String, default ""
+- organization_mobile_code: Number
+- address: String, default ""
+- city: String, default ""
+- state: String, default ""
+- country: String, default ""
+- pincode: String, default ""
+- no_of_employees: String, default ""
+- industry_id: String, default ""
+- auth_id: String, default ""
+- status: String, default ""
+- designations: Array, default []
+- teams: Array, default []
+- allowDuplicateLeads: Boolean, default true
+- grace_period: Number
+- payment_status: Boolean, default true
+- trial_period: Boolean, default true
+- valid_till: Date, default now
+- cost_per_license: String, default ""
+- org_trial_period_users_licenses: String, default ""
+- showAnalytics: Boolean, default true
+- showData: Boolean, default true
+- created_at: Date, default now
+
+### 4. tasks (MongoDB collection: tasks)
+Fields:
+- _id: ObjectId (auto)
+- leadId: String, default ""
+- customer_name: String, default ""
+- contact_no: String, default ""
+- stage: String, default ""
+- contact_owner_email: String, default ""
+- location: String, default ""
+- project: String, default ""
+- budget: String, default ""
+- type: String, default "" (Call | Meeting | Site Visit | Follow Up)
+- source: String, default ""
+- status: String, default "" (Pending | Completed | Cancelled)
+- inventory_type: String, default ""
+- transfer_status: Boolean, default false
+- unique_meeting: Boolean, default false
+- unique_site_visit: Boolean, default false
+- call_back_reason: String, default ""
+- uid: String, default ""
+- organization_id: String, default ""
+- due_date: Date, default now
+- created_by: String, default ""
+- created_at: Date, default now
+- completed_at: Date, default now
+- latitude: Number, default null
+- longitude: Number, default null
+
+### 5. calllogs (MongoDB collection: calllogs)
+Fields:
+- _id: ObjectId (auto)
+- leadId: String, default ""
+- customer_name: String, default ""
+- contact_no: String, default ""
+- stage: String, default ""
+- contact_owner_email: String, default ""
+- location: String, default ""
+- project: String, default ""
+- budget: String, default ""
+- inventory_type: String, default ""
+- duration: Number, default 0
+- transfer_status: Boolean, default false
+- uid: String, default ""
+- organization_id: String, default ""
+- created_by: String, default ""
+- created_at: Date, default now
+- latitude: Number, default null
+- longitude: Number, default null
+
+### 6. booking (MongoDB collection: booking)
+Fields:
+- _id: ObjectId (auto)
+- organization_id: String, default ""
+- uid: String, default ""
+- contact_no: String, default ""
+- reporting_to: String, default ""
+- branch: String, default ""
+- team: String, default ""
+- location: String, default ""
+- project: String, default ""
+- contactDetails: Object, default {}
+- bookingDetails: Array, default []
+- notes: Array, default []
+- attachments: Array, default []
+- callLogs: Array, default []
+- created_at: Date, default now
+
+### 7. paymentsDetails (MongoDB collection: paymentsDetails)
+Fields:
+- _id: ObjectId (auto)
+- razorpay_order_id: String, required
+- razorpay_payment_id: String, required
+- razorpay_signature: String, required
+- uid: String, required
+- contact_no: String, required
+- contact_owner_email: String, required
+- organization_id: String, required
+- status: String, required (SUCCESS | FAILED | PENDING)
+- amount: String, required
+- currency: String, required
+- receipt: String, required
+- verified_at: Date, default now
+- invoice_no: String
+- company: String
+- email: String
+- address: String
+- transaction_date: Date
+- due_date: Date
+- paymentFrom: Date
+- paymentTill: Date
+- units: Number
+- igst: Boolean
+- items: Array [ { serialNumber, description, qty, hsn, rate, taxAmount } ]
+
+### 8. branch (MongoDB collection: branch)
+Fields:
+- _id: ObjectId (auto)
+- organization_id: String, default ""
+- branch_name: String, default ""
+- timestamps: true
+
+### 9. teams (MongoDB collection: teams)
+Fields:
+- _id: ObjectId (auto)
+- organization_id: String, default ""
+- team_name: String, default ""
+- timestamps: true
+
+### 10. newapiTokens (MongoDB collection: newapiTokens)
+Fields:
+- _id: ObjectId (auto)
+- id: String, default ""
+- organization_id: String, default ""
+- primary_lead_manager_email: String, default ""
+- primary_lead_manager_uid: String, default ""
+- source: String, default ""
+- status: String, default "" (ACTIVE | INACTIVE)
+- timestamps: true
+
+### 11. newApiData (MongoDB collection: newApiData)
+Fields:
+- _id: ObjectId (auto)
+- status: String, default "" (SUCCESS | FAIL)
+- fail_reason: String, default ""
+- lead_id: String, default ""
+- customer_name: String, default ""
+- contact_no: String, default ""
+- country_code: String, default ""
+- email: String, default ""
+- organization_id: String, default ""
+- contact_owner_email: String, default ""
+- lead_source: String, default ""
+- project: String, default ""
+- location: String, default ""
+- budget: String, default ""
+- property_type: String, default ""
+- stage: String, default ""
+- campaign: String, default ""
+- addset: String, default ""
+- created_at: Date, default new Date(0)
+
+### 12. Query / Support Tickets (MongoDB collection: Query)
+Fields:
+- _id: ObjectId (auto)
+- user_id: String, required
+- ticket_no: Number
+- mobile_no: Number, required
+- organization_name: String, required
+- customer_name: String, required
+- customer_email_id: String, required
+- type_of_query: String, required
+- description: String, required
+- attachment: String, required
+- status: String, default "Open" (Open | In Progress | Resolved | Closed)
+- timestamps: true
+
+### 13. newFAQ (MongoDB collection: newFAQ)
+Fields:
+- _id: ObjectId (auto)
+- FAQ: Array, default []
+
+### 14. newNews (MongoDB collection: newNews)
+Fields:
+- _id: ObjectId (auto)
+- id: String, default ""
+- news: Array, default []
+
+### 15. errors (MongoDB collection: errors)
+Fields:
+- _id: ObjectId (auto)
+- api: String, default ""
+- error: Object
+- timestamps: true
+
+### 16. buildversion (MongoDB collection: buildversion)
+Fields:
+- _id: ObjectId (auto)
+- build_version: String, default ""
+
+### 17. notification (MongoDB collection: notification)
+Fields:
+- _id: ObjectId (auto)
+- uid: String, default ""
+- leadIds: [String], default [""]
+
+### 18. headers (MongoDB collection: headers)
+Fields:
+- _id: ObjectId (auto)
+- industry_id: String, default ""
+- industry_name: String, default ""
+- screen_name: String, default ""
+- is_visible: String, default ""
+- status: String, default ""
+- headers: Array, default []
+- created_by: String, default ""
+- modified_by: String, default ""
+- created_at: Date, default now
+- modified_at: Date
+
+### 19. industries (MongoDB collection: industries)
+Fields:
+- _id: ObjectId (auto)
+- industry_id: String, default ""
+- industry_name: String, default ""
+- status: String, default ""
+- screens: Array, default []
+
+### 20. sms (MongoDB collection: sms)
+Fields:
+- _id: ObjectId (auto)
+- organization_id: String, default ""
+- sms: { url, url_type, headers:[{key,value}], parameters:[{key,value}], integration_type, triggers:[], description }
+- whatsApp: { same structure as sms }
+- email: { same structure as sms }
+
+---
+
+## Output Format:
+For each collection generate 3 files:
+
+FILE 1 — Model (src/models/[name]Schema.js)
+FILE 2 — Controller (src/controllers/[name]Controller.js)
+FILE 3 — Routes (src/routes/[name].js)
+
+Generate all 20 collections completely.
+Do not skip any collection.
+Do not use placeholder comments like "// add logic here".
+Write complete, production-ready, working code.
