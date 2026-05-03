@@ -34,7 +34,9 @@ import {
   createUser,
   updateUser,
   deleteUser,
+  listManagerCandidates,
   type AdminUser,
+  type ManagerCandidate,
 } from '@/services/usersAdminService'
 import {
   resolveScreen,
@@ -70,6 +72,7 @@ interface CoreFormState {
   role: string
   industry_id: string
   is_active: boolean
+  reporting_to: string
 }
 
 const emptyCore: CoreFormState = {
@@ -79,7 +82,12 @@ const emptyCore: CoreFormState = {
   role: 'sales',
   industry_id: '',
   is_active: true,
+  reporting_to: '',
 }
+
+// Roles that report to someone (so we should show the "Reports To" dropdown).
+// superAdmin reports to no one. Mirrors MANAGER_OF on the backend.
+const ROLES_WITH_MANAGER = new Set(['sales', 'teamLead', 'leadManager', 'admin'])
 
 export default function UserListPage() {
   const authedUser = useAppSelector((s) => s.auth.user)
@@ -107,6 +115,11 @@ export default function UserListPage() {
   const [dynamicValues, setDynamicValues] = useState<Record<string, unknown>>({})
   const [saving, setSaving] = useState(false)
   const [formError, setFormError] = useState<string | null>(null)
+
+  // Manager candidates for the "Reports To" dropdown. Refetched whenever the
+  // selected role / industry change while the dialog is open.
+  const [managers, setManagers] = useState<ManagerCandidate[]>([])
+  const [loadingManagers, setLoadingManagers] = useState(false)
 
   const [toast, setToast] = useState<{ open: boolean; msg: string; sev: 'success' | 'error' }>({
     open: false, msg: '', sev: 'success',
@@ -318,11 +331,44 @@ export default function UserListPage() {
       role: row.role,
       industry_id: row.industry_id ?? '',
       is_active: row.is_active,
+      reporting_to: row.reporting_to ?? '',
     })
     setDynamicValues((row.fields as Record<string, unknown>) ?? {})
     setFormError(null)
     setDialogOpen(true)
   }
+
+  // ── Fetch manager candidates whenever the role/industry changes in the open dialog
+  useEffect(() => {
+    if (!dialogOpen) return
+    if (!ROLES_WITH_MANAGER.has(core.role)) {
+      setManagers([])
+      return
+    }
+    let cancelled = false
+    setLoadingManagers(true)
+    void (async () => {
+      try {
+        const list = await listManagerCandidates(
+          core.role,
+          isSuperAdmin ? core.industry_id || undefined : undefined,
+        )
+        if (cancelled) return
+        setManagers(list)
+        // If the previously-selected manager isn't valid for the new role,
+        // clear it so we don't submit a stale UID.
+        if (core.reporting_to && !list.some((m) => m._id === core.reporting_to)) {
+          setCore((c) => ({ ...c, reporting_to: '' }))
+        }
+      } catch {
+        if (!cancelled) setManagers([])
+      } finally {
+        if (!cancelled) setLoadingManagers(false)
+      }
+    })()
+    return () => { cancelled = true }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dialogOpen, core.role, core.industry_id, isSuperAdmin])
 
   const closeDialog = () => {
     if (saving) return
@@ -339,6 +385,11 @@ export default function UserListPage() {
 
     setSaving(true)
     try {
+      // Only send reporting_to when the role can actually have a manager;
+      // for superAdmin we explicitly clear any stale value.
+      const reporting_to = ROLES_WITH_MANAGER.has(core.role)
+        ? core.reporting_to || ''
+        : ''
       if (editing) {
         await updateUser(editing._id, {
           name: core.name.trim(),
@@ -346,6 +397,7 @@ export default function UserListPage() {
           industry_id: core.industry_id || undefined,
           is_active: core.is_active,
           password: core.password || undefined,
+          reporting_to,
           fields: dynVals,
         })
         showToast('User updated')
@@ -357,6 +409,7 @@ export default function UserListPage() {
           role: core.role,
           industry_id: core.industry_id || undefined,
           is_active: core.is_active,
+          reporting_to: reporting_to || undefined,
           fields: dynVals,
         })
         showToast('User created')
@@ -543,6 +596,33 @@ export default function UserListPage() {
                     <MenuItem value="active">Active</MenuItem>
                     <MenuItem value="inactive">Inactive</MenuItem>
                   </TextField>
+                  {ROLES_WITH_MANAGER.has(core.role) && (
+                    <TextField
+                      select
+                      size="small"
+                      label="Reports To"
+                      value={core.reporting_to}
+                      onChange={(e) => setCore({ ...core, reporting_to: e.target.value })}
+                      fullWidth
+                      helperText={
+                        loadingManagers
+                          ? 'Loading managers…'
+                          : managers.length === 0
+                          ? 'No eligible manager exists for this role yet'
+                          : 'Direct manager (drives lead-visibility hierarchy)'
+                      }
+                      disabled={loadingManagers || managers.length === 0}
+                    >
+                      <MenuItem value="">
+                        <em>— Unassigned —</em>
+                      </MenuItem>
+                      {managers.map((m) => (
+                        <MenuItem key={m._id} value={m._id}>
+                          {m.name} ({m.role})
+                        </MenuItem>
+                      ))}
+                    </TextField>
+                  )}
                 </Box>
                 <Typography variant="subtitle2" sx={{ mb: 1.5, color: 'text.secondary' }}>
                   Role-specific Fields

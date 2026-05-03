@@ -1,0 +1,566 @@
+You are a senior full-stack developer. Migrate the Leads Rubix CRM project 
+from Firebase/Firestore to a pure Node.js + ReactJS + MongoDB stack. 
+Below are the full requirements:
+
+═══════════════════════════════════════════
+PART 1 — REMOVE FIREBASE COMPLETELY
+═══════════════════════════════════════════
+
+Remove all Firebase dependencies from both frontend and backend:
+
+Backend (Node.js):
+- Remove: firebase-admin, firebase-functions, firestore, firebase auth
+- Remove: all Firebase Cloud Functions (api.ts, contacts.ts, users.ts, index.ts)
+- Remove: service_account_key.json, .firebaserc, firebase.json
+- Replace Firebase Auth with: JWT (jsonwebtoken) + bcryptjs
+- Replace Firestore real-time listeners with: MongoDB Change Streams + Socket.IO
+
+Frontend (ReactJS):
+- Remove: Firebase.tsx, firebase SDK imports
+- Remove: all firestore() calls, onSnapshot, auth() listeners
+- Replace Firebase Auth login with: Axios POST /auth/login → JWT token stored in localStorage
+- Replace real-time Firestore listeners with: Socket.IO client
+
+═══════════════════════════════════════════
+PART 2 — BACKEND (Node.js + Express + MongoDB)
+═══════════════════════════════════════════
+
+Tech Stack:
+- Node.js + Express.js
+- MongoDB + Mongoose
+- JWT Authentication (jsonwebtoken + bcryptjs)
+- Socket.IO (real-time updates)
+- Multer (file uploads)
+- Nodemailer (email)
+- Node-cron (scheduled tasks)
+
+Project Structure:
+src/
+├── controllers/
+│   ├── authController.js
+│   ├── userController.js
+│   ├── leadController.js
+│   ├── organizationController.js
+│   ├── taskController.js
+│   ├── bookingController.js
+│   ├── headerController.js       ← NEW
+│   └── formFieldController.js    ← NEW
+├── models/
+│   ├── userSchema.js
+│   ├── leadsSchema.js
+│   ├── organizationSchema.js
+│   ├── branchSchema.js
+│   ├── bookingSchema.js
+│   ├── taskSchema.js
+│   ├── headerSchema.js           ← NEW
+│   └── formFieldSchema.js        ← NEW
+├── routes/
+│   ├── auth.js
+│   ├── users.js
+│   ├── leads.js
+│   ├── organizations.js
+│   ├── tasks.js
+│   ├── bookings.js
+│   ├── headers.js                ← NEW
+│   └── formFields.js             ← NEW
+├── middlewares/
+│   ├── auth.js         (JWT verify)
+│   └── roleGuard.js    (role-based access)
+└── app.js
+
+────────────────────────────────────────────
+AUTHENTICATION SYSTEM
+────────────────────────────────────────────
+
+POST /auth/login
+- Body: { email, password }
+- Validates credentials against users collection
+- Returns: { token, user: { uid, name, email, profile, organization_id } }
+- Token payload: { uid, email, profile, organization_id, iat, exp }
+- Token expiry: 7 days
+
+Middleware (auth.js):
+- Reads token from header: x-access-token
+- Verifies with JWT_SECRET from .env
+- Attaches decoded user to req.user
+
+Middleware (roleGuard.js):
+- Usage: roleGuard(['superAdmin', 'organization', 'lead manager'])
+- Reads req.user.profile
+- Returns 403 if role not in allowed list
+
+────────────────────────────────────────────
+USER MANAGEMENT ROLES & HIERARCHY
+────────────────────────────────────────────
+
+Roles (stored in users.profile field):
+  superAdmin     → Full system access
+  organization   → Admin, manages their org
+  lead manager   → Manages Team Leads
+  team lead      → Manages Sales Executives  
+  sales          → End user, works leads
+
+Reporting structure:
+  superAdmin → (no one)
+  organization → superAdmin
+  lead manager → organization / superAdmin
+  team lead → lead manager
+  sales → team lead
+
+Each user must have reporting_to field = UID of direct manager.
+
+────────────────────────────────────────────
+MONGOOSE SCHEMA DEFINITIONS (with validation)
+────────────────────────────────────────────
+
+1. userSchema (collection: users)
+Fields:
+  uid               String, required, unique   (generate with uuid or _id.toString())
+  user_email        String, required, unique
+  password          String, required            (bcrypt hashed)
+  user_first_name   String, required
+  user_last_name    String, default: ''
+  user_image        String, default: ''
+  profile           String, enum: ['superAdmin','organization','lead manager','team lead','sales']
+  status            String, enum: ['active','inactive','deactivated'], default: 'active'
+  contact_no        String, default: ''
+  admin_contact_code Number, default: 0
+  organization_id   String, required
+  reporting_to      String, default: ''        (UID of manager)
+  team              String, default: ''
+  branch            String, default: ''
+  designation       String, default: ''
+  device_id         String, default: ''
+  branchPermission  [String], default: []
+  leadView          Object, default: {}
+  created_at        Date, default: Date.now
+  created_by        String, default: ''
+  activated_at      Date
+  deactivated_at    Date
+
+2. leadsSchema (collection: contacts)
+Fields:
+  customer_name             String, required
+  contact_no                String, required
+  alternate_no              String, default: ''
+  country_code              String, default: '+91'
+  email                     String, default: ''
+  customer_image            String, default: ''
+  uid                       String, required     (owner UID)
+  contact_owner_email       String, default: ''
+  organization_id           String, required
+  stage                     String, enum: ['FRESH','INTERESTED','CALLBACK',
+                                           'NOT INTERESTED','LOST','BOOKED'],
+                            default: 'FRESH'
+  lead_type                 String, enum: ['Leads','Data'], default: 'Data'
+  lead_source               String, default: ''
+  source_status             Boolean, default: false
+  associate_status          Boolean, default: true
+  transfer_status           Boolean, default: false
+  project                   String, default: ''
+  location                  String, default: ''
+  budget                    String, default: ''
+  property_type             String, default: ''
+  property_sub_type         String, default: ''
+  property_stage            String, default: ''
+  inventory_type            String, default: ''
+  next_follow_up_date_time  Date
+  next_follow_up_type       String, default: ''
+  lost_reason               String, default: ''
+  other_lost_reason         String, default: ''
+  not_int_reason            String, default: ''
+  other_not_int_reason      String, default: ''
+  call_back_reason          String, default: ''
+  transfer_reason           String, default: ''
+  previous_owner_1          String, default: ''
+  previous_owner_2          String, default: ''
+  transfer_by_1             String, default: ''
+  transfer_by_2             String, default: ''
+  previous_stage_1          String, default: ''
+  previous_stage_2          String, default: ''
+  campaign                  String, default: ''
+  addset                    String, default: ''
+  is_button_called          Boolean, default: false
+  latitude                  Number, default: null
+  longitude                 Number, default: null
+  field_one through field_six  String, default: ''   (6 custom fields)
+  lead_assign_time          Date, default: Date.now
+  stage_change_at           Date, default: Date.now
+  feedback_time             Date
+  call_response_time        Date
+  created_at                Date, default: Date.now
+  created_by                String, default: ''
+  modified_at               Date, default: Date.now
+
+3. ★ headerSchema (collection: headers) ← NEW DYNAMIC TABLE HEADERS
+Fields:
+  organization_id   String, required
+  module            String, required   
+                    enum: ['leads','contacts','bookings','tasks','users']
+  columns           Array of:
+    {
+      key        String   (field name, e.g. "customer_name")
+      label      String   (display label, e.g. "Customer Name")
+      visible    Boolean  default: true
+      order      Number   (display order)
+      width      String   default: '150px'
+      sortable   Boolean  default: true
+      filterable Boolean  default: false
+      pinned     Boolean  default: false
+    }
+  created_by        String
+  updated_by        String
+  timestamps: true
+
+4. ★ formFieldSchema (collection: formFields) ← NEW DYNAMIC FORMS
+Fields:
+  organization_id   String, required
+  form_name         String, required   
+                    enum: ['lead_create','lead_edit','user_create',
+                           'booking_create','contact_create']
+  fields            Array of:
+    {
+      key           String    (field identifier, must match leads/users schema key)
+      label         String    (display label shown in UI)
+      field_type    String    enum: ['text','number','email','phone','select',
+                                     'multiselect','date','datetime','textarea',
+                                     'checkbox','radio','file']
+      placeholder   String    default: ''
+      required      Boolean   default: false
+      visible       Boolean   default: true
+      order         Number    (render order in the form)
+      options       [String]  (for select/multiselect/radio fields)
+      default_value String    default: ''
+      validation    Object:
+        {
+          min_length  Number
+          max_length  Number
+          regex       String
+          min         Number
+          max         Number
+        }
+      grid_cols     Number    default: 6   (Bootstrap/grid column span: 1–12)
+    }
+  created_by        String
+  updated_by        String
+  timestamps: true
+
+────────────────────────────────────────────
+API ROUTES — HEADERS (Dynamic Table Columns)
+────────────────────────────────────────────
+
+GET    /headers/:organization_id/:module
+  → Returns header config for that org + module
+  → If none exists, returns default column config for that module
+
+POST   /headers
+  → Body: { organization_id, module, columns[] }
+  → Creates header config (one per org per module)
+
+PUT    /headers/:organization_id/:module
+  → Body: { columns[] }
+  → Replaces column config (full update)
+
+PATCH  /headers/:organization_id/:module/column/:key
+  → Body: { visible, order, width, label, pinned }
+  → Updates a single column property
+
+DELETE /headers/:organization_id/:module
+  → Resets to system default for that module
+
+────────────────────────────────────────────
+API ROUTES — FORM FIELDS (Dynamic Forms)
+────────────────────────────────────────────
+
+GET    /formFields/:organization_id/:form_name
+  → Returns form field config for that org + form
+  → If none exists, returns system default field config
+
+POST   /formFields
+  → Body: { organization_id, form_name, fields[] }
+  → Creates form config
+
+PUT    /formFields/:organization_id/:form_name
+  → Body: { fields[] }
+  → Full replacement of form config
+
+PATCH  /formFields/:organization_id/:form_name/field/:key
+  → Body: { label, required, visible, order, options, grid_cols, ... }
+  → Updates a single field's config
+
+DELETE /formFields/:organization_id/:form_name
+  → Resets form to system default
+
+────────────────────────────────────────────
+LEAD TRANSFER API (replaces Firebase transferLead function)
+────────────────────────────────────────────
+
+POST /leads/transfer
+Auth: JWT required
+Role: lead manager, team lead, organization
+
+Body:
+{
+  leadsData: [{ ...leadObject, contactId: "mongoId" }],
+  owner: { email, uid, organization_id },
+  reason: "string",
+  leadType: "Leads" | "Data",
+  options: {
+    fresh: true/false,
+    notes: true/false,
+    attachments: true/false,
+    task: true/false,
+    contactDetails: true/false
+  }
+}
+
+Logic:
+1. Validate role from req.user.profile
+2. For each lead:
+   a. Create NEW contacts document for new owner
+   b. Update old document: transfer_status=true, transfer_reason, associate_status
+   c. Set audit trail: previous_owner_1/2, transfer_by_1/2, previous_stage_1/2
+   d. If options.fresh=true → reset stage to FRESH, clear follow-up fields
+   e. If options.task=true → copy Pending tasks to new lead, cancel old ones
+   f. If options.notes or options.attachments → copy contactResources
+3. Send notifications (email + in-app via Socket.IO)
+4. Return { success: true, newLeadIds: [] }
+
+────────────────────────────────────────────
+LEAD VISIBILITY RULES (role-based data filter)
+────────────────────────────────────────────
+
+Apply this filter in all GET /leads queries:
+
+superAdmin:    No filter → all leads in system
+organization:  Filter by organization_id
+lead manager:  Filter by organization_id + 
+               uid IN [self uid + all team_lead UIDs reporting to self 
+               + all sales UIDs under those team leads]
+team lead:     Filter by uid IN [self + sales UIDs reporting to self]
+sales:         Filter by uid = self only
+
+Build a helper: getVisibleUIDs(requestingUser) 
+→ walks reporting_to tree downward → returns array of UIDs
+
+────────────────────────────────────────────
+SOCKET.IO — REAL-TIME EVENTS
+────────────────────────────────────────────
+
+Events to emit:
+  lead:assigned   → { leadId, toUid, fromUid }
+  lead:updated    → { leadId, changes }
+  lead:transferred → { oldLeadId, newLeadId, toUid }
+  task:created    → { taskId, leadId, uid }
+  notification:new → { message, uid, type }
+
+Room strategy:
+  Each user joins room: organization_id + uid
+  Lead managers join: organization_id room
+  Emit to specific user: io.to(uid).emit(...)
+  Emit to org:           io.to(organization_id).emit(...)
+
+═══════════════════════════════════════════
+PART 3 — FRONTEND (ReactJS)
+═══════════════════════════════════════════
+
+Tech Stack:
+- React 18 + TypeScript
+- Redux Toolkit (state management)
+- React Router v6
+- Axios (HTTP client)
+- Socket.IO client
+- React Hook Form (all forms — including dynamic form renderer)
+- Ant Design or Material UI (component library)
+- TanStack Table v8 (dynamic table headers)
+
+Project Structure:
+src/
+├── components/
+│   ├── DynamicTable/
+│   │   ├── DynamicTable.tsx          ← reads header config from API
+│   │   ├── ColumnManager.tsx         ← drag/toggle/reorder columns UI
+│   │   └── TableFilters.tsx
+│   ├── DynamicForm/
+│   │   ├── DynamicForm.tsx           ← renders fields from formField API
+│   │   ├── FieldRenderer.tsx         ← renders each field_type
+│   │   └── FormBuilder.tsx           ← admin UI to configure form fields
+├── screens/
+│   ├── Auth/Login.tsx
+│   ├── Leads/
+│   │   ├── LeadList.tsx              (uses DynamicTable)
+│   │   └── LeadForm.tsx              (uses DynamicForm)
+│   ├── Users/
+│   │   ├── UserList.tsx
+│   │   └── UserForm.tsx
+│   ├── Settings/
+│   │   ├── HeaderSettings.tsx        ← manage column config per module
+│   │   └── FormSettings.tsx          ← manage form field config
+├── redux/
+│   ├── store.ts
+│   ├── slices/
+│   │   ├── authSlice.ts
+│   │   ├── leadSlice.ts
+│   │   ├── userSlice.ts
+│   │   ├── headerSlice.ts
+│   │   └── formFieldSlice.ts
+├── services/
+│   ├── api.ts          (Axios instance with JWT interceptor)
+│   ├── leadService.ts
+│   ├── userService.ts
+│   ├── headerService.ts
+│   └── formFieldService.ts
+├── hooks/
+│   ├── useSocket.ts
+│   ├── useDynamicHeaders.ts
+│   └── useDynamicForm.ts
+└── utils/
+    ├── roleGuard.tsx   (PrivateRoute with role check)
+    └── constants.ts
+
+────────────────────────────────────────────
+DYNAMIC TABLE — DynamicTable.tsx
+────────────────────────────────────────────
+
+1. On mount: GET /headers/:org_id/:module
+2. Build TanStack Table columns from API response
+3. Column features:
+   - Show/hide toggle (ColumnManager sidebar)
+   - Drag to reorder (use @dnd-kit/sortable)
+   - Resizable width
+   - Pinned columns (left/right)
+   - Sortable columns
+   - Persist changes via PUT /headers/:org_id/:module
+4. Props: { module: string, data: any[], onRowClick, actions }
+
+────────────────────────────────────────────
+DYNAMIC FORM — DynamicForm.tsx
+────────────────────────────────────────────
+
+1. On mount: GET /formFields/:org_id/:form_name
+2. Render each field using React Hook Form + FieldRenderer
+3. FieldRenderer maps field_type:
+   text       → <input type="text">
+   number     → <input type="number">
+   email      → <input type="email">
+   phone      → phone input with country code selector
+   select     → <Select> with options from field.options[]
+   multiselect→ <Select mode="multiple">
+   date       → <DatePicker>
+   datetime   → <DateTimePicker>
+   textarea   → <textarea>
+   checkbox   → <Checkbox>
+   radio      → <Radio.Group> with options
+   file       → <Upload>
+4. Layout: Bootstrap 12-col grid using field.grid_cols
+5. Validation: apply field.validation rules to React Hook Form register
+6. Props: { formName, onSubmit, defaultValues, readOnly }
+
+────────────────────────────────────────────
+AUTH FLOW (Frontend)
+────────────────────────────────────────────
+
+1. POST /auth/login → receive JWT token
+2. Store token in localStorage key: 'crm_token'
+3. Axios interceptor: add header x-access-token: <token> to all requests
+4. On 401 response: clear token, redirect to /login
+5. Redux authSlice stores: { user, token, isAuthenticated }
+6. PrivateRoute checks: isAuthenticated + role in allowedRoles[]
+
+────────────────────────────────────────────
+ROLE-BASED UI RULES
+────────────────────────────────────────────
+
+superAdmin:
+  - Can see all orgs, all users, all leads
+  - Access to system settings
+
+organization:
+  - Sees only own org data
+  - Can manage users, headers, form fields
+
+lead manager:
+  - Sees leads of own team (self + team leads + sales under them)
+  - Can transfer leads to team lead or sales
+  - Cannot access org settings
+
+team lead:
+  - Sees leads of own sales executives + self
+  - Can transfer only to own sales executives
+
+sales:
+  - Sees only own assigned leads
+  - Cannot transfer leads
+  - Cannot access settings
+
+Hide/show sidebar menu items and action buttons based on req.user.profile.
+
+────────────────────────────────────────────
+REPORTING_TO — DYNAMIC DROPDOWN
+────────────────────────────────────────────
+
+On User Create/Edit form:
+1. Read the selected role for the new user
+2. Based on role, fetch valid managers:
+   - sales        → GET /users?profile=team lead&org=:id
+   - team lead    → GET /users?profile=lead manager&org=:id
+   - lead manager → GET /users?profile=organization&org=:id
+   - organization → GET /users?profile=superAdmin
+3. Populate reporting_to dropdown with { label: name, value: uid }
+4. This is the dynamic dropdown for manager assignment.
+
+═══════════════════════════════════════════
+PART 4 — ENVIRONMENT CONFIG
+═══════════════════════════════════════════
+
+Backend .env:
+  MONGO_URI=mongodb+srv://...
+  JWT_SECRET=your_secret_key
+  JWT_EXPIRES_IN=7d
+  PORT=8444
+  FRONTEND_URL=http://localhost:3000
+  EMAIL_HOST=smtp.example.com
+  EMAIL_PORT=587
+  EMAIL_USER=...
+  EMAIL_PASS=...
+
+Frontend .env:
+  REACT_APP_API_URL=http://localhost:8444
+  REACT_APP_SOCKET_URL=http://localhost:8444
+
+═══════════════════════════════════════════
+PART 5 — MIGRATION CHECKLIST
+═══════════════════════════════════════════
+
+Backend:
+  [ ] Remove all firebase-admin / firebase-functions imports
+  [ ] Replace Firebase Auth with JWT (bcrypt hash on register, compare on login)
+  [ ] Replace Firestore reads/writes with Mongoose queries
+  [ ] Replace Firestore batch writes with Mongoose sessions/transactions
+  [ ] Add headerSchema + formFieldSchema + routes + controllers
+  [ ] Enable auth middleware on ALL routes
+  [ ] Add roleGuard middleware per route
+  [ ] Add Socket.IO for real-time events
+  [ ] Add seed script: default headers and form fields per module/form
+
+Frontend:
+  [ ] Remove Firebase.tsx and all firebase imports
+  [ ] Replace onAuthStateChanged with JWT check from localStorage
+  [ ] Replace onSnapshot with Socket.IO event listeners
+  [ ] Replace Firestore queries with Axios calls to backend API
+  [ ] Build DynamicTable component (reads from /headers API)
+  [ ] Build DynamicForm component (reads from /formFields API)
+  [ ] Build Settings screens for Header and Form configuration
+  [ ] Add reporting_to dynamic dropdown on user form
+  [ ] Implement role-based route guards and UI visibility
+
+═══════════════════════════════════════════
+DELIVERABLES EXPECTED
+═══════════════════════════════════════════
+
+1. Full backend source (Node.js) with all schemas, routes, controllers, middleware
+2. Full frontend source (ReactJS) with DynamicTable, DynamicForm, Redux, Auth
+3. MongoDB seed data: default headers for leads/users/bookings, 
+   default form fields for lead_create/user_create
+4. README with setup steps, env variables, and API documentation
+5. Postman collection for all API endpoints

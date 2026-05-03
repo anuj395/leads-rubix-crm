@@ -8,6 +8,7 @@ export interface AdminUser {
   role: string
   industry_id?: string
   is_active: boolean
+  reporting_to?: string
   fields: Record<string, unknown>
   createdAt?: string
   updatedAt?: string
@@ -20,6 +21,7 @@ export interface CreateUserInput {
   role: string
   industry_id?: string
   is_active?: boolean
+  reporting_to?: string
   fields?: Record<string, unknown>
 }
 
@@ -29,7 +31,31 @@ export interface UpdateUserInput {
   industry_id?: string
   is_active?: boolean
   password?: string
+  reporting_to?: string
   fields?: Record<string, unknown>
+}
+
+export interface ManagerCandidate {
+  _id: string
+  id: string
+  name: string
+  email: string
+  role: string
+}
+
+/**
+ * Fetches the list of users that may be selected as the manager for a user
+ * with the given role. Drives the "Reports To" dropdown in the user form.
+ * Tenant-scoped server-side: non-superAdmin callers always get their own org.
+ */
+export async function listManagerCandidates(
+  profile: string,
+  industryId?: string,
+): Promise<ManagerCandidate[]> {
+  const params = new URLSearchParams({ profile })
+  if (industryId) params.set('industry_id', industryId)
+  const res = await api.get(`users/managers?${params.toString()}`)
+  return (res.data?.items ?? []) as ManagerCandidate[]
 }
 
 async function safeList(path: string): Promise<AdminUser[]> {
