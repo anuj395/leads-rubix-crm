@@ -1,0 +1,500 @@
+import { useEffect, useMemo, useState } from 'react'
+import Box from '@mui/material/Box'
+import Button from '@mui/material/Button'
+import IconButton from '@mui/material/IconButton'
+import Stack from '@mui/material/Stack'
+import Table from '@mui/material/Table'
+import TableHead from '@mui/material/TableHead'
+import TableBody from '@mui/material/TableBody'
+import TableRow from '@mui/material/TableRow'
+import TableCell from '@mui/material/TableCell'
+import TableContainer from '@mui/material/TableContainer'
+import Paper from '@mui/material/Paper'
+import Chip from '@mui/material/Chip'
+import Dialog from '@mui/material/Dialog'
+import DialogTitle from '@mui/material/DialogTitle'
+import DialogContent from '@mui/material/DialogContent'
+import DialogActions from '@mui/material/DialogActions'
+import TextField from '@mui/material/TextField'
+import MenuItem from '@mui/material/MenuItem'
+import Switch from '@mui/material/Switch'
+import CircularProgress from '@mui/material/CircularProgress'
+import Snackbar from '@mui/material/Snackbar'
+import Alert from '@mui/material/Alert'
+import Typography from '@mui/material/Typography'
+import Divider from '@mui/material/Divider'
+import {
+  Add as AddIcon,
+  Edit as EditIcon,
+  Delete as DeleteIcon,
+  Lock as LockIcon,
+} from '@mui/icons-material'
+
+import { AppCard } from '@/components/ui/AppCard'
+import { useAppSelector } from '@/store/hooks'
+import {
+  listUsers,
+  createUser,
+  updateUser,
+  deleteUser,
+  type AdminUser,
+} from '@/services/usersAdminService'
+import {
+  getScreens,
+  getScreenFields,
+  getScreenPermissions,
+  bulkSetScreenPermissions,
+  type Screen,
+  type ScreenField,
+} from '@/services/screenAdminService'
+import {
+  getIndustries,
+  getRoles,
+  type Industry,
+  type AdminRole,
+} from '@/services/sidebarAdminService'
+
+interface CoreFormState {
+  name: string
+  email: string
+  password: string
+  is_active: boolean
+}
+
+const emptyCore: CoreFormState = {
+  name: '',
+  email: '',
+  password: '',
+  is_active: true,
+}
+
+export default function AdminRolesPage() {
+  const authedUser = useAppSelector((s) => s.auth.user)
+  const isSuperAdmin = authedUser?.role === 'superAdmin'
+
+  // ── Tenant scope ──
+  const [industries, setIndustries] = useState<Industry[]>([])
+  const [filterIndustry, setFilterIndustry] = useState<string>('') // industry CODE
+
+  // ── Admin users in this industry ──
+  const [items, setItems] = useState<AdminUser[]>([])
+  const [loading, setLoading] = useState(false)
+
+  // ── Add/Edit dialog ──
+  const [dialogOpen, setDialogOpen] = useState(false)
+  const [editing, setEditing] = useState<AdminUser | null>(null)
+  const [core, setCore] = useState<CoreFormState>(emptyCore)
+  const [saving, setSaving] = useState(false)
+  const [formError, setFormError] = useState<string | null>(null)
+
+  // ── Module access matrix ──
+  const [screens, setScreens] = useState<Screen[]>([])
+  const [adminRole, setAdminRole] = useState<AdminRole | null>(null)
+  // map of screen_id → boolean (any field enabled for admin role in this industry)
+  const [moduleAccess, setModuleAccess] = useState<Record<string, boolean>>({})
+  const [moduleSaving, setModuleSaving] = useState<Record<string, boolean>>({})
+  const [permsLoading, setPermsLoading] = useState(false)
+
+  const [toast, setToast] = useState<{ open: boolean; msg: string; sev: 'success' | 'error' }>({
+    open: false, msg: '', sev: 'success',
+  })
+  const showToast = (msg: string, sev: 'success' | 'error' = 'success') =>
+    setToast({ open: true, msg, sev })
+
+  // ── Load industries + screens once ──
+  useEffect(() => {
+    let cancelled = false
+    void (async () => {
+      try {
+        const [inds, scr] = await Promise.all([getIndustries(), getScreens()])
+        if (cancelled) return
+        setIndustries(inds)
+        setScreens(scr.filter((s) => s.is_active))
+        setFilterIndustry((cur) => cur || inds[0]?.code || '')
+      } catch (e) {
+        const err = e as { response?: { data?: { message?: string } } }
+        showToast(err?.response?.data?.message ?? 'Failed to load reference data', 'error')
+      }
+    })()
+    return () => { cancelled = true }
+  }, [])
+
+  // ── Resolve the "admin" role doc for the selected industry ──
+  useEffect(() => {
+    let cancelled = false
+    setAdminRole(null)
+    void (async () => {
+      if (!filterIndustry) return
+      const ind = industries.find((i) => i.code === filterIndustry)
+      if (!ind) return
+      try {
+        const roles = await getRoles(ind._id)
+        if (cancelled) return
+        setAdminRole(roles.find((r) => r.key === 'admin') ?? null)
+      } catch {
+        if (!cancelled) setAdminRole(null)
+      }
+    })()
+    return () => { cancelled = true }
+  }, [filterIndustry, industries])
+
+  // ── Load admin users ──
+  const refreshUsers = async () => {
+    if (!filterIndustry) { setItems([]); return }
+    setLoading(true)
+    try {
+      const list = await listUsers(filterIndustry)
+      setItems(list.filter((u) => u.role === 'admin'))
+    } catch (e) {
+      const err = e as { response?: { data?: { message?: string } } }
+      showToast(err?.response?.data?.message ?? 'Failed to load admins', 'error')
+    } finally {
+      setLoading(false)
+    }
+  }
+  useEffect(() => { void refreshUsers() // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filterIndustry])
+
+  // ── Load module access for the admin role in this industry ──
+  const refreshModuleAccess = async () => {
+    if (!adminRole || !filterIndustry || screens.length === 0) {
+      setModuleAccess({})
+      return
+    }
+    const ind = industries.find((i) => i.code === filterIndustry)
+    if (!ind) return
+    setPermsLoading(true)
+    try {
+      const perms = await getScreenPermissions({
+        role_id: adminRole._id,
+        industry_id: ind._id,
+        enabledOnly: true,
+      })
+      const byScreen: Record<string, boolean> = {}
+      for (const s of screens) byScreen[s._id] = false
+      for (const p of perms) byScreen[p.screen_id] = true
+      setModuleAccess(byScreen)
+    } catch (e) {
+      const err = e as { response?: { data?: { message?: string } } }
+      showToast(err?.response?.data?.message ?? 'Failed to load module access', 'error')
+    } finally {
+      setPermsLoading(false)
+    }
+  }
+  useEffect(() => { void refreshModuleAccess() // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [adminRole?._id, filterIndustry, screens.length])
+
+  const currentIndustry = useMemo(
+    () => industries.find((i) => i.code === filterIndustry),
+    [industries, filterIndustry],
+  )
+
+  // ── Toggle a whole module on/off for the admin role ──
+  const toggleModule = async (screen: Screen, next: boolean) => {
+    if (!adminRole || !currentIndustry) return
+    setModuleSaving((m) => ({ ...m, [screen._id]: true }))
+    try {
+      const fields: ScreenField[] = next ? await getScreenFields(screen._id) : []
+      const fieldIds = fields.filter((f) => f.is_active).map((f) => f._id)
+      await bulkSetScreenPermissions({
+        screen_id: screen._id,
+        role_id: adminRole._id,
+        industry_id: currentIndustry._id,
+        field_ids: next ? fieldIds : [],
+      })
+      setModuleAccess((m) => ({ ...m, [screen._id]: next }))
+      showToast(`${screen.name}: ${next ? 'enabled' : 'disabled'} for admins`)
+    } catch (e) {
+      const err = e as { response?: { data?: { message?: string } } }
+      showToast(err?.response?.data?.message ?? 'Failed to update access', 'error')
+    } finally {
+      setModuleSaving((m) => ({ ...m, [screen._id]: false }))
+    }
+  }
+
+  // ── Add/Edit dialog ──
+  const openCreate = () => {
+    setEditing(null)
+    setCore({ ...emptyCore })
+    setFormError(null)
+    setDialogOpen(true)
+  }
+  const openEdit = (row: AdminUser) => {
+    setEditing(row)
+    setCore({
+      name: row.name ?? '',
+      email: row.email,
+      password: '',
+      is_active: row.is_active,
+    })
+    setFormError(null)
+    setDialogOpen(true)
+  }
+  const closeDialog = () => { if (!saving) setDialogOpen(false) }
+
+  const handleSubmit = async () => {
+    setFormError(null)
+    if (!core.email.trim()) { setFormError('Email is required'); return }
+    if (!editing && !core.password) { setFormError('Password is required'); return }
+    if (!filterIndustry) { setFormError('Pick an industry first'); return }
+
+    setSaving(true)
+    try {
+      if (editing) {
+        await updateUser(editing._id, {
+          name: core.name.trim(),
+          is_active: core.is_active,
+          password: core.password || undefined,
+        })
+        showToast('Admin updated')
+      } else {
+        await createUser({
+          name: core.name.trim(),
+          email: core.email.trim().toLowerCase(),
+          password: core.password,
+          role: 'admin',
+          industry_id: filterIndustry,
+          is_active: core.is_active,
+        })
+        showToast('Admin created')
+      }
+      setDialogOpen(false)
+      setEditing(null)
+      await refreshUsers()
+    } catch (e) {
+      const err = e as { response?: { data?: { message?: string } } ; message?: string }
+      setFormError(err?.response?.data?.message ?? err?.message ?? 'Save failed')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const remove = async (row: AdminUser) => {
+    if (!window.confirm(`Delete admin "${row.email}"?`)) return
+    try {
+      await deleteUser(row._id)
+      showToast('Admin deleted')
+      await refreshUsers()
+    } catch (e) {
+      const err = e as { response?: { data?: { message?: string } } }
+      showToast(err?.response?.data?.message ?? 'Delete failed', 'error')
+    }
+  }
+
+  // ── Render ──
+  if (!isSuperAdmin) {
+    return (
+      <Box sx={{ p: 3 }}>
+        <Alert severity="warning" icon={<LockIcon />}>
+          Only SuperAdmin users can manage admin roles.
+        </Alert>
+      </Box>
+    )
+  }
+
+  return (
+    <Box sx={{ p: { xs: 2, sm: 3 }, width: '100%', minWidth: 0 }}>
+      <AppCard
+        title="Admin Roles"
+        subtitle="Manage the admins who run each organization, and which modules they can access."
+        action={
+          <Button
+            variant="contained"
+            startIcon={<AddIcon />}
+            onClick={openCreate}
+            disabled={!filterIndustry}
+          >
+            Add Admin
+          </Button>
+        }
+      >
+        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} sx={{ mb: 2 }}>
+          <TextField
+            select
+            size="small"
+            label="Organization (Industry)"
+            value={filterIndustry}
+            onChange={(e) => setFilterIndustry(e.target.value)}
+            sx={{ minWidth: 280 }}
+          >
+            {industries.map((i) => (
+              <MenuItem key={i._id} value={i.code}>
+                {i.name} ({i.code})
+              </MenuItem>
+            ))}
+          </TextField>
+        </Stack>
+
+        {loading ? (
+          <Box sx={{ display: 'flex', justifyContent: 'center', py: 6 }}>
+            <CircularProgress />
+          </Box>
+        ) : items.length === 0 ? (
+          <Typography color="text.secondary" sx={{ py: 4, textAlign: 'center' }}>
+            No admins yet for this organization — click "Add Admin" to create one.
+          </Typography>
+        ) : (
+          <TableContainer component={Paper} variant="outlined">
+            <Table size="small">
+              <TableHead>
+                <TableRow>
+                  <TableCell>Name</TableCell>
+                  <TableCell>Email</TableCell>
+                  <TableCell>Status</TableCell>
+                  <TableCell align="right">Actions</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {items.map((row) => (
+                  <TableRow key={row._id} hover>
+                    <TableCell>{row.name || '—'}</TableCell>
+                    <TableCell>{row.email}</TableCell>
+                    <TableCell>
+                      <Chip
+                        size="small"
+                        label={row.is_active ? 'Active' : 'Inactive'}
+                        color={row.is_active ? 'success' : 'default'}
+                      />
+                    </TableCell>
+                    <TableCell align="right">
+                      <IconButton size="small" onClick={() => openEdit(row)}>
+                        <EditIcon fontSize="small" />
+                      </IconButton>
+                      <IconButton size="small" color="error" onClick={() => remove(row)}>
+                        <DeleteIcon fontSize="small" />
+                      </IconButton>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </TableContainer>
+        )}
+      </AppCard>
+
+      {/* ── Module access for the admin role ─────────────────────────────── */}
+      <Box sx={{ mt: 3 }}>
+        <AppCard
+          title="Module Access for Admins"
+          subtitle="Toggle which modules admins of this organization can use. Turning a module on grants admins access to all of its fields; turning it off revokes them."
+        >
+          {!adminRole ? (
+            <Alert severity="info">
+              No "admin" role is configured for this organization yet. Create it in
+              Users → Roles & Permissions before assigning module access.
+            </Alert>
+          ) : permsLoading ? (
+            <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
+              <CircularProgress size={24} />
+            </Box>
+          ) : (
+            <TableContainer component={Paper} variant="outlined">
+              <Table size="small">
+                <TableHead>
+                  <TableRow>
+                    <TableCell>Module</TableCell>
+                    <TableCell>Description</TableCell>
+                    <TableCell align="right">Access</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {screens.map((s) => (
+                    <TableRow key={s._id} hover>
+                      <TableCell sx={{ fontWeight: 600 }}>{s.name}</TableCell>
+                      <TableCell sx={{ color: 'text.secondary' }}>
+                        {s.description || s.key}
+                      </TableCell>
+                      <TableCell align="right">
+                        {moduleSaving[s._id] ? (
+                          <CircularProgress size={18} />
+                        ) : (
+                          <Switch
+                            checked={!!moduleAccess[s._id]}
+                            onChange={(e) => void toggleModule(s, e.target.checked)}
+                          />
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </TableContainer>
+          )}
+        </AppCard>
+      </Box>
+
+      {/* ── Add / Edit Admin dialog ──────────────────────────────────────── */}
+      <Dialog open={dialogOpen} onClose={closeDialog} maxWidth="sm" fullWidth>
+        <DialogTitle>
+          {editing ? `Edit Admin — ${editing.email}` : 'New Admin'}
+        </DialogTitle>
+        <DialogContent dividers>
+          {formError && (
+            <Alert severity="error" sx={{ mb: 2 }} onClose={() => setFormError(null)}>
+              {formError}
+            </Alert>
+          )}
+          <Stack spacing={2} sx={{ pt: 1 }}>
+            <TextField
+              size="small"
+              label="Name"
+              value={core.name}
+              onChange={(e) => setCore({ ...core, name: e.target.value })}
+              fullWidth
+            />
+            <TextField
+              size="small"
+              label="Email *"
+              type="email"
+              value={core.email}
+              onChange={(e) => setCore({ ...core, email: e.target.value })}
+              disabled={!!editing}
+              fullWidth
+            />
+            <TextField
+              size="small"
+              label={editing ? 'New Password (leave blank to keep)' : 'Password *'}
+              type="password"
+              value={core.password}
+              onChange={(e) => setCore({ ...core, password: e.target.value })}
+              fullWidth
+            />
+            <TextField
+              select
+              size="small"
+              label="Status"
+              value={core.is_active ? 'active' : 'inactive'}
+              onChange={(e) => setCore({ ...core, is_active: e.target.value === 'active' })}
+              fullWidth
+            >
+              <MenuItem value="active">Active</MenuItem>
+              <MenuItem value="inactive">Inactive</MenuItem>
+            </TextField>
+            <Divider />
+            <Typography variant="caption" color="text.secondary">
+              Role is fixed to <strong>admin</strong> for this organization
+              ({currentIndustry?.name ?? filterIndustry}).
+            </Typography>
+          </Stack>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={closeDialog} disabled={saving}>Cancel</Button>
+          <Button variant="contained" onClick={() => void handleSubmit()} disabled={saving}>
+            {saving ? 'Saving…' : editing ? 'Save' : 'Create Admin'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Snackbar
+        open={toast.open}
+        autoHideDuration={3000}
+        onClose={() => setToast({ ...toast, open: false })}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      >
+        <Alert severity={toast.sev} variant="filled" onClose={() => setToast({ ...toast, open: false })}>
+          {toast.msg}
+        </Alert>
+      </Snackbar>
+    </Box>
+  )
+}
