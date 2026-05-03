@@ -125,7 +125,15 @@ export function DynamicForm({
           return next
         })
       } catch (err) {
-        if (!cancelled) {
+        if (cancelled) return
+        // A missing screen/role/industry combo just means "no extra fields are
+        // configured for this context" — which is a perfectly valid state for
+        // an Add/Edit dialog. Don't surface that as an error toast; only flag
+        // genuine network/server failures.
+        const status = (err as { response?: { status?: number } })?.response?.status
+        if (status === 404 || status === 400) {
+          setFields([])
+        } else {
           const msg = err instanceof Error ? err.message : 'Failed to load form'
           setSubmitError(msg)
         }

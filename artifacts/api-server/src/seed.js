@@ -395,6 +395,7 @@ async function seedIndustries() {
     return;
   }
   const Industry = mongoose.model('Industry');
+  const Role = mongoose.model('Role');
   const raw = JSON.parse(fs.readFileSync(INDUSTRIES_SEED_FILE, 'utf8'));
   const entries = Array.isArray(raw) ? raw : [];
 
@@ -409,7 +410,7 @@ async function seedIndustries() {
         $set: { name: String(name) },
         $setOnInsert: { code, is_active: true },
       },
-      { upsert: true, new: false, rawResult: true },
+      { upsert: true, new: false, includeResultMetadata: true },
     );
     if (!result?.lastErrorObject?.updatedExisting) inserted += 1;
     else updated += 1;
@@ -417,6 +418,34 @@ async function seedIndustries() {
   console.log(
     `[seed] industries: ${inserted} inserted, ${updated} refreshed (from seed-data/industries.json)`,
   );
+
+  // Make sure every industry has the default tenant-scoped roles. Without
+  // these, dynamic-form resolve calls 404 the moment an admin tries to add a
+  // user under a freshly-seeded industry. `superAdmin` is intentionally NOT
+  // a per-industry role — it's handled as a system-wide bypass.
+  const DEFAULT_ROLES = ['admin', 'leadManager', 'teamLead', 'sales'];
+  const allIndustries = await Industry.find({}).lean().exec();
+  let rolesAdded = 0;
+  for (const ind of allIndustries) {
+    for (const key of DEFAULT_ROLES) {
+      const r = await Role.findOneAndUpdate(
+        { industry_id: ind._id, key },
+        {
+          $setOnInsert: {
+            industry_id: ind._id,
+            key,
+            name: ROLE_DISPLAY_NAMES[key] || capitalize(key),
+            is_active: true,
+          },
+        },
+        { upsert: true, new: false, includeResultMetadata: true },
+      );
+      if (!r?.lastErrorObject?.updatedExisting) rolesAdded += 1;
+    }
+  }
+  if (rolesAdded > 0) {
+    console.log(`[seed] roles: ${rolesAdded} default role(s) inserted across industries`);
+  }
 }
 
 module.exports = { seedUsers, migrateAndSeedSidebar, seedScreens, seedIndustries };
