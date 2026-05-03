@@ -292,6 +292,19 @@ const SCREEN_DEFAULTS = [
       { field_key: 'joining_date',  label: 'Joining Date',  type: 'date',   is_required: false, order: 5 },
     ],
   },
+  {
+    key: 'organization',
+    name: 'Organization',
+    description: 'Organization records — fully dynamic table & form',
+    fields: [
+      { field_key: 'name',          label: 'Name',          type: 'text',     is_required: true,  order: 1 },
+      { field_key: 'code',          label: 'Code',          type: 'text',     is_required: false, order: 2 },
+      { field_key: 'email',         label: 'Email',         type: 'email',    is_required: false, order: 3 },
+      { field_key: 'phone',         label: 'Phone',         type: 'text',     is_required: false, order: 4 },
+      { field_key: 'address',       label: 'Address',       type: 'textarea', is_required: false, order: 5 },
+      { field_key: 'website',       label: 'Website',       type: 'text',     is_required: false, order: 6 },
+    ],
+  },
 ];
 
 async function seedScreens() {
@@ -301,11 +314,10 @@ async function seedScreens() {
   const Industry = mongoose.model('Industry');
   const Role = mongoose.model('Role');
 
-  const existing = await Screen.estimatedDocumentCount();
-  if (existing > 0) {
-    console.log(`[seed] screens already populated (${existing}) — skipping screen seed`);
-    return;
-  }
+  // Note: this seeder is fully idempotent (every write is an upsert), so we
+  // intentionally re-run it on every boot instead of short-circuiting on a
+  // non-empty `screens` collection. That way new screens added to
+  // SCREEN_DEFAULTS (e.g. `organization`) get installed without dropping the DB.
 
   // Upsert screens + fields.
   const fieldsByScreen = new Map();

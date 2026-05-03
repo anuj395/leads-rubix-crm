@@ -1,5 +1,6 @@
 import AnalyticsPage from '@/features/superAdmin/pages/Analytics'
 import OrganizationPage from '@/features/superAdmin/pages/Organization'
+import OrganizationsListPage from '@/features/superAdmin/organization/pages/Organizations'
 import AdminRolesPage from '@/features/superAdmin/organization/pages/AdminRoles'
 import UserListPage from '@/features/superAdmin/users/pages/UserList'
 import RolesAndPermissionsPage from '@/features/superAdmin/users/pages/RolesAndPermissions'
@@ -33,6 +34,7 @@ import UpdatePasswordPage from '@/features/superAdmin/setting/pages/UpdatePasswo
 export const routeComponentMap: Record<string, any> = {
   "/analytics": AnalyticsPage,
   "/organization": OrganizationPage,
+  "/organization/list": OrganizationsListPage,
   "/organization/admin-roles": AdminRolesPage,
   "/users": UserListPage,
   "/users/roles": RolesAndPermissionsPage,

@@ -1,0 +1,150 @@
+I am building a CRM system (Leads Rubix).
+
+⚠️ IMPORTANT:
+All changes must be applied ONLY to:
+1. Organization Module
+2. User Module
+
+Do NOT modify:
+- Leads
+- Contacts
+- Tasks
+- Call Logs
+- Bookings
+- Any other module
+
+---
+
+## Core Requirement:
+
+Super Admin can dynamically create fields, and those fields should automatically reflect in:
+
+1. Add Form (Dynamic Form)
+2. Table Listing (Dynamic Table Headers)
+
+---
+
+## 1. Role-Based Control:
+
+- Only Super Admin can create/edit/delete dynamic fields.
+- Other roles (Admin, Sales, etc.) can only view/use these fields.
+
+---
+
+## 2. Dynamic Field Creation:
+
+Super Admin can create fields with:
+
+- Field Name
+- Field Type (text, number, email, dropdown, date, textarea)
+- Required (true/false)
+- Dropdown Options (if type = dropdown)
+- Module selection:
+    - organization
+    - user
+
+---
+
+## 3. Backend Database Structure:
+
+### Table: dynamic_fields
+- id
+- module_name (organization / user ONLY)
+- field_name
+- field_key (slug)
+- field_type
+- is_required
+- options (JSON for dropdown)
+- created_by (Super Admin)
+
+### Table: dynamic_field_values
+- id
+- field_id
+- record_id (organization_id / user_id)
+- value
+
+---
+
+## 4. APIs:
+
+- GET /fields?module=organization
+- GET /fields?module=user
+- POST /fields (Super Admin only)
+- POST /values (save form data)
+- GET /values (for table rendering)
+
+---
+
+## 5. Dynamic Form Behavior:
+
+### For Organization Form:
+- Replace all static fields with dynamic fields (from API)
+- Render inputs using loop
+- Apply validation (required fields)
+
+### For User Form:
+- Same dynamic rendering logic
+- Fields should load based on module = user
+
+---
+
+## 6. Dynamic Table Behavior:
+
+### Organization Table:
+- Headers = dynamic_fields (organization)
+- Rows = dynamic_field_values
+
+### User Table:
+- Headers = dynamic_fields (user)
+- Rows = dynamic_field_values
+
+Example:
+headers = fields.map(f => f.field_name)
+rowData = values[f.field_key]
+
+---
+
+## 7. Dropdown Handling:
+
+- Options stored as JSON in DB
+- Populate dynamically in form
+
+---
+
+## 8. UI Behavior:
+
+### Super Admin:
+- Can access "Field Manager"
+- Can create/edit/delete fields for:
+    - Organization
+    - User
+
+### Other Roles:
+- Cannot access field manager
+- Can only use dynamic forms & tables
+
+---
+
+## 9. Important Constraints:
+
+- Existing modules must remain unchanged
+- Existing APIs for other modules must not break
+- Existing UI for Leads/Contacts/Tasks must remain untouched
+
+---
+
+## 10. Expected Output:
+
+- Organization form → fully dynamic
+- User form → fully dynamic
+- Organization table → dynamic headers
+- User table → dynamic headers
+- Role-based control working properly
+
+---
+
+## 11. Optional Enhancements:
+
+- Field ordering (drag & drop)
+- Enable/Disable fields
+- Column visibility toggle

@@ -15,6 +15,7 @@ require('./models/screenFieldModel');
 require('./models/screenPermissionModel');
 require('./models/roleActionPermissionModel');
 require('./models/contactModel');
+require('./models/organizationModel');
 
 const { seedUsers, migrateAndSeedSidebar, seedScreens, seedIndustries } = require('./seed');
 
