@@ -1,16 +1,24 @@
 // src/routes/userRoutes.js
 const express = require('express');
-const { getAllUsers, getUserById, createUser } = require('../controllers/userController');
+const {
+  getAllUsers,
+  getUserById,
+  createUser,
+  updateUser,
+  deleteUser,
+} = require('../controllers/userController');
 const { authenticate } = require('../middlewares/auth');
-const { permit, permitAtLeast } = require('../middlewares/rbac');
+const { permitAtLeast } = require('../middlewares/rbac');
 
 const router = express.Router();
 
-// listing and creation require admin or higher
-router.get('/', authenticate, permitAtLeast('admin'), getAllUsers);
-router.post('/', authenticate, permitAtLeast('admin'), createUser);
+// Listing / mutation require admin or higher.
+router.get('/',           authenticate, permitAtLeast('admin'), getAllUsers);
+router.post('/',          authenticate, permitAtLeast('admin'), createUser);
+router.put('/:id',        authenticate, permitAtLeast('admin'), updateUser);
+router.delete('/:id',     authenticate, permitAtLeast('admin'), deleteUser);
 
-// getting individual user requires authentication only
+// Reading an individual user only needs auth.
 router.get('/:id', authenticate, getUserById);
 
 module.exports = router;

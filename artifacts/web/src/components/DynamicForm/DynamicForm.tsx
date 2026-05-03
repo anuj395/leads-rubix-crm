@@ -18,7 +18,7 @@
  *   - [{ value, label }, ...]
  *   - ["a", "b", ...]
  */
-import { useEffect, useMemo, useState, type FormEvent } from 'react'
+import { useEffect, useMemo, useState, type FormEvent, type ReactNode } from 'react'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import Stack from '@mui/material/Stack'
@@ -62,18 +62,30 @@ const dropdownCache = new Map<string, DropdownOption[]>()
 
 interface Props {
   screen: string
+  /** Optional override; only honored server-side for superAdmin callers. */
+  industry_code?: string
+  /** Optional override; only honored server-side for superAdmin callers. */
+  role_key?: string
   initialValues?: Record<string, Value>
   onSubmit: (values: Record<string, Value>) => Promise<void> | void
   onCancel?: () => void
   submitLabel?: string
+  /** Optional extra fields rendered above the dynamic ones (e.g. core User fields). */
+  headerSlot?: ReactNode
+  /** Hide built-in submit/cancel actions when the parent provides its own. */
+  hideActions?: boolean
 }
 
 export function DynamicForm({
   screen,
+  industry_code,
+  role_key,
   initialValues = {},
   onSubmit,
   onCancel,
   submitLabel = 'Save',
+  headerSlot,
+  hideActions = false,
 }: Props) {
   const [fields, setFields] = useState<ResolvedFormField[]>([])
   const [values, setValues] = useState<Record<string, Value>>(initialValues)
@@ -87,16 +99,22 @@ export function DynamicForm({
   const [dropdowns, setDropdowns] = useState<Record<string, DropdownOption[]>>({})
   const [dropdownLoading, setDropdownLoading] = useState<Record<string, boolean>>({})
 
-  // 1) Load form config.
+  // 1) Load form config. Re-runs when screen/role/industry change so the
+  // Add/Edit User flow can swap fields the instant a different role is
+  // selected.
   useEffect(() => {
     let cancelled = false
     setLoadingConfig(true)
     void (async () => {
       try {
-        const data = await resolveScreen({ screen_key: screen })
+        const data = await resolveScreen({
+          screen_key: screen,
+          industry_code,
+          role_key,
+        })
         if (cancelled) return
         setFields(data.form_fields)
-        // Initialize values with empty strings for any field not in initialValues.
+        // Seed defaults for newly-introduced fields without clobbering user input.
         setValues((prev) => {
           const next = { ...prev }
           for (const f of data.form_fields) {
@@ -119,7 +137,7 @@ export function DynamicForm({
       cancelled = true
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [screen])
+  }, [screen, industry_code, role_key])
 
   // 2) Lazy-load API dropdowns once we know which fields need them.
   useEffect(() => {
@@ -218,16 +236,15 @@ export function DynamicForm({
     )
   }
 
-  if (fields.length === 0) {
-    return (
-      <Typography color="text.secondary" sx={{ py: 4, textAlign: 'center' }}>
-        This form has no visible fields for your role yet.
-      </Typography>
-    )
-  }
-
   return (
     <Box component="form" onSubmit={handleSubmit} noValidate>
+      {headerSlot}
+
+      {fields.length === 0 ? (
+        <Typography color="text.secondary" sx={{ py: 3, textAlign: 'center' }}>
+          No additional dynamic fields are configured for this role.
+        </Typography>
+      ) : (
       <Box
         sx={{
           display: 'grid',
@@ -334,6 +351,7 @@ export function DynamicForm({
           )
         })}
       </Box>
+      )}
 
       {submitError && (
         <Alert severity="error" sx={{ mt: 2 }} onClose={() => setSubmitError(null)}>
@@ -341,14 +359,16 @@ export function DynamicForm({
         </Alert>
       )}
 
-      <Stack direction="row" spacing={2} sx={{ mt: 3, justifyContent: 'flex-end' }}>
-        {onCancel && (
-          <Button onClick={onCancel} disabled={submitting}>Cancel</Button>
-        )}
-        <Button type="submit" variant="contained" disabled={submitting}>
-          {submitting ? <CircularProgress size={18} sx={{ color: 'white' }} /> : submitLabel}
-        </Button>
-      </Stack>
+      {!hideActions && (
+        <Stack direction="row" spacing={2} sx={{ mt: 3, justifyContent: 'flex-end' }}>
+          {onCancel && (
+            <Button onClick={onCancel} disabled={submitting}>Cancel</Button>
+          )}
+          <Button type="submit" variant="contained" disabled={submitting}>
+            {submitting ? <CircularProgress size={18} sx={{ color: 'white' }} /> : submitLabel}
+          </Button>
+        </Stack>
+      )}
     </Box>
   )
 }

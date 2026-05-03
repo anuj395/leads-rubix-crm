@@ -27,6 +27,22 @@ const SOURCES = {
     { value: 'horizon',  label: 'Horizon Heights' },
     { value: 'meadow',   label: 'Meadow Greens' },
   ],
+  'departments': [
+    { value: 'sales',       label: 'Sales' },
+    { value: 'marketing',   label: 'Marketing' },
+    { value: 'support',     label: 'Customer Support' },
+    { value: 'operations',  label: 'Operations' },
+    { value: 'finance',     label: 'Finance' },
+    { value: 'engineering', label: 'Engineering' },
+  ],
+  'designations': [
+    { value: 'executive',  label: 'Executive' },
+    { value: 'sr_executive', label: 'Sr. Executive' },
+    { value: 'manager',    label: 'Manager' },
+    { value: 'sr_manager', label: 'Sr. Manager' },
+    { value: 'lead',       label: 'Team Lead' },
+    { value: 'director',   label: 'Director' },
+  ],
 };
 
 router.get('/:key', authenticate, (req, res) => {

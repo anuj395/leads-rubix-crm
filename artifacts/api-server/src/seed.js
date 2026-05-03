@@ -277,6 +277,20 @@ const SCREEN_DEFAULTS = [
       { field_key: 'notes',         label: 'Notes',         type: 'textarea', is_required: false, order: 5 },
     ],
   },
+  {
+    key: 'users',
+    name: 'Users',
+    description: 'Per-role custom fields shown on the Add/Edit User form',
+    fields: [
+      { field_key: 'phone',         label: 'Phone',         type: 'text',   is_required: false, order: 1 },
+      { field_key: 'employee_id',   label: 'Employee ID',   type: 'text',   is_required: false, order: 2 },
+      { field_key: 'department',    label: 'Department',    type: 'select', is_required: false, order: 3,
+        dropdown_source: 'api', dropdown_api: '/api/options/departments' },
+      { field_key: 'designation',   label: 'Designation',   type: 'select', is_required: false, order: 4,
+        dropdown_source: 'api', dropdown_api: '/api/options/designations' },
+      { field_key: 'joining_date',  label: 'Joining Date',  type: 'date',   is_required: false, order: 5 },
+    ],
+  },
 ];
 
 async function seedScreens() {

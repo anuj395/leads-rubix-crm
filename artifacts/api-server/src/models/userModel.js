@@ -1,5 +1,9 @@
 // src/models/userModel.js
-// mongoose-based user model implementation
+// mongoose-based user model implementation.
+// Core auth fields are strict (email, password, role); freeform per-role
+// dynamic fields live under `fields` (Mixed) so the SuperAdmin can attach
+// any custom attributes configured through the screen-config system without
+// schema migrations.
 
 const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
@@ -14,8 +18,11 @@ const userSchema = new mongoose.Schema(
     password: { type: String, required: true },
     role: { type: String, enum: exports.ROLES, default: 'sales' },
     industry_id: { type: String },
+    is_active: { type: Boolean, default: true },
+    // Per-role custom attributes resolved through the `users` screen config.
+    fields: { type: mongoose.Schema.Types.Mixed, default: {} },
   },
-  { timestamps: true },
+  { timestamps: true, minimize: false },
 );
 
 // hash password before save
@@ -31,13 +38,40 @@ userSchema.methods.comparePassword = function (candidate) {
 };
 
 const User = mongoose.model('User', userSchema);
+exports.User = User;
+
+function shapePublic(u) {
+  if (!u) return null;
+  return {
+    _id: u._id,
+    id: u._id,
+    name: u.name,
+    email: u.email,
+    role: u.role,
+    industry_id: u.industry_id,
+    is_active: u.is_active !== false,
+    fields: u.fields || {},
+    createdAt: u.createdAt,
+    updatedAt: u.updatedAt,
+  };
+}
+exports.shapePublic = shapePublic;
 
 exports.findAll = async () => {
-  return User.find().select('-password').lean().exec();
+  const list = await User.find().select('-password').lean().exec();
+  return list.map(shapePublic);
+};
+
+exports.list = async ({ industry_id } = {}) => {
+  const q = {};
+  if (industry_id) q.industry_id = industry_id;
+  const list = await User.find(q).select('-password').sort({ createdAt: -1 }).lean().exec();
+  return list.map(shapePublic);
 };
 
 exports.findById = async (id) => {
-  return User.findById(id).select('-password').lean().exec();
+  const u = await User.findById(id).select('-password').lean().exec();
+  return shapePublic(u);
 };
 
 exports.findByEmail = async (email) => {
@@ -47,11 +81,28 @@ exports.findByEmail = async (email) => {
 exports.create = async (data) => {
   const user = new User(data);
   await user.save();
-  return {
-    id: user.id,
-    name: user.name,
-    email: user.email,
-    role: user.role,
-    industry_id: user.industry_id,
-  };
+  return shapePublic(user.toObject());
+};
+
+exports.update = async (id, patch) => {
+  const $set = {};
+  if (patch.name !== undefined) $set.name = patch.name;
+  if (patch.role !== undefined) $set.role = patch.role;
+  if (patch.industry_id !== undefined) $set.industry_id = patch.industry_id;
+  if (patch.is_active !== undefined) $set.is_active = !!patch.is_active;
+  if (patch.fields !== undefined) $set.fields = patch.fields || {};
+  // Password change goes through a separate flow (pre-save hook would not run
+  // with findByIdAndUpdate). Allow it here only by hashing manually.
+  if (patch.password) {
+    $set.password = await bcrypt.hash(String(patch.password), 10);
+  }
+  const updated = await User.findByIdAndUpdate(id, { $set }, { new: true })
+    .select('-password')
+    .lean()
+    .exec();
+  return shapePublic(updated);
+};
+
+exports.remove = async (id) => {
+  await User.findByIdAndDelete(id).exec();
 };

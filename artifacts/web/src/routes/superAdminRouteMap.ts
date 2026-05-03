@@ -1,6 +1,7 @@
 import AnalyticsPage from '@/features/superAdmin/pages/Analytics'
 import OrganizationPage from '@/features/superAdmin/pages/Organization'
-import UserListPage from '@/features/superAdmin/pages/UserList'
+import UserListPage from '@/features/superAdmin/users/pages/UserList'
+import RolesAndPermissionsPage from '@/features/superAdmin/users/pages/RolesAndPermissions'
 
 import ContactsListPage from '@/features/superAdmin/leads/pages/ContactsList'
 import TasksListPage from '@/features/superAdmin/leads/pages/TasksList'
@@ -18,7 +19,6 @@ import BookingFormPage from '@/features/superAdmin/config/pages/BookingForm'
 import ResourcesPage from '@/features/superAdmin/config/pages/Resources'
 import WhatsappApiPage from '@/features/superAdmin/config/pages/WhatsappApi'
 import IndustriesPage from '@/features/superAdmin/config/pages/Industries'
-import RolesPage from '@/features/superAdmin/config/pages/Roles'
 import MenusPage from '@/features/superAdmin/config/pages/Menus'
 import PermissionsMatrixPage from '@/features/superAdmin/config/pages/PermissionsMatrix'
 
@@ -33,6 +33,7 @@ export const routeComponentMap: Record<string, any> = {
   "/analytics": AnalyticsPage,
   "/organization": OrganizationPage,
   "/users": UserListPage,
+  "/users/roles": RolesAndPermissionsPage,
 
   "/leads/contacts": ContactsListPage,
   "/leads/tasks": TasksListPage,
@@ -50,7 +51,6 @@ export const routeComponentMap: Record<string, any> = {
   "/configuration/resources": ResourcesPage,
   "/configuration/whatsapp": WhatsappApiPage,
   "/configuration/industries": IndustriesPage,
-  "/configuration/roles": RolesPage,
   "/configuration/menus": MenusPage,
   "/configuration/permissions": PermissionsMatrixPage,
 

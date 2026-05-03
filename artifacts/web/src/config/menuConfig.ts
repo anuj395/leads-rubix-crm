@@ -95,10 +95,17 @@ export const superAdminMenuConfig: SuperAdminMenuItem[] = [
     // highlighted: true
   },
   {
-    key: "users",
-    name: "User List",
+    key: "users.list",
+    name: "Users List",
     route: "/users",
     icon: "users",
+    module: "Users"
+  },
+  {
+    key: "users.roles",
+    name: "Roles & Permissions",
+    route: "/users/roles",
+    icon: "shield",
     module: "Users"
   },
   {
@@ -141,13 +148,6 @@ export const superAdminMenuConfig: SuperAdminMenuItem[] = [
     name: "Industries",
     route: "/configuration/industries",
     icon: "organization",
-    module: "Configuration"
-  },
-  {
-    key: "configuration.roles",
-    name: "Roles",
-    route: "/configuration/roles",
-    icon: "shield",
     module: "Configuration"
   },
   {
@@ -273,10 +273,17 @@ export const adminMenuConfig: SuperAdminMenuItem[] = [
     module: "Analytics"
   },
   {
-    key: "users",
-    name: "User List",
+    key: "users.list",
+    name: "Users List",
     route: "/users",
     icon: "users",
+    module: "Users"
+  },
+  {
+    key: "users.roles",
+    name: "Roles & Permissions",
+    route: "/users/roles",
+    icon: "shield",
     module: "Users"
   },
   {
