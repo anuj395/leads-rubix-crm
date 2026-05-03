@@ -58,6 +58,12 @@ exports.remove = async (id) => {
   }
   await permissionModel.removeByScreen(id);
   await fieldModel.removeByScreen(id);
+  try {
+    const roleActionPermissionModel = require('../models/roleActionPermissionModel');
+    if (typeof roleActionPermissionModel.removeByScreen === 'function') {
+      await roleActionPermissionModel.removeByScreen(id);
+    }
+  } catch { /* model not loaded — nothing to cascade */ }
   await screenModel.remove(id);
   return doc;
 };

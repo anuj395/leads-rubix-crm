@@ -11,6 +11,7 @@ const sidebarPermissionRoutes = require('./sidebarPermissionRoutes');
 const screenRoutes = require('./screenRoutes');
 const screenFieldRoutes = require('./screenFieldRoutes');
 const screenPermissionRoutes = require('./screenPermissionRoutes');
+const roleActionPermissionRoutes = require('./roleActionPermissionRoutes');
 const contactRoutes = require('./contactRoutes');
 const optionsRoutes = require('./optionsRoutes');
 const screenController = require('../controllers/screenController');
@@ -28,6 +29,7 @@ router.use('/sidebar-permissions', sidebarPermissionRoutes);
 router.use('/screens', screenRoutes);
 router.use('/screen-fields', screenFieldRoutes);
 router.use('/screen-permissions', screenPermissionRoutes);
+router.use('/role-action-permissions', roleActionPermissionRoutes);
 router.use('/contacts', contactRoutes);
 router.use('/options', optionsRoutes);
 

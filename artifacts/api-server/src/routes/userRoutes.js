@@ -8,17 +8,20 @@ const {
   deleteUser,
 } = require('../controllers/userController');
 const { authenticate } = require('../middlewares/auth');
-const { permitAtLeast } = require('../middlewares/rbac');
+const { requireScreenAction } = require('../middlewares/screenAction');
 
 const router = express.Router();
 
-// Listing / mutation require admin or higher.
-router.get('/',           authenticate, permitAtLeast('admin'), getAllUsers);
-router.post('/',          authenticate, permitAtLeast('admin'), createUser);
-router.put('/:id',        authenticate, permitAtLeast('admin'), updateUser);
-router.delete('/:id',     authenticate, permitAtLeast('admin'), deleteUser);
+// Per-role View/Add/Edit/Delete on the `users` screen.
+// SuperAdmin + admin pass implicitly; other roles need an explicit
+// role_action_permission row enabling the action.
+router.get('/',       authenticate, requireScreenAction('users', 'view'),   getAllUsers);
+router.post('/',      authenticate, requireScreenAction('users', 'add'),    createUser);
+router.put('/:id',    authenticate, requireScreenAction('users', 'edit'),   updateUser);
+router.delete('/:id', authenticate, requireScreenAction('users', 'delete'), deleteUser);
 
-// Reading an individual user only needs auth.
+// Reading an individual user record still goes through service-level
+// object authz (same-industry / self / admin+).
 router.get('/:id', authenticate, getUserById);
 
 module.exports = router;

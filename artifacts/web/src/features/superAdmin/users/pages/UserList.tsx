@@ -46,6 +46,10 @@ import {
   type Industry,
   type AdminRole,
 } from '@/services/sidebarAdminService'
+import {
+  getMyActionPerms,
+  type MyActionPerms,
+} from '@/services/roleActionPermissionsService'
 
 // Core columns we always want visible regardless of dynamic field config.
 const CORE_COLUMNS: ResolvedTableHeader[] = [
@@ -95,6 +99,25 @@ export default function UserListPage() {
   const [toast, setToast] = useState<{ open: boolean; msg: string; sev: 'success' | 'error' }>({
     open: false, msg: '', sev: 'success',
   })
+
+  // Effective per-action permissions for the *current* user on the users module.
+  const [perms, setPerms] = useState<MyActionPerms>({
+    screen_key: 'users',
+    can_view: true, can_add: true, can_edit: true, can_delete: true,
+  })
+  useEffect(() => {
+    let cancelled = false
+    void (async () => {
+      try {
+        const p = await getMyActionPerms('users')
+        if (!cancelled) setPerms(p)
+      } catch {
+        // Fall back to permissive defaults so privileged users aren't locked out
+        // by transient errors; the API still enforces server-side.
+      }
+    })()
+    return () => { cancelled = true }
+  }, [])
 
   const showToast = (msg: string, sev: 'success' | 'error' = 'success') =>
     setToast({ open: true, msg, sev })
@@ -296,14 +319,16 @@ export default function UserListPage() {
         title="Users"
         subtitle="Add, edit, and manage users. Per-role custom fields are configured in Users → Roles & Permissions."
         action={
-          <Button
-            variant="contained"
-            startIcon={<AddIcon />}
-            onClick={openCreate}
-            disabled={!filterIndustry}
-          >
-            Add User
-          </Button>
+          perms.can_add ? (
+            <Button
+              variant="contained"
+              startIcon={<AddIcon />}
+              onClick={openCreate}
+              disabled={!filterIndustry}
+            >
+              Add User
+            </Button>
+          ) : null
         }
       >
         <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} sx={{ mb: 2 }}>
@@ -351,12 +376,19 @@ export default function UserListPage() {
                       <TableCell key={c.key}>{renderCell(row, c)}</TableCell>
                     ))}
                     <TableCell align="right">
-                      <IconButton size="small" onClick={() => openEdit(row)}>
-                        <EditIcon fontSize="small" />
-                      </IconButton>
-                      <IconButton size="small" color="error" onClick={() => remove(row)}>
-                        <DeleteIcon fontSize="small" />
-                      </IconButton>
+                      {perms.can_edit && (
+                        <IconButton size="small" onClick={() => openEdit(row)}>
+                          <EditIcon fontSize="small" />
+                        </IconButton>
+                      )}
+                      {perms.can_delete && (
+                        <IconButton size="small" color="error" onClick={() => remove(row)}>
+                          <DeleteIcon fontSize="small" />
+                        </IconButton>
+                      )}
+                      {!perms.can_edit && !perms.can_delete && (
+                        <Box component="span" sx={{ color: 'text.secondary' }}>—</Box>
+                      )}
                     </TableCell>
                   </TableRow>
                 ))}

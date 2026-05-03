@@ -2,6 +2,7 @@ const roleModel = require('../models/roleModel');
 const industryModel = require('../models/industryModel');
 const permissionModel = require('../models/sidebarPermissionModel');
 const screenPermissionModel = require('../models/screenPermissionModel');
+const roleActionPermissionModel = require('../models/roleActionPermissionModel');
 
 exports.list = (opts) => roleModel.list(opts);
 
@@ -75,6 +76,11 @@ exports.remove = async (id) => {
     await screenPermissionModel.removeByRole(id);
   } else if (typeof screenPermissionModel.deleteMany === 'function') {
     await screenPermissionModel.deleteMany({ role_id: id });
+  }
+
+  // Cascade: also wipe role-action permission rows for this role.
+  if (typeof roleActionPermissionModel.removeByRole === 'function') {
+    await roleActionPermissionModel.removeByRole(id);
   }
 
   await roleModel.remove(id);

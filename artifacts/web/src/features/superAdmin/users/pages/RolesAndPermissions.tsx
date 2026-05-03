@@ -65,6 +65,12 @@ import {
   type ScreenFieldType,
   type DropdownSource,
 } from '@/services/screenAdminService'
+import {
+  listRoleActionPermissions,
+  upsertRoleActionPermission,
+  type RoleActionPermission,
+} from '@/services/roleActionPermissionsService'
+import Checkbox from '@mui/material/Checkbox'
 
 const ROLE_KEYS = ['superAdmin', 'admin', 'leadManager', 'teamLead', 'sales']
 
@@ -115,7 +121,7 @@ const emptyFieldForm: FieldFormState = {
 }
 
 export default function RolesAndPermissionsPage() {
-  const [tab, setTab] = useState<0 | 1>(0)
+  const [tab, setTab] = useState<0 | 1 | 2>(0)
   const [toast, setToast] = useState<{ open: boolean; msg: string; sev: ToastSev }>({
     open: false, msg: '', sev: 'success',
   })
@@ -145,6 +151,13 @@ export default function RolesAndPermissionsPage() {
   const [fieldForm, setFieldForm] = useState<FieldFormState>(emptyFieldForm)
   const [fieldSaving, setFieldSaving] = useState(false)
 
+  // ── Action permissions tab state ──────────────────────────────────────────
+  const [actionRoleId, setActionRoleId] = useState<string>('')
+  const [allScreens, setAllScreens] = useState<Screen[]>([])
+  const [actionRows, setActionRows] = useState<RoleActionPermission[]>([])
+  const [actionLoading, setActionLoading] = useState(false)
+  const [actionSaving, setActionSaving] = useState<string | null>(null) // screen_id being saved
+
   // ── Initial loads ─────────────────────────────────────────────────────────
   useEffect(() => {
     void (async () => {
@@ -152,6 +165,7 @@ export default function RolesAndPermissionsPage() {
         const [inds, screens] = await Promise.all([getIndustries(), getScreens()])
         setIndustries(inds)
         if (!filterIndustry && inds[0]) setFilterIndustry(inds[0]._id)
+        setAllScreens(screens.filter((s) => s.is_active))
         const u = screens.find((s) => s.key === 'users')
         if (!u) {
           showToast('The "users" screen has not been seeded yet', 'error')
@@ -395,6 +409,74 @@ export default function RolesAndPermissionsPage() {
     }
   }
 
+  // ── Action permissions: load rows whenever role/industry change ──────────
+  useEffect(() => {
+    if (!actionRoleId || !filterIndustry) { setActionRows([]); return }
+    let cancelled = false
+    setActionLoading(true)
+    void (async () => {
+      try {
+        const list = await listRoleActionPermissions({
+          role_id: actionRoleId,
+          industry_id: filterIndustry,
+        })
+        if (!cancelled) setActionRows(list)
+      } catch (e) {
+        const err = e as { response?: { data?: { message?: string } } }
+        if (!cancelled) showToast(err?.response?.data?.message ?? 'Failed to load action permissions', 'error')
+      } finally {
+        if (!cancelled) setActionLoading(false)
+      }
+    })()
+    return () => { cancelled = true }
+  }, [actionRoleId, filterIndustry])
+
+  const actionByScreen = useMemo(() => {
+    const m = new Map<string, RoleActionPermission>()
+    for (const r of actionRows) m.set(String(r.screen_id), r)
+    return m
+  }, [actionRows])
+
+  const selectedRoleObj = useMemo(
+    () => roles.find((r) => r._id === actionRoleId) ?? null,
+    [roles, actionRoleId],
+  )
+  const isPrivilegedRole =
+    selectedRoleObj?.key === 'superAdmin' || selectedRoleObj?.key === 'admin'
+
+  const toggleAction = async (
+    screen_id: string,
+    action: 'view' | 'add' | 'edit' | 'delete',
+  ) => {
+    if (!actionRoleId || !filterIndustry || isPrivilegedRole) return
+    const cur = actionByScreen.get(screen_id)
+    const next = {
+      can_view:   cur?.can_view   ?? false,
+      can_add:    cur?.can_add    ?? false,
+      can_edit:   cur?.can_edit   ?? false,
+      can_delete: cur?.can_delete ?? false,
+    }
+    next[`can_${action}` as const] = !next[`can_${action}` as const]
+    setActionSaving(screen_id)
+    try {
+      const saved = await upsertRoleActionPermission({
+        role_id: actionRoleId,
+        industry_id: filterIndustry,
+        screen_id,
+        ...next,
+      })
+      setActionRows((prev) => {
+        const without = prev.filter((p) => String(p.screen_id) !== String(screen_id))
+        return [...without, saved]
+      })
+    } catch (e) {
+      const err = e as { response?: { data?: { message?: string } } }
+      showToast(err?.response?.data?.message ?? 'Save failed', 'error')
+    } finally {
+      setActionSaving(null)
+    }
+  }
+
   const industryById = useMemo(
     () => new Map(industries.map((i) => [i._id, i])),
     [industries],
@@ -406,6 +488,7 @@ export default function RolesAndPermissionsPage() {
       <Tabs value={tab} onChange={(_, v) => setTab(v)} sx={{ mb: 2 }}>
         <Tab label="Roles" />
         <Tab label="Field Configuration" />
+        <Tab label="Action Permissions" />
       </Tabs>
 
       {/* Industry selector — shared by both tabs */}
@@ -628,6 +711,91 @@ export default function RolesAndPermissionsPage() {
             )}
           </AppCard>
         </Stack>
+      )}
+
+      {/* ── Tab 3: Action Permissions ─────────────────────────────────────── */}
+      {tab === 2 && (
+        <AppCard
+          title="Action Permissions"
+          subtitle="Pick a role to grant View / Add / Edit / Delete on each module. SuperAdmin and admin always have full access."
+        >
+          <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} sx={{ mb: 2 }}>
+            <TextField
+              select
+              size="small"
+              label="Role"
+              value={actionRoleId}
+              onChange={(e) => setActionRoleId(e.target.value)}
+              sx={{ minWidth: 260 }}
+              disabled={roles.length === 0}
+            >
+              {roles.map((r) => (
+                <MenuItem key={r._id} value={r._id}>{r.name} ({r.key})</MenuItem>
+              ))}
+            </TextField>
+          </Stack>
+
+          {!actionRoleId ? (
+            <Typography color="text.secondary" sx={{ py: 4, textAlign: 'center' }}>
+              Select a role to configure its action permissions.
+            </Typography>
+          ) : isPrivilegedRole ? (
+            <Alert severity="info">
+              The "{selectedRoleObj?.key}" role has implicit full access on every module — no per-screen configuration is needed or applied.
+            </Alert>
+          ) : actionLoading ? (
+            <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
+              <CircularProgress />
+            </Box>
+          ) : allScreens.length === 0 ? (
+            <Typography color="text.secondary" sx={{ py: 4, textAlign: 'center' }}>
+              No active modules.
+            </Typography>
+          ) : (
+            <TableContainer component={Paper} variant="outlined">
+              <Table size="small">
+                <TableHead>
+                  <TableRow>
+                    <TableCell>Module</TableCell>
+                    <TableCell align="center">View</TableCell>
+                    <TableCell align="center">Add</TableCell>
+                    <TableCell align="center">Edit</TableCell>
+                    <TableCell align="center">Delete</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {allScreens.map((s) => {
+                    const row = actionByScreen.get(s._id)
+                    const busy = actionSaving === s._id
+                    return (
+                      <TableRow key={s._id} hover>
+                        <TableCell>
+                          <Stack direction="row" spacing={1} alignItems="center">
+                            <span>{s.name || s.key}</span>
+                            <Box component="code" sx={{ color: 'text.secondary', fontSize: '0.85em' }}>
+                              ({s.key})
+                            </Box>
+                            {busy && <CircularProgress size={14} />}
+                          </Stack>
+                        </TableCell>
+                        {(['view','add','edit','delete'] as const).map((a) => (
+                          <TableCell key={a} align="center">
+                            <Checkbox
+                              size="small"
+                              checked={!!row?.[`can_${a}` as const]}
+                              disabled={busy}
+                              onChange={() => toggleAction(s._id, a)}
+                            />
+                          </TableCell>
+                        ))}
+                      </TableRow>
+                    )
+                  })}
+                </TableBody>
+              </Table>
+            </TableContainer>
+          )}
+        </AppCard>
       )}
 
       {/* ── Role create/edit dialog ──────────────────────────────────────── */}

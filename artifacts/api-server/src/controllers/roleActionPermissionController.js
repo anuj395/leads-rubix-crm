@@ -1,0 +1,28 @@
+const svc = require('../services/roleActionPermissionService');
+
+exports.list = async (req, res, next) => {
+  try {
+    const items = await svc.list({
+      role_id: req.query.role_id,
+      industry_id: req.query.industry_id,
+      screen_id: req.query.screen_id,
+    });
+    res.json({ items });
+  } catch (err) { next(err); }
+};
+
+exports.upsert = async (req, res, next) => {
+  try {
+    const row = await svc.upsert(req.body || {});
+    res.json(row);
+  } catch (err) { next(err); }
+};
+
+exports.me = async (req, res, next) => {
+  try {
+    const screen_key = String(req.query.screen_key || '');
+    if (!screen_key) return res.status(400).json({ message: 'screen_key is required' });
+    const eff = await svc.getEffectiveForScreen({ authedUser: req.user, screen_key });
+    res.json({ screen_key, role: req.user?.role, ...eff });
+  } catch (err) { next(err); }
+};
