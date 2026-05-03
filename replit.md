@@ -100,16 +100,26 @@ which have been deleted entirely.
 | Collection | Purpose | Notable fields |
 |---|---|---|
 | `screens` | Modules whose UI is configurable | `key` (unique), `name`, `is_active` |
-| `screen_fields` | Master field catalog per screen | `screen_id`, `field_key` (unique within screen), `label`, `type`, `is_table_visible`, `is_form_visible`, `is_required`, `sortable`, `order` |
+| `screen_fields` | Master field catalog per screen | `screen_id`, `field_key` (unique within screen), `label`, `type`, `is_table_visible`, `is_form_visible`, `is_required`, `sortable`, `order`, `dropdown_source` (`none`/`static`/`api`), `dropdown_api` (URL when source=`api`) |
+| `contacts` | User-created contact records (freeform; `strict:false` Mongoose schema) | `industry_id`, `role_id`, `created_by` + any keys whitelisted by the resolved screen config |
 | `screen_permissions` | Per (screen × role × industry × field) toggle | `is_enabled`, unique on (screen_id, role_id, industry_id, field_id) |
 
 REST endpoints (all behind `authenticate`; writes require `permit('superAdmin')`):
 - `/api/screens`, `/api/screen-fields`, `/api/screen-permissions` — CRUD
 - `POST /api/screen-permissions/bulk` `{ screen_id, role_id, industry_id, field_ids[] }` — overwrite enabled set; validates that the role belongs to the industry and that every field belongs to the screen
-- `POST /api/screens/resolve` `{ screen_key, industry_code?, role_key? }` — composes `{ screen, table_headers[], form_fields[] }` for the caller. Non-superAdmins cannot pass an explicit `industry_code` / `role_key`; those are forced to fall back to `req.user`, preventing cross-scope config exposure.
+- `POST /api/screens/resolve` `{ screen_key, industry_code?, role_key? }` — composes `{ screen, table_headers[], form_fields[] }` for the caller. Non-superAdmins cannot pass an explicit `industry_code` / `role_key`; those are forced to fall back to `req.user`, preventing cross-scope config exposure. SuperAdmin is treated as system-level: it skips the per-industry role lookup + permission filter and sees every active field on the screen.
+- `GET /api/form-config?screen=<key>` — compat alias that returns just the flat `form_fields[]` from the resolver
+- `GET/POST /api/contacts` — list/create. POST validates the payload against the resolved screen config: unknown keys are silently dropped, required fields are enforced. GET is multi-tenant scoped — non-superAdmins only see contacts for their own `industry_id`; superAdmin sees all.
+- `GET /api/options/:key` — demo dropdown sources (`lead-types`, `lead-statuses`, `projects`) returning `{ items: [{ value, label }] }`. Used by `screen_fields` of `type='select'` with `dropdown_source='api'`.
 
-The frontend `useTableConfig(screen, industry_id)` hook is the only consumer in client pages
-(ContactsList, TasksList) and feeds DataTable columns directly from the resolve response.
+The frontend `useTableConfig(screen, industry_id)` hook drives DataTable columns from the
+resolve response, and `<DynamicForm screen="contacts" onSubmit={...} />`
+(`src/components/DynamicForm/`) is a reusable 3-column responsive form that:
+- calls `resolveScreen` to fetch the form config
+- renders text/number/email/textarea/date/checkbox/select inputs
+- for `select` fields with `dropdown_source='api'`, lazy-fetches `dropdown_api` (with a module-level cache keyed by URL) and supports both `[{value,label}]` and `["a","b"]` response shapes; absolute `http(s)://` URLs are honored as-is, relative `/api/...` URLs strip the prefix because axios baseURL already includes `/api`
+- enforces required fields with red asterisks and inline errors
+- ContactsList ("New Contact" → dialog) is the first consumer.
 
 Cascade rules:
 - delete screen → deletes its fields and all its permissions
@@ -128,6 +138,7 @@ stale data.
 
 ## Recent changes
 
+- Extended the Dynamic Screen Configuration System with API-driven dropdowns (`dropdown_source` + `dropdown_api` on `screen_fields`, surfaced through resolve), built the reusable `<DynamicForm>` component (3-col responsive grid, lazy-loaded + cached API dropdowns, required validation), added `GET /api/form-config?screen=…` compat route and `GET /api/options/:key` demo sources, added `Contact` model + `GET/POST /api/contacts` (multi-tenant scoped GET, payload-validated POST against resolved fields), rewrote ContactsList placeholder into a real list+add-dialog. SuperAdmin is now treated as system-level inside the resolver and contact service (no per-industry role lookup).
 - Added the Dynamic Screen Configuration System above (3 normalized collections, REST API with
   resolve composer, SuperAdmin UI, cascade deletes through role/industry, FK-aware bulkSet
   validation, IDOR-safe resolve, boot-time seed for contacts/tasks). Removed legacy

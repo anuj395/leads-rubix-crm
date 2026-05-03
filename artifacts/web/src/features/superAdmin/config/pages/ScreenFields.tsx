@@ -32,9 +32,11 @@ import {
   updateScreenField,
   deleteScreenField,
   SCREEN_FIELD_TYPES,
+  DROPDOWN_SOURCES,
   type Screen,
   type ScreenField,
   type ScreenFieldType,
+  type DropdownSource,
 } from '@/services/screenAdminService'
 
 interface FormState {
@@ -43,6 +45,8 @@ interface FormState {
   label: string
   type: ScreenFieldType
   options: string
+  dropdown_source: DropdownSource
+  dropdown_api: string
   is_table_visible: boolean
   is_form_visible: boolean
   is_required: boolean
@@ -56,6 +60,8 @@ const emptyForm: FormState = {
   label: '',
   type: 'text',
   options: '',
+  dropdown_source: 'none',
+  dropdown_api: '',
   is_table_visible: true,
   is_form_visible: true,
   is_required: false,
@@ -137,6 +143,8 @@ export default function ScreenFieldsPage() {
       label: row.label,
       type: row.type,
       options: (row.options || []).join(', '),
+      dropdown_source: row.dropdown_source || 'none',
+      dropdown_api: row.dropdown_api || '',
       is_table_visible: row.is_table_visible,
       is_form_visible: row.is_form_visible,
       is_required: row.is_required,
@@ -163,6 +171,8 @@ export default function ScreenFieldsPage() {
           .split(',')
           .map((s) => s.trim())
           .filter(Boolean),
+        dropdown_source: form.dropdown_source,
+        dropdown_api: form.dropdown_source === 'api' ? form.dropdown_api.trim() : '',
         is_table_visible: form.is_table_visible,
         is_form_visible: form.is_form_visible,
         is_required: form.is_required,
@@ -321,13 +331,38 @@ export default function ScreenFieldsPage() {
               ))}
             </TextField>
             {form.type === 'select' && (
-              <TextField
-                label="Options"
-                value={form.options}
-                onChange={(e) => setForm({ ...form, options: e.target.value })}
-                helperText="Comma-separated values for the dropdown"
-                fullWidth
-              />
+              <>
+                <TextField
+                  select
+                  label="Dropdown Source"
+                  value={form.dropdown_source}
+                  onChange={(e) => setForm({ ...form, dropdown_source: e.target.value as DropdownSource })}
+                  helperText="Where the dropdown options come from"
+                  fullWidth
+                >
+                  {DROPDOWN_SOURCES.map((s) => (
+                    <MenuItem key={s} value={s}>{s}</MenuItem>
+                  ))}
+                </TextField>
+                {form.dropdown_source === 'static' && (
+                  <TextField
+                    label="Static Options"
+                    value={form.options}
+                    onChange={(e) => setForm({ ...form, options: e.target.value })}
+                    helperText="Comma-separated values for the dropdown"
+                    fullWidth
+                  />
+                )}
+                {form.dropdown_source === 'api' && (
+                  <TextField
+                    label="Dropdown API URL"
+                    value={form.dropdown_api}
+                    onChange={(e) => setForm({ ...form, dropdown_api: e.target.value })}
+                    helperText="e.g. /api/options/lead-types — must return [{value,label}] or {items:[...]}"
+                    fullWidth
+                  />
+                )}
+              </>
             )}
             <TextField
               label="Order"

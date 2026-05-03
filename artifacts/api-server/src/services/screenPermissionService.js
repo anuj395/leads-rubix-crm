@@ -113,11 +113,21 @@ exports.resolve = async ({ screen_key, industry_code, role_key, authedUser }) =>
     err.status = 404;
     throw err;
   }
-  const role = await roleModel.findByIndustryAndKey(industry._id, resolvedRoleKey);
-  if (!role) {
-    const err = new Error(`Role "${resolvedRoleKey}" not found for industry "${industryCode}"`);
-    err.status = 404;
-    throw err;
+
+  // SuperAdmin is a system-level role and isn't stored per-industry in the
+  // `roles` collection. Skip the role lookup + permission filter for them so
+  // they can preview any screen end-to-end without first having to seed a
+  // superAdmin row in every industry.
+  const isSuperAdmin = resolvedRoleKey === 'superAdmin';
+
+  let role = null;
+  if (!isSuperAdmin) {
+    role = await roleModel.findByIndustryAndKey(industry._id, resolvedRoleKey);
+    if (!role) {
+      const err = new Error(`Role "${resolvedRoleKey}" not found for industry "${industryCode}"`);
+      err.status = 404;
+      throw err;
+    }
   }
 
   // Active fields for this screen.
@@ -126,22 +136,27 @@ exports.resolve = async ({ screen_key, industry_code, role_key, authedUser }) =>
     return {
       screen: { _id: screen._id, key: screen.key, name: screen.name },
       industry_id: industry._id,
-      role_id: role._id,
+      role_id: role ? role._id : null,
       table_headers: [],
       form_fields: [],
     };
   }
 
-  // Enabled permissions for this triple.
-  const perms = await permissionModel.list({
-    screen_id: screen._id,
-    role_id: role._id,
-    industry_id: industry._id,
-    enabledOnly: true,
-  });
-  const allowedFieldIds = new Set(perms.map((p) => String(p.field_id)));
-
-  const allowed = fields.filter((f) => allowedFieldIds.has(String(f._id)));
+  let allowed;
+  if (isSuperAdmin) {
+    // SuperAdmin sees every active field on the screen.
+    allowed = fields;
+  } else {
+    // Enabled permissions for this triple.
+    const perms = await permissionModel.list({
+      screen_id: screen._id,
+      role_id: role._id,
+      industry_id: industry._id,
+      enabledOnly: true,
+    });
+    const allowedFieldIds = new Set(perms.map((p) => String(p.field_id)));
+    allowed = fields.filter((f) => allowedFieldIds.has(String(f._id)));
+  }
 
   const table_headers = allowed
     .filter((f) => f.is_table_visible)
@@ -165,13 +180,15 @@ exports.resolve = async ({ screen_key, industry_code, role_key, authedUser }) =>
       type: f.type,
       required: f.is_required,
       options: f.options || [],
+      dropdown_source: f.dropdown_source || 'none',
+      dropdown_api: f.dropdown_api || '',
       order: f.order,
     }));
 
   return {
     screen: { _id: screen._id, key: screen.key, name: screen.name },
     industry_id: industry._id,
-    role_id: role._id,
+    role_id: role ? role._id : null,
     table_headers,
     form_fields,
   };

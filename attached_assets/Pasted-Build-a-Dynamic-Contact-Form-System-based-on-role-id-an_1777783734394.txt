@@ -1,0 +1,148 @@
+Build a Dynamic Contact Form System based on role_id and industry_id with API-driven dropdowns.
+
+Requirements:
+
+1. Trigger:
+
+* When user clicks "Add" inside Contacts List
+* Open dynamic form modal/page
+
+2. Super Admin Controls:
+
+* Create fields for "Contacts" screen
+* Define:
+
+  * field_key (unique: first_name, phone, etc.)
+  * label (First Name, Contact No)
+  * type (text, number, select, textarea, email)
+  * is_required (true/false)
+  * is_form_visible (true/false)
+  * order (1,2,3...)
+  * dropdown_source (API / static / none)
+  * dropdown_api (URL if type = select)
+  * industry_id
+  * role_id
+
+3. Database Tables:
+
+* screens (id, name) → contacts
+
+* screen_fields (
+  id,
+  screen_id,
+  field_key,
+  label,
+  type,
+  is_required,
+  is_form_visible,
+  order,
+  dropdown_source,
+  dropdown_api
+  )
+
+* screen_permissions (
+  id,
+  role_id,
+  industry_id,
+  field_id
+  )
+
+* field_options (optional for static dropdowns)
+
+4. On User Login:
+
+* Store role_id and industry_id
+
+5. On "Add Contact" Click:
+   API Call:
+   GET /api/form-config?screen=contacts
+
+Backend Logic:
+
+* Fetch allowed fields:
+
+SELECT f.*
+FROM screen_permissions sp
+JOIN screen_fields f ON sp.field_id = f.id
+WHERE sp.role_id = user.role_id
+AND sp.industry_id = user.industry_id
+AND f.screen_id = contacts
+AND f.is_form_visible = 1
+ORDER BY f.order ASC
+
+6. API Response Example:
+
+[
+{
+"field_key": "first_name",
+"label": "First Name",
+"type": "text",
+"required": true
+},
+{
+"field_key": "lead_type",
+"label": "Lead Type",
+"type": "select",
+"dropdown_source": "api",
+"dropdown_api": "/api/lead-types"
+}
+]
+
+7. Frontend Rendering:
+
+Loop fields:
+
+* text → input
+* number → input type number
+* email → input type email
+* textarea → textarea
+* select → dropdown
+
+8. Dropdown Handling:
+
+IF dropdown_source = api:
+
+* Call API dynamically
+* Populate options
+
+Example:
+fetch(field.dropdown_api)
+→ setOptions()
+
+9. Form Submit:
+
+POST /api/contacts
+
+Payload Example:
+{
+"first_name": "Rahul",
+"phone": "9999999999",
+"lead_type": "Hot"
+}
+
+10. Must Support:
+
+* Dynamic fields per role + industry
+* Dynamic dropdown APIs
+* Field ordering
+* Required validation
+* Hide/show fields
+* No hardcoding
+
+11. UI Behavior:
+
+* 3-column responsive layout (like shared image)
+* Label + input
+* Required fields show "*"
+* Dropdowns auto-load options
+
+12. Advanced:
+
+* Cache form config
+* Lazy load dropdown APIs
+* Field validation rules
+* Conditional fields (future)
+
+Goal:
+Super Admin fully controls Contact form fields.
+Users see exact same dynamic form based on role_id and industry_id.

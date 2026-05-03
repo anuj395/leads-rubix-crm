@@ -13,6 +13,7 @@ require('./models/sidebarPermissionModel');
 require('./models/screenModel');
 require('./models/screenFieldModel');
 require('./models/screenPermissionModel');
+require('./models/contactModel');
 
 const { seedUsers, migrateAndSeedSidebar, seedScreens } = require('./seed');
 

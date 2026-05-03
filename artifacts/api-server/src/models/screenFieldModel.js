@@ -1,6 +1,7 @@
 const mongoose = require('mongoose');
 
 const FIELD_TYPES = ['text', 'number', 'select', 'date', 'email', 'textarea', 'checkbox', 'badge', 'avatar'];
+const DROPDOWN_SOURCES = ['none', 'static', 'api'];
 
 const screenFieldSchema = new mongoose.Schema(
   {
@@ -8,7 +9,13 @@ const screenFieldSchema = new mongoose.Schema(
     field_key: { type: String, required: true, trim: true },
     label: { type: String, required: true, trim: true },
     type: { type: String, enum: FIELD_TYPES, default: 'text' },
-    options: { type: [String], default: [] }, // for select fields
+    options: { type: [String], default: [] }, // for static select fields
+    // Dynamic-dropdown config (only meaningful when type === 'select'):
+    //   - 'none'   → ignore (treat as plain text-ish select with empty options)
+    //   - 'static' → use the `options` array above
+    //   - 'api'    → fetch dropdown_api at form-render time and use the response
+    dropdown_source: { type: String, enum: DROPDOWN_SOURCES, default: 'none' },
+    dropdown_api: { type: String, default: '', trim: true },
     is_table_visible: { type: Boolean, default: true },
     is_form_visible: { type: Boolean, default: true },
     is_required: { type: Boolean, default: false },
@@ -29,6 +36,7 @@ const ScreenField = mongoose.model('ScreenField', screenFieldSchema, 'screen_fie
 
 exports.ScreenField = ScreenField;
 exports.FIELD_TYPES = FIELD_TYPES;
+exports.DROPDOWN_SOURCES = DROPDOWN_SOURCES;
 
 exports.list = async ({ screen_id, activeOnly = false } = {}) => {
   const q = {};
@@ -42,13 +50,22 @@ exports.findById = async (id) => ScreenField.findById(id).lean().exec();
 exports.findByScreenAndKey = async (screen_id, field_key) =>
   ScreenField.findOne({ screen_id, field_key: String(field_key).trim() }).lean().exec();
 
+function normalizeDropdown(payload) {
+  const source = DROPDOWN_SOURCES.includes(payload.dropdown_source) ? payload.dropdown_source : 'none';
+  const apiUrl = source === 'api' ? String(payload.dropdown_api || '').trim() : '';
+  return { dropdown_source: source, dropdown_api: apiUrl };
+}
+
 exports.create = async (payload) => {
+  const dd = normalizeDropdown(payload);
   const doc = await ScreenField.create({
     screen_id: payload.screen_id,
     field_key: String(payload.field_key).trim(),
     label: String(payload.label).trim(),
     type: payload.type || 'text',
     options: Array.isArray(payload.options) ? payload.options : [],
+    dropdown_source: dd.dropdown_source,
+    dropdown_api: dd.dropdown_api,
     is_table_visible: payload.is_table_visible !== false,
     is_form_visible: payload.is_form_visible !== false,
     is_required: !!payload.is_required,
@@ -65,6 +82,14 @@ exports.update = async (id, patch) => {
   if (patch.label !== undefined) update.label = String(patch.label).trim();
   if (patch.type !== undefined) update.type = String(patch.type);
   if (patch.options !== undefined) update.options = Array.isArray(patch.options) ? patch.options : [];
+  if (patch.dropdown_source !== undefined || patch.dropdown_api !== undefined) {
+    const dd = normalizeDropdown({
+      dropdown_source: patch.dropdown_source,
+      dropdown_api: patch.dropdown_api,
+    });
+    update.dropdown_source = dd.dropdown_source;
+    update.dropdown_api = dd.dropdown_api;
+  }
   if (patch.is_table_visible !== undefined) update.is_table_visible = !!patch.is_table_visible;
   if (patch.is_form_visible !== undefined) update.is_form_visible = !!patch.is_form_visible;
   if (patch.is_required !== undefined) update.is_required = !!patch.is_required;
@@ -81,10 +106,13 @@ exports.removeByScreen = async (screen_id) =>
 
 exports.upsertByKey = async (screen_id, field_key, attrs) => {
   const key = String(field_key).trim();
+  const dd = normalizeDropdown(attrs);
   const $set = {
     label: attrs.label,
     type: attrs.type || 'text',
     options: Array.isArray(attrs.options) ? attrs.options : [],
+    dropdown_source: dd.dropdown_source,
+    dropdown_api: dd.dropdown_api,
     is_table_visible: attrs.is_table_visible !== false,
     is_form_visible: attrs.is_form_visible !== false,
     is_required: !!attrs.is_required,

@@ -1,0 +1,22 @@
+import { api } from './api'
+
+export interface Contact {
+  _id: string
+  industry_id?: string | null
+  role_id?: string | null
+  created_by?: string | null
+  createdAt?: string
+  updatedAt?: string
+  // dynamic fields live alongside these — keys depend on the screen config
+  [k: string]: unknown
+}
+
+export async function listContacts(): Promise<Contact[]> {
+  const res = await api.get('contacts')
+  return (res.data?.items ?? []) as Contact[]
+}
+
+export async function createContact(payload: Record<string, unknown>): Promise<Contact> {
+  const res = await api.post('contacts', payload)
+  return res.data as Contact
+}

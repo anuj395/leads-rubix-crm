@@ -33,6 +33,9 @@ export const SCREEN_FIELD_TYPES: ScreenFieldType[] = [
   'text', 'number', 'select', 'date', 'email', 'textarea', 'checkbox', 'badge', 'avatar',
 ]
 
+export type DropdownSource = 'none' | 'static' | 'api'
+export const DROPDOWN_SOURCES: DropdownSource[] = ['none', 'static', 'api']
+
 export interface ScreenField {
   _id: string
   screen_id: string
@@ -40,6 +43,8 @@ export interface ScreenField {
   label: string
   type: ScreenFieldType
   options: string[]
+  dropdown_source: DropdownSource
+  dropdown_api: string
   is_table_visible: boolean
   is_form_visible: boolean
   is_required: boolean
@@ -54,6 +59,8 @@ export interface ScreenFieldInput {
   label: string
   type?: ScreenFieldType
   options?: string[]
+  dropdown_source?: DropdownSource
+  dropdown_api?: string
   is_table_visible?: boolean
   is_form_visible?: boolean
   is_required?: boolean
@@ -87,6 +94,8 @@ export interface ResolvedFormField {
   type: ScreenFieldType
   required: boolean
   options: string[]
+  dropdown_source: DropdownSource
+  dropdown_api: string
   order: number
 }
 
