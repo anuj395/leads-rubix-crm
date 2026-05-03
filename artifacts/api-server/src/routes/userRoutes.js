@@ -6,11 +6,16 @@ const {
   createUser,
   updateUser,
   deleteUser,
+  getManagerCandidates,
 } = require('../controllers/userController');
 const { authenticate } = require('../middlewares/auth');
 const { requireScreenAction } = require('../middlewares/screenAction');
 
 const router = express.Router();
+
+// Manager dropdown for the user form. MUST be declared before the `/:id`
+// route below so `managers` is not interpreted as an ObjectId.
+router.get('/managers', authenticate, getManagerCandidates);
 
 // Per-role View/Add/Edit/Delete on the `users` screen.
 // SuperAdmin + admin pass implicitly; other roles need an explicit

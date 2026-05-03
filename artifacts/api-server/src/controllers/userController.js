@@ -1,5 +1,31 @@
 // src/controllers/userController.js
 const userService = require('../services/userService');
+const { listManagerCandidates, MANAGER_OF } = require('../services/userHierarchyService');
+
+/**
+ * GET /api/users/managers?profile=<role>&industry_id=<id>
+ * Returns the candidate managers for a user with the given role, used to
+ * populate the `reporting_to` dropdown on the user create/edit form.
+ * Tenant-scoped: non-superAdmins are pinned to their own industry.
+ */
+exports.getManagerCandidates = async (req, res, next) => {
+  try {
+    const role = req.query.profile || req.query.role;
+    if (!role || !MANAGER_OF[role]) {
+      return res.status(400).json({
+        message: `Unknown or unsupported role "${role}". Expected one of: ${Object.keys(MANAGER_OF).join(', ')}`,
+      });
+    }
+    const industry_id =
+      req.user?.role === 'superAdmin'
+        ? req.query.industry_id || req.user?.industry_id
+        : req.user?.industry_id;
+    const items = await listManagerCandidates({ role, industry_id });
+    res.json({ items });
+  } catch (err) {
+    next(err);
+  }
+};
 
 exports.getAllUsers = async (req, res, next) => {
   try {

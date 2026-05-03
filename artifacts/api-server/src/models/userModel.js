@@ -19,6 +19,10 @@ const userSchema = new mongoose.Schema(
     role: { type: String, enum: exports.ROLES, default: 'sales' },
     industry_id: { type: String },
     is_active: { type: Boolean, default: true },
+    // UID of the direct manager. Walked downward by getVisibleUserIds to
+    // enforce the lead-visibility hierarchy (sales → teamLead → leadManager
+    // → admin → superAdmin). Stored as the manager's User _id (string).
+    reporting_to: { type: String, default: '' },
     // Per-role custom attributes resolved through the `users` screen config.
     fields: { type: mongoose.Schema.Types.Mixed, default: {} },
   },
@@ -50,6 +54,7 @@ function shapePublic(u) {
     role: u.role,
     industry_id: u.industry_id,
     is_active: u.is_active !== false,
+    reporting_to: u.reporting_to || '',
     fields: u.fields || {},
     createdAt: u.createdAt,
     updatedAt: u.updatedAt,
@@ -126,6 +131,7 @@ exports.update = async (id, patch) => {
   if (patch.role !== undefined) $set.role = patch.role;
   if (patch.industry_id !== undefined) $set.industry_id = patch.industry_id;
   if (patch.is_active !== undefined) $set.is_active = !!patch.is_active;
+  if (patch.reporting_to !== undefined) $set.reporting_to = String(patch.reporting_to || '');
   if (patch.fields !== undefined) $set.fields = patch.fields || {};
   // Password change goes through a separate flow (pre-save hook would not run
   // with findByIdAndUpdate). Allow it here only by hashing manually.

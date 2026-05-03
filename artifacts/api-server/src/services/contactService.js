@@ -5,6 +5,7 @@ const permissionModel = require('../models/screenPermissionModel');
 const userModel = require('../models/userModel');
 const industryModel = require('../models/industryModel');
 const roleModel = require('../models/roleModel');
+const { getVisibleUserIds } = require('./userHierarchyService');
 
 /**
  * List contacts visible to the authenticated user.
@@ -19,8 +20,24 @@ exports.listForUser = async ({ authedUser, limit = 200 }) => {
   if (!user) {
     const err = new Error('Authenticated user not found'); err.status = 401; throw err;
   }
-  const isSuperAdmin = (user.role || authedUser.role) === 'superAdmin';
+  const role = user.role || authedUser.role;
+  const isSuperAdmin = role === 'superAdmin';
   const filter = isSuperAdmin ? {} : { industry_id: user.industry_id };
+
+  // Apply the lead-visibility hierarchy:
+  //   superAdmin → all
+  //   admin      → all in own industry (no uid restriction; null returned)
+  //   leadManager / teamLead / sales → uid IN getVisibleUserIds(...)
+  // contactModel stores ownership in `created_by` (ObjectId), so we filter
+  // there. `null` from the helper means "do not add a uid filter".
+  const visibleIds = await getVisibleUserIds({
+    id: String(user._id),
+    role,
+    industry_id: user.industry_id,
+  });
+  if (visibleIds !== null) {
+    filter.created_by = { $in: visibleIds };
+  }
   return contactModel.list({ filter, limit });
 };
 

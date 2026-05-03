@@ -14,6 +14,8 @@ const screenPermissionRoutes = require('./screenPermissionRoutes');
 const roleActionPermissionRoutes = require('./roleActionPermissionRoutes');
 const contactRoutes = require('./contactRoutes');
 const organizationRoutes = require('./organizationRoutes');
+const headersRoutes = require('./headersRoutes');
+const formFieldsRoutes = require('./formFieldsRoutes');
 const optionsRoutes = require('./optionsRoutes');
 const screenController = require('../controllers/screenController');
 const { authenticate } = require('../middlewares/auth');
@@ -33,6 +35,8 @@ router.use('/screen-permissions', screenPermissionRoutes);
 router.use('/role-action-permissions', roleActionPermissionRoutes);
 router.use('/contacts', contactRoutes);
 router.use('/organizations', organizationRoutes);
+router.use('/headers', headersRoutes);
+router.use('/formFields', formFieldsRoutes);
 router.use('/options', optionsRoutes);
 
 // Compat alias: GET /api/form-config?screen=contacts → flat form_fields[]
