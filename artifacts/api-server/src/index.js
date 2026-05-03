@@ -16,7 +16,7 @@ require('./models/screenPermissionModel');
 require('./models/roleActionPermissionModel');
 require('./models/contactModel');
 
-const { seedUsers, migrateAndSeedSidebar, seedScreens } = require('./seed');
+const { seedUsers, migrateAndSeedSidebar, seedScreens, seedIndustries } = require('./seed');
 
 const PORT = config.port || 3001;
 
@@ -33,6 +33,12 @@ const PORT = config.port || 3001;
     await migrateAndSeedSidebar();
   } catch (err) {
     console.error('[seed] failed to migrate/seed sidebar:', err.message || err);
+  }
+
+  try {
+    await seedIndustries();
+  } catch (err) {
+    console.error('[seed] failed to seed industries:', err.message || err);
   }
 
   try {

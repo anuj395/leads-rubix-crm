@@ -9,6 +9,7 @@ const mongoose = require('mongoose');
 
 const SEED_FILE = path.join(__dirname, '..', 'seed-data', 'users.json');
 const SIDEBAR_SEED_FILE = path.join(__dirname, '..', 'seed-data', 'sidebar_configs.json');
+const INDUSTRIES_SEED_FILE = path.join(__dirname, '..', 'seed-data', 'industries.json');
 
 const ROLE_DISPLAY_NAMES = {
   superAdmin: 'Super Administrator',
@@ -380,4 +381,42 @@ async function seedScreens() {
   );
 }
 
-module.exports = { seedUsers, migrateAndSeedSidebar, seedScreens };
+/**
+ * Upserts the curated industry list from `seed-data/industries.json`.
+ *
+ * - Inserts any missing entries (matched by `code` = lowercased seed `id`).
+ * - Refreshes `name` on existing rows so display names stay in sync with the
+ *   curated list, but never flips `is_active` (admins may have disabled one).
+ * - Always runs on boot — it's a no-op once the rows already match.
+ */
+async function seedIndustries() {
+  if (!fs.existsSync(INDUSTRIES_SEED_FILE)) {
+    console.log('[seed] no seed-data/industries.json found — skipping industry seed');
+    return;
+  }
+  const Industry = mongoose.model('Industry');
+  const raw = JSON.parse(fs.readFileSync(INDUSTRIES_SEED_FILE, 'utf8'));
+  const entries = Array.isArray(raw) ? raw : [];
+
+  let inserted = 0;
+  let updated = 0;
+  for (const { id, name } of entries) {
+    if (!id || !name) continue;
+    const code = String(id).toLowerCase().trim();
+    const result = await Industry.findOneAndUpdate(
+      { code },
+      {
+        $set: { name: String(name) },
+        $setOnInsert: { code, is_active: true },
+      },
+      { upsert: true, new: false, rawResult: true },
+    );
+    if (!result?.lastErrorObject?.updatedExisting) inserted += 1;
+    else updated += 1;
+  }
+  console.log(
+    `[seed] industries: ${inserted} inserted, ${updated} refreshed (from seed-data/industries.json)`,
+  );
+}
+
+module.exports = { seedUsers, migrateAndSeedSidebar, seedScreens, seedIndustries };
