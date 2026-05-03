@@ -3,6 +3,27 @@ const userService = require('../services/userService');
 
 exports.getAllUsers = async (req, res, next) => {
   try {
+    // Paged mode kicks in when ANY of the pagination params are present so old
+    // callers that just fetch the array keep working untouched.
+    const isPaged =
+      req.query.page !== undefined ||
+      req.query.pageSize !== undefined ||
+      req.query.q !== undefined ||
+      req.query.sortField !== undefined;
+
+    if (isPaged) {
+      const { items, total } = await userService.fetchPaged({
+        authedUser: req.user,
+        industry_id: req.query.industry_id,
+        q: req.query.q,
+        page: req.query.page,
+        pageSize: req.query.pageSize,
+        sortField: req.query.sortField,
+        sortDir: req.query.sortDir,
+      });
+      return res.json({ items, total });
+    }
+
     const items = await userService.fetchAll({
       authedUser: req.user,
       industry_id: req.query.industry_id,

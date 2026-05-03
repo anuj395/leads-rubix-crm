@@ -44,6 +44,40 @@ export async function listUsers(industryId?: string): Promise<AdminUser[]> {
   return safeList(`users${qs}`)
 }
 
+export interface PagedUsers {
+  items: AdminUser[]
+  total: number
+}
+
+export interface ListUsersPagedArgs {
+  industryId?: string
+  page: number
+  pageSize: number
+  q?: string
+  sortField?: string
+  sortDir?: 'asc' | 'desc'
+}
+
+/**
+ * Server-paginated user list. Mirrors `/api/users?page=&pageSize=&q=&sortField=&sortDir=`
+ * and feeds the AppDataGrid in `paginationMode="server"`.
+ */
+export async function listUsersPaged(args: ListUsersPagedArgs): Promise<PagedUsers> {
+  const params = new URLSearchParams()
+  if (args.industryId) params.set('industry_id', args.industryId)
+  params.set('page', String(args.page))
+  params.set('pageSize', String(args.pageSize))
+  if (args.q) params.set('q', args.q)
+  if (args.sortField) params.set('sortField', args.sortField)
+  if (args.sortDir) params.set('sortDir', args.sortDir)
+  const res = await api.get(`users?${params.toString()}`)
+  const data = res.data ?? {}
+  return {
+    items: (data.items ?? []) as AdminUser[],
+    total: typeof data.total === 'number' ? data.total : (data.items?.length ?? 0),
+  }
+}
+
 export async function createUser(data: CreateUserInput): Promise<AdminUser> {
   const res = await api.post('users', data)
   return res.data as AdminUser

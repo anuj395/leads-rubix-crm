@@ -69,6 +69,42 @@ exports.list = async ({ industry_id } = {}) => {
   return list.map(shapePublic);
 };
 
+/**
+ * Paged list with optional `q` (matches name/email, case-insensitive) and
+ * `sort` (`{ field: 1|-1 }`). Returns `{ items, total }` so the DataGrid can
+ * drive server-side pagination.
+ */
+exports.listPaged = async ({
+  industry_id,
+  q: search,
+  page = 0,
+  pageSize = 25,
+  sort,
+} = {}) => {
+  const filter = {};
+  if (industry_id) filter.industry_id = industry_id;
+  if (search) {
+    const safe = String(search).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const rx = new RegExp(safe, 'i');
+    filter.$or = [{ email: rx }, { name: rx }];
+  }
+  const sortSpec = sort && Object.keys(sort).length ? sort : { createdAt: -1 };
+  const safePage = Math.max(0, Number(page) || 0);
+  const safeSize = Math.min(200, Math.max(1, Number(pageSize) || 25));
+
+  const [list, total] = await Promise.all([
+    User.find(filter)
+      .select('-password')
+      .sort(sortSpec)
+      .skip(safePage * safeSize)
+      .limit(safeSize)
+      .lean()
+      .exec(),
+    User.countDocuments(filter).exec(),
+  ]);
+  return { items: list.map(shapePublic), total };
+};
+
 exports.findById = async (id) => {
   const u = await User.findById(id).select('-password').lean().exec();
   return shapePublic(u);

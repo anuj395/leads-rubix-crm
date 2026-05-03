@@ -3,20 +3,12 @@ import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import IconButton from '@mui/material/IconButton'
 import Stack from '@mui/material/Stack'
-import Table from '@mui/material/Table'
-import TableHead from '@mui/material/TableHead'
-import TableBody from '@mui/material/TableBody'
-import TableRow from '@mui/material/TableRow'
-import TableCell from '@mui/material/TableCell'
-import TableContainer from '@mui/material/TableContainer'
-import Paper from '@mui/material/Paper'
 import Chip from '@mui/material/Chip'
 import Dialog from '@mui/material/Dialog'
 import DialogTitle from '@mui/material/DialogTitle'
 import DialogContent from '@mui/material/DialogContent'
 import TextField from '@mui/material/TextField'
 import MenuItem from '@mui/material/MenuItem'
-import CircularProgress from '@mui/material/CircularProgress'
 import Snackbar from '@mui/material/Snackbar'
 import Alert from '@mui/material/Alert'
 import Typography from '@mui/material/Typography'
@@ -25,12 +17,20 @@ import {
   Edit as EditIcon,
   Delete as DeleteIcon,
 } from '@mui/icons-material'
+import type {
+  GridColDef,
+  GridPaginationModel,
+  GridSortModel,
+  GridFilterModel,
+  GridRenderCellParams,
+} from '@mui/x-data-grid'
 
 import { AppCard } from '@/components/ui/AppCard'
+import { AppDataGrid } from '@/components/ui/AppDataGrid'
 import { DynamicForm } from '@/components/DynamicForm/DynamicForm'
 import { useAppSelector } from '@/store/hooks'
 import {
-  listUsers,
+  listUsersPaged,
   createUser,
   updateUser,
   deleteUser,
@@ -56,9 +56,12 @@ const CORE_COLUMNS: ResolvedTableHeader[] = [
   { key: 'name',        label: 'Name',     type: 'text',   sortable: true,  order: -100, options: [], visible: true },
   { key: 'email',       label: 'Email',    type: 'email',  sortable: true,  order: -90,  options: [], visible: true },
   { key: 'role',        label: 'Role',     type: 'badge',  sortable: true,  order: -80,  options: [], visible: true },
-  { key: 'industry_id', label: 'Industry', type: 'text',   sortable: true,  order: -70,  options: [], visible: true },
-  { key: 'is_active',   label: 'Status',   type: 'badge',  sortable: false, order: -60,  options: [], visible: true },
+  { key: 'industry_id', label: 'Industry', type: 'text',   sortable: false, order: -70,  options: [], visible: true },
+  { key: 'is_active',   label: 'Status',   type: 'badge',  sortable: true,  order: -60,  options: [], visible: true },
 ]
+
+// Sortable columns the API will accept; everything else sorts client-side.
+const SERVER_SORTABLE = new Set(['name', 'email', 'role', 'is_active', 'createdAt', 'updatedAt'])
 
 interface CoreFormState {
   name: string
@@ -86,8 +89,17 @@ export default function UserListPage() {
   const [roles, setRoles] = useState<AdminRole[]>([])
   const [filterIndustry, setFilterIndustry] = useState<string>('') // industry CODE
   const [items, setItems] = useState<AdminUser[]>([])
+  const [rowCount, setRowCount] = useState(0)
   const [dynamicCols, setDynamicCols] = useState<ResolvedTableHeader[]>([])
   const [loading, setLoading] = useState(false)
+
+  // ── Server-side grid state ─────────────────────────────────────────────
+  const [paginationModel, setPaginationModel] = useState<GridPaginationModel>({
+    page: 0,
+    pageSize: 25,
+  })
+  const [sortModel, setSortModel] = useState<GridSortModel>([])
+  const [searchQuery, setSearchQuery] = useState('')
 
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editing, setEditing] = useState<AdminUser | null>(null)
@@ -112,8 +124,7 @@ export default function UserListPage() {
         const p = await getMyActionPerms('users')
         if (!cancelled) setPerms(p)
       } catch {
-        // Fall back to permissive defaults so privileged users aren't locked out
-        // by transient errors; the API still enforces server-side.
+        // Permissive fallback; server still enforces.
       }
     })()
     return () => { cancelled = true }
@@ -164,24 +175,43 @@ export default function UserListPage() {
     return () => { cancelled = true }
   }, [filterIndustry, industries, isSuperAdmin])
 
-  // ── Load users + dynamic table columns whenever the industry filter changes.
+  // ── Load dynamic table columns whenever the industry filter changes ────
+  useEffect(() => {
+    let cancelled = false
+    void (async () => {
+      try {
+        const resolved = await resolveScreen({
+          screen_key: 'users',
+          industry_code: isSuperAdmin ? filterIndustry || undefined : undefined,
+          role_key: undefined,
+        }).catch(() => null)
+        if (cancelled) return
+        const coreKeys = new Set(CORE_COLUMNS.map((c) => c.key))
+        const dyn = (resolved?.table_headers ?? []).filter((c) => !coreKeys.has(c.key))
+        setDynamicCols(dyn)
+      } catch {
+        if (!cancelled) setDynamicCols([])
+      }
+    })()
+    return () => { cancelled = true }
+  }, [filterIndustry, isSuperAdmin])
+
+  // ── Server-paginated user fetch ────────────────────────────────────────
   const refresh = async () => {
     setLoading(true)
     try {
-      const [list, resolved] = await Promise.all([
-        listUsers(isSuperAdmin ? filterIndustry || undefined : undefined),
-        resolveScreen({
-          screen_key: 'users',
-          industry_code: isSuperAdmin ? filterIndustry || undefined : undefined,
-          // For SuperAdmin, role_key is undefined → resolver shows ALL active fields.
-          role_key: undefined,
-        }).catch(() => null),
-      ])
+      const sort = sortModel[0]
+      const sortField = sort?.field && SERVER_SORTABLE.has(sort.field) ? sort.field : undefined
+      const { items: list, total } = await listUsersPaged({
+        industryId: isSuperAdmin ? filterIndustry || undefined : undefined,
+        page: paginationModel.page,
+        pageSize: paginationModel.pageSize,
+        q: searchQuery || undefined,
+        sortField,
+        sortDir: sort?.sort === 'asc' ? 'asc' : sort?.sort === 'desc' ? 'desc' : undefined,
+      })
       setItems(list)
-      // Filter out core keys in case anyone configured them as screen fields too.
-      const coreKeys = new Set(CORE_COLUMNS.map((c) => c.key))
-      const dyn = (resolved?.table_headers ?? []).filter((c) => !coreKeys.has(c.key))
-      setDynamicCols(dyn)
+      setRowCount(total)
     } catch (e) {
       const err = e as { response?: { data?: { message?: string } } }
       showToast(err?.response?.data?.message ?? 'Failed to load users', 'error')
@@ -193,14 +223,80 @@ export default function UserListPage() {
   useEffect(() => {
     void refresh()
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filterIndustry])
+  }, [filterIndustry, paginationModel.page, paginationModel.pageSize, sortModel, searchQuery])
 
+  // ── Build DataGrid columns from core + dynamic field defs ──────────────
   const allColumns = useMemo(
     () => [...CORE_COLUMNS, ...dynamicCols].sort((a, b) => a.order - b.order),
     [dynamicCols],
   )
 
-  // ── Open dialogs ──────────────────────────────────────────────────────────
+  const gridColumns = useMemo<GridColDef<AdminUser>[]>(() => {
+    const cols: GridColDef<AdminUser>[] = allColumns.map((c) => ({
+      field: c.key,
+      headerName: c.label,
+      flex: 1,
+      minWidth: 140,
+      // We run `sortingMode="server"`, but the API only sorts a fixed set of
+      // columns (see SERVER_SORTABLE). Disable sorting for everything else so
+      // the header doesn't pretend to sort when it can't.
+      sortable: c.sortable !== false && SERVER_SORTABLE.has(c.key),
+      // Pull dynamic field values out of `row.fields` since they aren't on the
+      // top-level row object.
+      valueGetter: (_value, row) => {
+        if (c.key in row) return (row as unknown as Record<string, unknown>)[c.key]
+        return (row.fields as Record<string, unknown>)?.[c.key]
+      },
+      renderCell: (params: GridRenderCellParams<AdminUser>) => {
+        if (c.key === 'is_active') {
+          return (
+            <Chip
+              size="small"
+              label={params.row.is_active ? 'Active' : 'Inactive'}
+              color={params.row.is_active ? 'success' : 'default'}
+            />
+          )
+        }
+        if (c.key === 'role') return <Chip size="small" label={params.row.role} />
+        const v = params.value
+        if (v == null || v === '') return <Box sx={{ color: 'text.secondary' }}>—</Box>
+        return String(v)
+      },
+    }))
+
+    cols.push({
+      field: '__actions',
+      headerName: 'Actions',
+      sortable: false,
+      filterable: false,
+      disableColumnMenu: true,
+      align: 'right',
+      headerAlign: 'right',
+      width: 120,
+      renderCell: (params: GridRenderCellParams<AdminUser>) => (
+        <>
+          {perms.can_edit && (
+            <IconButton size="small" onClick={() => openEdit(params.row)}>
+              <EditIcon fontSize="small" />
+            </IconButton>
+          )}
+          {perms.can_delete && (
+            <IconButton size="small" color="error" onClick={() => void remove(params.row)}>
+              <DeleteIcon fontSize="small" />
+            </IconButton>
+          )}
+          {!perms.can_edit && !perms.can_delete && (
+            <Box component="span" sx={{ color: 'text.secondary' }}>—</Box>
+          )}
+        </>
+      ),
+    })
+
+    return cols
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [allColumns, perms.can_edit, perms.can_delete])
+
+  // ── Open dialogs ──────────────────────────────────────────────────────
   const openCreate = () => {
     setEditing(null)
     setCore({
@@ -218,7 +314,7 @@ export default function UserListPage() {
     setCore({
       name: row.name ?? '',
       email: row.email,
-      password: '', // blank — only sent when explicitly typed
+      password: '',
       role: row.role,
       industry_id: row.industry_id ?? '',
       is_active: row.is_active,
@@ -234,7 +330,6 @@ export default function UserListPage() {
     setEditing(null)
   }
 
-  // ── Submit handler — receives merged dynamic values from DynamicForm.
   const handleSubmit = async (dynVals: Record<string, unknown>) => {
     setFormError(null)
     if (!core.email.trim()) { setFormError('Email is required'); return }
@@ -289,28 +384,13 @@ export default function UserListPage() {
     }
   }
 
-  // ── Render a cell value with sensible defaults for our common types. ─────
-  const renderCell = (row: AdminUser, col: ResolvedTableHeader) => {
-    if (col.key === 'is_active') {
-      return (
-        <Chip
-          size="small"
-          label={row.is_active ? 'Active' : 'Inactive'}
-          color={row.is_active ? 'success' : 'default'}
-        />
-      )
+  // Quick-filter from the toolbar drives the server-side `q=` param.
+  const onFilterModelChange = (m: GridFilterModel) => {
+    const q = (m.quickFilterValues ?? []).join(' ').trim()
+    if (q !== searchQuery) {
+      setSearchQuery(q)
+      setPaginationModel((p) => ({ ...p, page: 0 }))
     }
-    if (col.key === 'role') {
-      return <Chip size="small" label={row.role} />
-    }
-    let v: unknown
-    if (col.key in row) {
-      v = (row as unknown as Record<string, unknown>)[col.key]
-    } else {
-      v = (row.fields as Record<string, unknown>)?.[col.key]
-    }
-    if (v == null || v === '') return <Box sx={{ color: 'text.secondary' }}>—</Box>
-    return String(v)
   }
 
   return (
@@ -338,7 +418,10 @@ export default function UserListPage() {
               size="small"
               label="Industry"
               value={filterIndustry}
-              onChange={(e) => setFilterIndustry(e.target.value)}
+              onChange={(e) => {
+                setFilterIndustry(e.target.value)
+                setPaginationModel((p) => ({ ...p, page: 0 }))
+              }}
               sx={{ minWidth: 240 }}
             >
               {industries.map((i) => (
@@ -350,55 +433,23 @@ export default function UserListPage() {
           )}
         </Stack>
 
-        {loading ? (
-          <Box sx={{ display: 'flex', justifyContent: 'center', py: 6 }}>
-            <CircularProgress />
-          </Box>
-        ) : items.length === 0 ? (
-          <Typography color="text.secondary" sx={{ py: 4, textAlign: 'center' }}>
-            No users yet — click "Add User" to create one.
-          </Typography>
-        ) : (
-          <TableContainer component={Paper} variant="outlined">
-            <Table size="small">
-              <TableHead>
-                <TableRow>
-                  {allColumns.map((c) => (
-                    <TableCell key={c.key}>{c.label}</TableCell>
-                  ))}
-                  <TableCell align="right">Actions</TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {items.map((row) => (
-                  <TableRow key={row._id} hover>
-                    {allColumns.map((c) => (
-                      <TableCell key={c.key}>{renderCell(row, c)}</TableCell>
-                    ))}
-                    <TableCell align="right">
-                      {perms.can_edit && (
-                        <IconButton size="small" onClick={() => openEdit(row)}>
-                          <EditIcon fontSize="small" />
-                        </IconButton>
-                      )}
-                      {perms.can_delete && (
-                        <IconButton size="small" color="error" onClick={() => remove(row)}>
-                          <DeleteIcon fontSize="small" />
-                        </IconButton>
-                      )}
-                      {!perms.can_edit && !perms.can_delete && (
-                        <Box component="span" sx={{ color: 'text.secondary' }}>—</Box>
-                      )}
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </TableContainer>
-        )}
+        <AppDataGrid
+          rows={items}
+          columns={gridColumns}
+          loading={loading}
+          rowCount={rowCount}
+          paginationMode="server"
+          sortingMode="server"
+          paginationModel={paginationModel}
+          onPaginationModelChange={setPaginationModel}
+          sortModel={sortModel}
+          onSortModelChange={setSortModel}
+          onFilterModelChange={onFilterModelChange}
+          getRowId={(r) => r._id}
+        />
       </AppCard>
 
-      {/* ── Add / Edit dialog ─────────────────────────────────────────────── */}
+      {/* ── Add / Edit dialog ─────────────────────────────────────────── */}
       <Dialog open={dialogOpen} onClose={closeDialog} maxWidth="md" fullWidth>
         <DialogTitle>{editing ? `Edit User — ${editing.email}` : 'New User'}</DialogTitle>
         <DialogContent dividers>

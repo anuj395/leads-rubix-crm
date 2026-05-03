@@ -3,13 +3,6 @@ import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import IconButton from '@mui/material/IconButton'
 import Stack from '@mui/material/Stack'
-import Table from '@mui/material/Table'
-import TableHead from '@mui/material/TableHead'
-import TableBody from '@mui/material/TableBody'
-import TableRow from '@mui/material/TableRow'
-import TableCell from '@mui/material/TableCell'
-import TableContainer from '@mui/material/TableContainer'
-import Paper from '@mui/material/Paper'
 import Chip from '@mui/material/Chip'
 import Dialog from '@mui/material/Dialog'
 import DialogTitle from '@mui/material/DialogTitle'
@@ -29,8 +22,10 @@ import {
   Delete as DeleteIcon,
   Lock as LockIcon,
 } from '@mui/icons-material'
+import type { GridColDef } from '@mui/x-data-grid'
 
 import { AppCard } from '@/components/ui/AppCard'
+import { AppDataGrid } from '@/components/ui/AppDataGrid'
 import { useAppSelector } from '@/store/hooks'
 import {
   listUsers,
@@ -61,36 +56,26 @@ interface CoreFormState {
   is_active: boolean
 }
 
-const emptyCore: CoreFormState = {
-  name: '',
-  email: '',
-  password: '',
-  is_active: true,
-}
+const emptyCore: CoreFormState = { name: '', email: '', password: '', is_active: true }
 
 export default function AdminRolesPage() {
   const authedUser = useAppSelector((s) => s.auth.user)
   const isSuperAdmin = authedUser?.role === 'superAdmin'
 
-  // ── Tenant scope ──
   const [industries, setIndustries] = useState<Industry[]>([])
-  const [filterIndustry, setFilterIndustry] = useState<string>('') // industry CODE
+  const [filterIndustry, setFilterIndustry] = useState<string>('')
 
-  // ── Admin users in this industry ──
   const [items, setItems] = useState<AdminUser[]>([])
   const [loading, setLoading] = useState(false)
 
-  // ── Add/Edit dialog ──
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editing, setEditing] = useState<AdminUser | null>(null)
   const [core, setCore] = useState<CoreFormState>(emptyCore)
   const [saving, setSaving] = useState(false)
   const [formError, setFormError] = useState<string | null>(null)
 
-  // ── Module access matrix ──
   const [screens, setScreens] = useState<Screen[]>([])
   const [adminRole, setAdminRole] = useState<AdminRole | null>(null)
-  // map of screen_id → boolean (any field enabled for admin role in this industry)
   const [moduleAccess, setModuleAccess] = useState<Record<string, boolean>>({})
   const [moduleSaving, setModuleSaving] = useState<Record<string, boolean>>({})
   const [permsLoading, setPermsLoading] = useState(false)
@@ -101,7 +86,6 @@ export default function AdminRolesPage() {
   const showToast = (msg: string, sev: 'success' | 'error' = 'success') =>
     setToast({ open: true, msg, sev })
 
-  // ── Load industries + screens once ──
   useEffect(() => {
     let cancelled = false
     void (async () => {
@@ -119,7 +103,6 @@ export default function AdminRolesPage() {
     return () => { cancelled = true }
   }, [])
 
-  // ── Resolve the "admin" role doc for the selected industry ──
   useEffect(() => {
     let cancelled = false
     setAdminRole(null)
@@ -138,7 +121,6 @@ export default function AdminRolesPage() {
     return () => { cancelled = true }
   }, [filterIndustry, industries])
 
-  // ── Load admin users ──
   const refreshUsers = async () => {
     if (!filterIndustry) { setItems([]); return }
     setLoading(true)
@@ -155,20 +137,16 @@ export default function AdminRolesPage() {
   useEffect(() => { void refreshUsers() // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filterIndustry])
 
-  // ── Load module access for the admin role in this industry ──
   const refreshModuleAccess = async () => {
     if (!adminRole || !filterIndustry || screens.length === 0) {
-      setModuleAccess({})
-      return
+      setModuleAccess({}); return
     }
     const ind = industries.find((i) => i.code === filterIndustry)
     if (!ind) return
     setPermsLoading(true)
     try {
       const perms = await getScreenPermissions({
-        role_id: adminRole._id,
-        industry_id: ind._id,
-        enabledOnly: true,
+        role_id: adminRole._id, industry_id: ind._id, enabledOnly: true,
       })
       const byScreen: Record<string, boolean> = {}
       for (const s of screens) byScreen[s._id] = false
@@ -189,7 +167,6 @@ export default function AdminRolesPage() {
     [industries, filterIndustry],
   )
 
-  // ── Toggle a whole module on/off for the admin role ──
   const toggleModule = async (screen: Screen, next: boolean) => {
     if (!adminRole || !currentIndustry) return
     setModuleSaving((m) => ({ ...m, [screen._id]: true }))
@@ -197,10 +174,8 @@ export default function AdminRolesPage() {
       const fields: ScreenField[] = next ? await getScreenFields(screen._id) : []
       const fieldIds = fields.filter((f) => f.is_active).map((f) => f._id)
       await bulkSetScreenPermissions({
-        screen_id: screen._id,
-        role_id: adminRole._id,
-        industry_id: currentIndustry._id,
-        field_ids: next ? fieldIds : [],
+        screen_id: screen._id, role_id: adminRole._id,
+        industry_id: currentIndustry._id, field_ids: next ? fieldIds : [],
       })
       setModuleAccess((m) => ({ ...m, [screen._id]: next }))
       showToast(`${screen.name}: ${next ? 'enabled' : 'disabled'} for admins`)
@@ -212,23 +187,13 @@ export default function AdminRolesPage() {
     }
   }
 
-  // ── Add/Edit dialog ──
   const openCreate = () => {
-    setEditing(null)
-    setCore({ ...emptyCore })
-    setFormError(null)
-    setDialogOpen(true)
+    setEditing(null); setCore({ ...emptyCore }); setFormError(null); setDialogOpen(true)
   }
   const openEdit = (row: AdminUser) => {
     setEditing(row)
-    setCore({
-      name: row.name ?? '',
-      email: row.email,
-      password: '',
-      is_active: row.is_active,
-    })
-    setFormError(null)
-    setDialogOpen(true)
+    setCore({ name: row.name ?? '', email: row.email, password: '', is_active: row.is_active })
+    setFormError(null); setDialogOpen(true)
   }
   const closeDialog = () => { if (!saving) setDialogOpen(false) }
 
@@ -237,36 +202,28 @@ export default function AdminRolesPage() {
     if (!core.email.trim()) { setFormError('Email is required'); return }
     if (!editing && !core.password) { setFormError('Password is required'); return }
     if (!filterIndustry) { setFormError('Pick an industry first'); return }
-
     setSaving(true)
     try {
       if (editing) {
         await updateUser(editing._id, {
-          name: core.name.trim(),
-          is_active: core.is_active,
+          name: core.name.trim(), is_active: core.is_active,
           password: core.password || undefined,
         })
         showToast('Admin updated')
       } else {
         await createUser({
-          name: core.name.trim(),
-          email: core.email.trim().toLowerCase(),
-          password: core.password,
-          role: 'admin',
-          industry_id: filterIndustry,
-          is_active: core.is_active,
+          name: core.name.trim(), email: core.email.trim().toLowerCase(),
+          password: core.password, role: 'admin',
+          industry_id: filterIndustry, is_active: core.is_active,
         })
         showToast('Admin created')
       }
-      setDialogOpen(false)
-      setEditing(null)
+      setDialogOpen(false); setEditing(null)
       await refreshUsers()
     } catch (e) {
       const err = e as { response?: { data?: { message?: string } } ; message?: string }
       setFormError(err?.response?.data?.message ?? err?.message ?? 'Save failed')
-    } finally {
-      setSaving(false)
-    }
+    } finally { setSaving(false) }
   }
 
   const remove = async (row: AdminUser) => {
@@ -281,7 +238,44 @@ export default function AdminRolesPage() {
     }
   }
 
-  // ── Render ──
+  // Intentionally NOT memoized: action handlers (`openEdit`/`remove`) close
+  // over `filterIndustry` via `refreshUsers`, so the columns must be rebuilt
+  // every render to avoid a stale-closure bug after industry changes.
+  const adminCols: GridColDef<AdminUser>[] = [
+    { field: 'name', headerName: 'Name', flex: 1, minWidth: 160,
+      renderCell: (p) => p.value || <Box sx={{ color: 'text.secondary' }}>—</Box> },
+    { field: 'email', headerName: 'Email', flex: 1.2, minWidth: 200 },
+    { field: 'is_active', headerName: 'Status', minWidth: 110,
+      renderCell: (p) => <Chip size="small" label={p.value ? 'Active' : 'Inactive'} color={p.value ? 'success' : 'default'} />,
+    },
+    { field: '__actions', headerName: 'Actions', sortable: false, filterable: false, disableColumnMenu: true,
+      align: 'right', headerAlign: 'right', width: 120,
+      renderCell: (p) => (
+        <>
+          <IconButton size="small" onClick={() => openEdit(p.row)}><EditIcon fontSize="small" /></IconButton>
+          <IconButton size="small" color="error" onClick={() => void remove(p.row)}><DeleteIcon fontSize="small" /></IconButton>
+        </>
+      ),
+    },
+  ]
+
+  const moduleCols = useMemo<GridColDef<Screen>[]>(() => [
+    { field: 'name', headerName: 'Module', flex: 1, minWidth: 160,
+      renderCell: (p) => <Box sx={{ fontWeight: 600 }}>{String(p.value)}</Box> },
+    { field: 'description', headerName: 'Description', flex: 1.5, minWidth: 200,
+      valueGetter: (_v, row) => row.description || row.key,
+      renderCell: (p) => <Box sx={{ color: 'text.secondary' }}>{String(p.value)}</Box> },
+    { field: '__access', headerName: 'Access', sortable: false, filterable: false, disableColumnMenu: true,
+      align: 'right', headerAlign: 'right', width: 120,
+      renderCell: (p) => moduleSaving[p.row._id] ? (
+        <CircularProgress size={18} />
+      ) : (
+        <Switch checked={!!moduleAccess[p.row._id]}
+          onChange={(e) => void toggleModule(p.row, e.target.checked)} />
+      ),
+    },
+  ], [moduleAccess, moduleSaving]) // eslint-disable-line react-hooks/exhaustive-deps
+
   if (!isSuperAdmin) {
     return (
       <Box sx={{ p: 3 }}>
@@ -298,81 +292,31 @@ export default function AdminRolesPage() {
         title="Admin Roles"
         subtitle="Manage the admins who run each organization, and which modules they can access."
         action={
-          <Button
-            variant="contained"
-            startIcon={<AddIcon />}
-            onClick={openCreate}
-            disabled={!filterIndustry}
-          >
+          <Button variant="contained" startIcon={<AddIcon />} onClick={openCreate} disabled={!filterIndustry}>
             Add Admin
           </Button>
         }
       >
         <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} sx={{ mb: 2 }}>
-          <TextField
-            select
-            size="small"
-            label="Organization (Industry)"
-            value={filterIndustry}
-            onChange={(e) => setFilterIndustry(e.target.value)}
+          <TextField select size="small" label="Organization (Industry)"
+            value={filterIndustry} onChange={(e) => setFilterIndustry(e.target.value)}
             sx={{ minWidth: 280 }}
           >
             {industries.map((i) => (
-              <MenuItem key={i._id} value={i.code}>
-                {i.name} ({i.code})
-              </MenuItem>
+              <MenuItem key={i._id} value={i.code}>{i.name} ({i.code})</MenuItem>
             ))}
           </TextField>
         </Stack>
 
-        {loading ? (
-          <Box sx={{ display: 'flex', justifyContent: 'center', py: 6 }}>
-            <CircularProgress />
-          </Box>
-        ) : items.length === 0 ? (
-          <Typography color="text.secondary" sx={{ py: 4, textAlign: 'center' }}>
-            No admins yet for this organization — click "Add Admin" to create one.
-          </Typography>
-        ) : (
-          <TableContainer component={Paper} variant="outlined">
-            <Table size="small">
-              <TableHead>
-                <TableRow>
-                  <TableCell>Name</TableCell>
-                  <TableCell>Email</TableCell>
-                  <TableCell>Status</TableCell>
-                  <TableCell align="right">Actions</TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {items.map((row) => (
-                  <TableRow key={row._id} hover>
-                    <TableCell>{row.name || '—'}</TableCell>
-                    <TableCell>{row.email}</TableCell>
-                    <TableCell>
-                      <Chip
-                        size="small"
-                        label={row.is_active ? 'Active' : 'Inactive'}
-                        color={row.is_active ? 'success' : 'default'}
-                      />
-                    </TableCell>
-                    <TableCell align="right">
-                      <IconButton size="small" onClick={() => openEdit(row)}>
-                        <EditIcon fontSize="small" />
-                      </IconButton>
-                      <IconButton size="small" color="error" onClick={() => remove(row)}>
-                        <DeleteIcon fontSize="small" />
-                      </IconButton>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </TableContainer>
-        )}
+        <AppDataGrid
+          height="55vh"
+          rows={items}
+          columns={adminCols}
+          loading={loading}
+          getRowId={(r) => r._id}
+        />
       </AppCard>
 
-      {/* ── Module access for the admin role ─────────────────────────────── */}
       <Box sx={{ mt: 3 }}>
         <AppCard
           title="Module Access for Admins"
@@ -383,90 +327,37 @@ export default function AdminRolesPage() {
               No "admin" role is configured for this organization yet. Create it in
               Users → Roles & Permissions before assigning module access.
             </Alert>
-          ) : permsLoading ? (
-            <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
-              <CircularProgress size={24} />
-            </Box>
           ) : (
-            <TableContainer component={Paper} variant="outlined">
-              <Table size="small">
-                <TableHead>
-                  <TableRow>
-                    <TableCell>Module</TableCell>
-                    <TableCell>Description</TableCell>
-                    <TableCell align="right">Access</TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {screens.map((s) => (
-                    <TableRow key={s._id} hover>
-                      <TableCell sx={{ fontWeight: 600 }}>{s.name}</TableCell>
-                      <TableCell sx={{ color: 'text.secondary' }}>
-                        {s.description || s.key}
-                      </TableCell>
-                      <TableCell align="right">
-                        {moduleSaving[s._id] ? (
-                          <CircularProgress size={18} />
-                        ) : (
-                          <Switch
-                            checked={!!moduleAccess[s._id]}
-                            onChange={(e) => void toggleModule(s, e.target.checked)}
-                          />
-                        )}
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </TableContainer>
+            <AppDataGrid
+              height="55vh"
+              rows={screens}
+              columns={moduleCols}
+              loading={permsLoading}
+              getRowId={(r) => r._id}
+            />
           )}
         </AppCard>
       </Box>
 
-      {/* ── Add / Edit Admin dialog ──────────────────────────────────────── */}
       <Dialog open={dialogOpen} onClose={closeDialog} maxWidth="sm" fullWidth>
-        <DialogTitle>
-          {editing ? `Edit Admin — ${editing.email}` : 'New Admin'}
-        </DialogTitle>
+        <DialogTitle>{editing ? `Edit Admin — ${editing.email}` : 'New Admin'}</DialogTitle>
         <DialogContent dividers>
           {formError && (
-            <Alert severity="error" sx={{ mb: 2 }} onClose={() => setFormError(null)}>
-              {formError}
-            </Alert>
+            <Alert severity="error" sx={{ mb: 2 }} onClose={() => setFormError(null)}>{formError}</Alert>
           )}
           <Stack spacing={2} sx={{ pt: 1 }}>
-            <TextField
-              size="small"
-              label="Name"
-              value={core.name}
-              onChange={(e) => setCore({ ...core, name: e.target.value })}
-              fullWidth
-            />
-            <TextField
-              size="small"
-              label="Email *"
-              type="email"
-              value={core.email}
+            <TextField size="small" label="Name" value={core.name}
+              onChange={(e) => setCore({ ...core, name: e.target.value })} fullWidth />
+            <TextField size="small" label="Email *" type="email" value={core.email}
               onChange={(e) => setCore({ ...core, email: e.target.value })}
-              disabled={!!editing}
-              fullWidth
-            />
-            <TextField
-              size="small"
+              disabled={!!editing} fullWidth />
+            <TextField size="small"
               label={editing ? 'New Password (leave blank to keep)' : 'Password *'}
-              type="password"
-              value={core.password}
-              onChange={(e) => setCore({ ...core, password: e.target.value })}
-              fullWidth
-            />
-            <TextField
-              select
-              size="small"
-              label="Status"
+              type="password" value={core.password}
+              onChange={(e) => setCore({ ...core, password: e.target.value })} fullWidth />
+            <TextField select size="small" label="Status"
               value={core.is_active ? 'active' : 'inactive'}
-              onChange={(e) => setCore({ ...core, is_active: e.target.value === 'active' })}
-              fullWidth
-            >
+              onChange={(e) => setCore({ ...core, is_active: e.target.value === 'active' })} fullWidth>
               <MenuItem value="active">Active</MenuItem>
               <MenuItem value="inactive">Inactive</MenuItem>
             </TextField>
@@ -485,12 +376,9 @@ export default function AdminRolesPage() {
         </DialogActions>
       </Dialog>
 
-      <Snackbar
-        open={toast.open}
-        autoHideDuration={3000}
+      <Snackbar open={toast.open} autoHideDuration={3000}
         onClose={() => setToast({ ...toast, open: false })}
-        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
-      >
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}>
         <Alert severity={toast.sev} variant="filled" onClose={() => setToast({ ...toast, open: false })}>
           {toast.msg}
         </Alert>

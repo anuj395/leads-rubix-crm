@@ -1,22 +1,15 @@
 import { useEffect, useMemo, useState } from 'react'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
-import Table from '@mui/material/Table'
-import TableHead from '@mui/material/TableHead'
-import TableBody from '@mui/material/TableBody'
-import TableRow from '@mui/material/TableRow'
-import TableCell from '@mui/material/TableCell'
-import TableContainer from '@mui/material/TableContainer'
-import Paper from '@mui/material/Paper'
 import Dialog from '@mui/material/Dialog'
 import DialogTitle from '@mui/material/DialogTitle'
 import DialogContent from '@mui/material/DialogContent'
-import CircularProgress from '@mui/material/CircularProgress'
 import Snackbar from '@mui/material/Snackbar'
 import Alert from '@mui/material/Alert'
-import Typography from '@mui/material/Typography'
 import { Add as AddIcon } from '@mui/icons-material'
+import type { GridColDef } from '@mui/x-data-grid'
 import { AppCard } from '@/components/ui/AppCard'
+import { AppDataGrid } from '@/components/ui/AppDataGrid'
 import { DynamicForm } from '@/components/DynamicForm/DynamicForm'
 import { listContacts, createContact, type Contact } from '@/services/contactsService'
 import { resolveScreen, type ResolvedTableHeader } from '@/services/screenAdminService'
@@ -39,8 +32,6 @@ export default function ContactsListPage() {
         listContacts(),
         resolveScreen({
           screen_key: 'contacts',
-          // SuperAdmins must pass an explicit scope; fall back to temp001/admin
-          // to demo something meaningful when none is selected.
           industry_code: user?.role === 'superAdmin' ? 'temp001' : undefined,
           role_key: user?.role === 'superAdmin' ? 'admin' : undefined,
         }),
@@ -60,10 +51,22 @@ export default function ContactsListPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  const sortedColumns = useMemo(
-    () => [...columns].sort((a, b) => a.order - b.order),
-    [columns],
-  )
+  const gridColumns = useMemo<GridColDef<Contact>[]>(() => {
+    const sorted = [...columns].sort((a, b) => a.order - b.order)
+    return sorted.map((c) => ({
+      field: c.key,
+      headerName: c.label,
+      flex: 1,
+      minWidth: 140,
+      sortable: c.sortable !== false,
+      valueGetter: (_v, row) => (row as Record<string, unknown>)[c.key],
+      renderCell: (p) => {
+        const v = p.value
+        if (v == null || v === '') return <Box sx={{ color: 'text.secondary' }}>—</Box>
+        return String(v)
+      },
+    }))
+  }, [columns])
 
   return (
     <Box sx={{ p: { xs: 2, sm: 3 }, width: '100%', minWidth: 0 }}>
@@ -76,41 +79,12 @@ export default function ContactsListPage() {
           </Button>
         }
       >
-        {loading ? (
-          <Box sx={{ display: 'flex', justifyContent: 'center', py: 6 }}>
-            <CircularProgress />
-          </Box>
-        ) : items.length === 0 ? (
-          <Typography color="text.secondary" sx={{ py: 4, textAlign: 'center' }}>
-            No contacts yet — click "Add Contact" to create your first one.
-          </Typography>
-        ) : (
-          <TableContainer component={Paper} variant="outlined">
-            <Table size="small">
-              <TableHead>
-                <TableRow>
-                  {sortedColumns.map((c) => (
-                    <TableCell key={c.key}>{c.label}</TableCell>
-                  ))}
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {items.map((row) => (
-                  <TableRow key={row._id} hover>
-                    {sortedColumns.map((c) => {
-                      const v = (row as Record<string, unknown>)[c.key]
-                      return (
-                        <TableCell key={c.key} sx={{ color: v == null || v === '' ? 'text.secondary' : 'inherit' }}>
-                          {v == null || v === '' ? '—' : String(v)}
-                        </TableCell>
-                      )
-                    })}
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </TableContainer>
-        )}
+        <AppDataGrid
+          rows={items}
+          columns={gridColumns}
+          loading={loading}
+          getRowId={(r) => r._id}
+        />
       </AppCard>
 
       <Dialog open={dialogOpen} onClose={() => setDialogOpen(false)} maxWidth="md" fullWidth>

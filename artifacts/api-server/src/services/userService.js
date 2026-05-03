@@ -97,6 +97,33 @@ exports.fetchAll = async ({ authedUser, industry_id } = {}) => {
 };
 
 /**
+ * Paged + searchable + sortable list. Same auth/scope rules as `fetchAll`.
+ * Returns `{ items, total }` so the DataGrid can drive server-side paging.
+ */
+exports.fetchPaged = async ({
+  authedUser,
+  industry_id,
+  q,
+  page,
+  pageSize,
+  sortField,
+  sortDir,
+} = {}) => {
+  const isSuperAdmin = authedUser?.role === 'superAdmin';
+  const industryFilter = isSuperAdmin ? industry_id : authedUser?.industry_id;
+  if (!isSuperAdmin && !industryFilter) return { items: [], total: 0 };
+
+  // Whitelist sortable columns; reject anything else to avoid arbitrary
+  // mongo paths leaking through user input.
+  const ALLOWED_SORT = new Set(['name', 'email', 'role', 'is_active', 'createdAt', 'updatedAt']);
+  let sort;
+  if (sortField && ALLOWED_SORT.has(String(sortField))) {
+    sort = { [String(sortField)]: sortDir === 'asc' ? 1 : -1 };
+  }
+  return userModel.listPaged({ industry_id: industryFilter, q, page, pageSize, sort });
+};
+
+/**
  * Read a single user with object-level authorization.
  *   - SuperAdmin → any user
  *   - admin     → users in same industry
