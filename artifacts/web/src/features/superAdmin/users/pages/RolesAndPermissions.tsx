@@ -14,13 +14,9 @@ import Tab from '@mui/material/Tab'
 import Button from '@mui/material/Button'
 import IconButton from '@mui/material/IconButton'
 import Stack from '@mui/material/Stack'
-import Table from '@mui/material/Table'
-import TableHead from '@mui/material/TableHead'
-import TableBody from '@mui/material/TableBody'
-import TableRow from '@mui/material/TableRow'
-import TableCell from '@mui/material/TableCell'
-import TableContainer from '@mui/material/TableContainer'
 import Paper from '@mui/material/Paper'
+import { AppDataGrid } from '@/components/ui/AppDataGrid'
+import type { GridColDef, GridRenderCellParams } from '@mui/x-data-grid'
 import Chip from '@mui/material/Chip'
 import Switch from '@mui/material/Switch'
 import FormControlLabel from '@mui/material/FormControlLabel'
@@ -164,7 +160,11 @@ export default function RolesAndPermissionsPage() {
       try {
         const [inds, screens] = await Promise.all([getIndustries(), getScreens()])
         setIndustries(inds)
-        if (!filterIndustry && inds[0]) setFilterIndustry(inds[0]._id)
+        if (!filterIndustry) {
+          const realEstate = inds.find((i) => i.code === 'temp001')
+          if (realEstate) setFilterIndustry(realEstate._id)
+          else if (inds[0]) setFilterIndustry(inds[0]._id)
+        }
         setAllScreens(screens.filter((s) => s.is_active))
         const u = screens.find((s) => s.key === 'users')
         if (!u) {
@@ -482,9 +482,141 @@ export default function RolesAndPermissionsPage() {
     [industries],
   )
 
+  const rolesColumns = useMemo<GridColDef<AdminRole>[]>(
+    () => [
+      { field: 'key', headerName: 'Key', flex: 1, renderCell: (p) => <code>{p.value}</code> },
+      { field: 'name', headerName: 'Display Name', flex: 1.2 },
+      { field: 'description', headerName: 'Description', flex: 1.5, renderCell: (p) => p.value || '—' },
+      {
+        field: 'is_active',
+        headerName: 'Status',
+        width: 100,
+        renderCell: (p) => (
+          <Chip
+            size="small"
+            label={p.value ? 'Active' : 'Inactive'}
+            color={p.value ? 'success' : 'default'}
+          />
+        ),
+      },
+      {
+        field: '__actions',
+        headerName: 'Actions',
+        sortable: false,
+        filterable: false,
+        align: 'right',
+        headerAlign: 'right',
+        width: 110,
+        renderCell: (p) => (
+          <>
+            <IconButton size="small" onClick={() => openRoleEdit(p.row)}>
+              <EditIcon fontSize="small" />
+            </IconButton>
+            <IconButton size="small" color="error" onClick={() => removeRole(p.row)}>
+              <DeleteIcon fontSize="small" />
+            </IconButton>
+          </>
+        ),
+      },
+    ],
+    [openRoleEdit, removeRole],
+  )
+
+  const fieldsColumns = useMemo<GridColDef<ScreenField>[]>(
+    () => [
+      { field: 'order', headerName: 'Order', width: 90, type: 'number' },
+      { field: 'field_key', headerName: 'Key', flex: 1, renderCell: (p) => <code>{p.value}</code> },
+      { field: 'label', headerName: 'Label', flex: 1.2 },
+      { field: 'type', headerName: 'Type', width: 110, renderCell: (p) => <Chip size="small" label={p.value} /> },
+      {
+        field: 'is_required',
+        headerName: 'Required',
+        width: 100,
+        renderCell: (p) => (p.value ? 'Yes' : '—'),
+      },
+      {
+        field: 'dropdown_source',
+        headerName: 'Source',
+        flex: 1.5,
+        valueGetter: (_, row) => {
+          if (row.type !== 'select') return '—'
+          if (row.dropdown_source === 'api') return `api (${row.dropdown_api})`
+          if (row.dropdown_source === 'static') return `static (${(row.options || []).length})`
+          return 'none'
+        },
+      },
+      {
+        field: '__actions',
+        headerName: 'Actions',
+        sortable: false,
+        filterable: false,
+        align: 'right',
+        headerAlign: 'right',
+        width: 110,
+        renderCell: (p) => (
+          <>
+            <IconButton size="small" onClick={() => openFieldEdit(p.row)}>
+              <EditIcon fontSize="small" />
+            </IconButton>
+            <IconButton size="small" color="error" onClick={() => removeField(p.row)}>
+              <DeleteIcon fontSize="small" />
+            </IconButton>
+          </>
+        ),
+      },
+    ],
+    [openFieldEdit, removeField],
+  )
+
+  const actionsColumns = useMemo<GridColDef<Screen>[]>(
+    () => [
+      {
+        field: 'name',
+        headerName: 'Module',
+        flex: 1.5,
+        renderCell: (p) => {
+          const s = p.row
+          const busy = actionSaving === s._id
+          return (
+            <Stack direction="row" spacing={1} alignItems="center">
+              <span>{s.name || s.key}</span>
+              <Box component="code" sx={{ color: 'text.secondary', fontSize: '0.85em' }}>
+                ({s.key})
+              </Box>
+              {busy && <CircularProgress size={14} />}
+            </Stack>
+          )
+        },
+      },
+      ...(['view', 'add', 'edit', 'delete'] as const).map((a) => ({
+        field: `can_${a}`,
+        headerName: a.charAt(0).toUpperCase() + a.slice(1),
+        width: 100,
+        align: 'center' as const,
+        headerAlign: 'center' as const,
+        sortable: false,
+        filterable: false,
+        renderCell: (p: GridRenderCellParams<Screen>) => {
+          const s = p.row
+          const row = actionByScreen.get(s._id)
+          const busy = actionSaving === s._id
+          return (
+            <Checkbox
+              size="small"
+              checked={!!row?.[`can_${a}` as const]}
+              disabled={busy || isPrivilegedRole}
+              onChange={() => toggleAction(s._id, a)}
+            />
+          )
+        },
+      })),
+    ],
+    [actionByScreen, actionSaving, isPrivilegedRole, toggleAction],
+  )
+
   // ── Render ────────────────────────────────────────────────────────────────
   return (
-    <Box sx={{ p: { xs: 2, sm: 3 }, width: '100%', minWidth: 0 }}>
+    <Box sx={{ p: { xs: 2, sm: 3 }, width: '100%', minWidth: 0, height: '100%', overflowY: 'auto' }}>
       <Tabs value={tab} onChange={(_, v) => setTab(v)} sx={{ mb: 2 }}>
         <Tab label="Roles" />
         <Tab label="Field Configuration" />
@@ -492,7 +624,7 @@ export default function RolesAndPermissionsPage() {
       </Tabs>
 
       {/* Industry selector — shared by both tabs */}
-      <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} sx={{ mb: 2 }}>
+      <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} sx={{ mb: 2, pt: 1.5 }}>
         <TextField
           select
           size="small"
@@ -534,43 +666,13 @@ export default function RolesAndPermissionsPage() {
               No roles for this industry yet.
             </Typography>
           ) : (
-            <TableContainer component={Paper} variant="outlined">
-              <Table size="small">
-                <TableHead>
-                  <TableRow>
-                    <TableCell>Key</TableCell>
-                    <TableCell>Display Name</TableCell>
-                    <TableCell>Description</TableCell>
-                    <TableCell>Status</TableCell>
-                    <TableCell align="right">Actions</TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {roles.map((r) => (
-                    <TableRow key={r._id} hover>
-                      <TableCell><code>{r.key}</code></TableCell>
-                      <TableCell>{r.name}</TableCell>
-                      <TableCell sx={{ color: 'text.secondary' }}>{r.description || '—'}</TableCell>
-                      <TableCell>
-                        <Chip
-                          size="small"
-                          label={r.is_active ? 'Active' : 'Inactive'}
-                          color={r.is_active ? 'success' : 'default'}
-                        />
-                      </TableCell>
-                      <TableCell align="right">
-                        <IconButton size="small" onClick={() => openRoleEdit(r)}>
-                          <EditIcon fontSize="small" />
-                        </IconButton>
-                        <IconButton size="small" color="error" onClick={() => removeRole(r)}>
-                          <DeleteIcon fontSize="small" />
-                        </IconButton>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </TableContainer>
+            <AppDataGrid
+              height="60vh"
+              rows={roles}
+              columns={rolesColumns}
+              loading={rolesLoading}
+              getRowId={(r) => r._id}
+            />
           )}
         </AppCard>
       )}
@@ -601,46 +703,18 @@ export default function RolesAndPermissionsPage() {
                 No dynamic fields yet — click "Add Field" to define one.
               </Typography>
             ) : (
-              <TableContainer component={Paper} variant="outlined">
-                <Table size="small">
-                  <TableHead>
-                    <TableRow>
-                      <TableCell>Order</TableCell>
-                      <TableCell>Key</TableCell>
-                      <TableCell>Label</TableCell>
-                      <TableCell>Type</TableCell>
-                      <TableCell>Required</TableCell>
-                      <TableCell>Source</TableCell>
-                      <TableCell align="right">Actions</TableCell>
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {fields.map((f) => (
-                      <TableRow key={f._id} hover>
-                        <TableCell>{f.order}</TableCell>
-                        <TableCell><code>{f.field_key}</code></TableCell>
-                        <TableCell>{f.label}</TableCell>
-                        <TableCell><Chip size="small" label={f.type} /></TableCell>
-                        <TableCell>{f.is_required ? 'Yes' : '—'}</TableCell>
-                        <TableCell>
-                          {f.type !== 'select' ? '—' : (
-                            f.dropdown_source === 'api' ? <code>{f.dropdown_api}</code> :
-                            f.dropdown_source === 'static' ? `static (${f.options.length})` : 'none'
-                          )}
-                        </TableCell>
-                        <TableCell align="right">
-                          <IconButton size="small" onClick={() => openFieldEdit(f)}>
-                            <EditIcon fontSize="small" />
-                          </IconButton>
-                          <IconButton size="small" color="error" onClick={() => removeField(f)}>
-                            <DeleteIcon fontSize="small" />
-                          </IconButton>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </TableContainer>
+              <AppDataGrid
+                height="60vh"
+                rows={fields}
+                columns={fieldsColumns}
+                loading={fieldsLoading}
+                getRowId={(r) => r._id}
+                initialState={{
+                  sorting: {
+                    sortModel: [{ field: 'order', sort: 'asc' }],
+                  },
+                }}
+              />
             )}
           </AppCard>
 
@@ -657,7 +731,7 @@ export default function RolesAndPermissionsPage() {
               </Button>
             }
           >
-            <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} sx={{ mb: 2 }}>
+            <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} sx={{ mb: 2, pt: 1.5 }}>
               <TextField
                 select
                 size="small"
@@ -719,7 +793,7 @@ export default function RolesAndPermissionsPage() {
           title="Action Permissions"
           subtitle="Pick a role to grant View / Add / Edit / Delete on each module. SuperAdmin and admin always have full access."
         >
-          <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} sx={{ mb: 2 }}>
+          <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} sx={{ mb: 2, pt: 1.5 }}>
             <TextField
               select
               size="small"
@@ -752,48 +826,13 @@ export default function RolesAndPermissionsPage() {
               No active modules.
             </Typography>
           ) : (
-            <TableContainer component={Paper} variant="outlined">
-              <Table size="small">
-                <TableHead>
-                  <TableRow>
-                    <TableCell>Module</TableCell>
-                    <TableCell align="center">View</TableCell>
-                    <TableCell align="center">Add</TableCell>
-                    <TableCell align="center">Edit</TableCell>
-                    <TableCell align="center">Delete</TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {allScreens.map((s) => {
-                    const row = actionByScreen.get(s._id)
-                    const busy = actionSaving === s._id
-                    return (
-                      <TableRow key={s._id} hover>
-                        <TableCell>
-                          <Stack direction="row" spacing={1} alignItems="center">
-                            <span>{s.name || s.key}</span>
-                            <Box component="code" sx={{ color: 'text.secondary', fontSize: '0.85em' }}>
-                              ({s.key})
-                            </Box>
-                            {busy && <CircularProgress size={14} />}
-                          </Stack>
-                        </TableCell>
-                        {(['view','add','edit','delete'] as const).map((a) => (
-                          <TableCell key={a} align="center">
-                            <Checkbox
-                              size="small"
-                              checked={!!row?.[`can_${a}` as const]}
-                              disabled={busy}
-                              onChange={() => toggleAction(s._id, a)}
-                            />
-                          </TableCell>
-                        ))}
-                      </TableRow>
-                    )
-                  })}
-                </TableBody>
-              </Table>
-            </TableContainer>
+            <AppDataGrid
+              height="60vh"
+              rows={allScreens}
+              columns={actionsColumns}
+              loading={actionLoading}
+              getRowId={(r) => r._id}
+            />
           )}
         </AppCard>
       )}

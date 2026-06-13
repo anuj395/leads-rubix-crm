@@ -11,7 +11,6 @@ import CallLogsListPage from '@/features/superAdmin/leads/pages/CallLogsList'
 import BookingsListPage from '@/features/superAdmin/leads/pages/BookingsList'
 import SortedListPage from '@/features/superAdmin/leads/pages/SortedList'
 
-import SidebarConfigPage from '@/features/superAdmin/config/pages/SidebarConfig'
 import ScreensPage from '@/features/superAdmin/config/pages/Screens'
 import ScreenFieldsPage from '@/features/superAdmin/config/pages/ScreenFields'
 import ScreenPermissionsPage from '@/features/superAdmin/config/pages/ScreenPermissions'
@@ -45,7 +44,6 @@ export const routeComponentMap: Record<string, any> = {
   "/leads/bookings": BookingsListPage,
   "/leads/sorted": SortedListPage,
 
-  "/configuration/sidebar": SidebarConfigPage,
   "/configuration/screens": ScreensPage,
   "/configuration/screen-fields": ScreenFieldsPage,
   "/configuration/screen-permissions": ScreenPermissionsPage,

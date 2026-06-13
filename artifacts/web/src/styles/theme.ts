@@ -543,6 +543,14 @@ export function createAppTheme(mode: ThemeMode = DEFAULT_THEME_MODE) {
         },
       },
 
+      MuiInput: {
+        styleOverrides: {
+          input: {
+            paddingBlock: 'clamp(0.5rem, 1.5vw, 0.6875rem)',
+          },
+        },
+      },
+
       MuiPaper: {
         defaultProps: { elevation: 0 },
         styleOverrides: {

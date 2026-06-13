@@ -6,7 +6,6 @@ export const paths = {
   leads: '/leads',
   analytics: '/analytics',
   addLead: '/leads/new',
-  sidebarConfig: '/configuration/sidebar',
   headersConfig: '/configuration/headers',
   projectsList: '/configuration/projects',
   apiList: '/configuration/api',

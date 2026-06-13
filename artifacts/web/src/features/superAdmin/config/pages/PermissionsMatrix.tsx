@@ -3,6 +3,8 @@ import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import Stack from '@mui/material/Stack'
 import Paper from '@mui/material/Paper'
+import Card from '@mui/material/Card'
+import CardContent from '@mui/material/CardContent'
 import TextField from '@mui/material/TextField'
 import MenuItem from '@mui/material/MenuItem'
 import Checkbox from '@mui/material/Checkbox'
@@ -13,7 +15,6 @@ import Alert from '@mui/material/Alert'
 import Typography from '@mui/material/Typography'
 import Divider from '@mui/material/Divider'
 import { Save as SaveIcon } from '@mui/icons-material'
-import { AppCard } from '@/components/ui/AppCard'
 import {
   getIndustries,
   getRoles,
@@ -47,7 +48,9 @@ export default function PermissionsMatrixPage() {
         const [inds, allMenus] = await Promise.all([getIndustries(), getMenus()])
         setIndustries(inds)
         setMenus(allMenus)
-        if (inds[0]) setIndustryId(inds[0]._id)
+        const realEstate = inds.find((i) => i.code === 'temp001')
+        if (realEstate) setIndustryId(realEstate._id)
+        else if (inds[0]) setIndustryId(inds[0]._id)
       } catch (e: any) {
         setToast({ open: true, msg: e?.response?.data?.message ?? 'Failed to load', sev: 'error' })
       }
@@ -165,175 +168,218 @@ export default function PermissionsMatrixPage() {
   }
 
   return (
-    <Box sx={{ p: { xs: 2, sm: 3 } }}>
-      <AppCard
-        title="Sidebar Permissions"
-        subtitle="Pick which menus each (industry, role) sees. Saving overwrites the current set."
-        action={
-          <Button
-            variant="contained"
-            startIcon={<SaveIcon />}
-            onClick={save}
-            disabled={!industryId || !roleId || saving || loading}
+    <Box sx={{ p: { xs: 2, sm: 3 }, height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+      <Card sx={{ height: '100%', display: 'flex', flexDirection: 'column', minWidth: 0, overflow: 'hidden' }}>
+        <CardContent sx={{ height: '100%', display: 'flex', flexDirection: 'column', minWidth: 0, overflow: 'hidden', pb: '16px !important' }}>
+          {/* Header Section */}
+          <Stack
+            direction={{ xs: 'column', sm: 'row' }}
+            justifyContent="space-between"
+            alignItems={{ xs: 'stretch', sm: 'flex-start' }}
+            spacing={{ xs: 1.5, sm: 2 }}
+            sx={{ mb: 2, minWidth: 0, flexWrap: 'wrap', flexShrink: 0 }}
           >
-            {saving ? <CircularProgress size={18} sx={{ color: 'white' }} /> : 'Save'}
-          </Button>
-        }
-      >
-        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} sx={{ mb: 2 }}>
-          <TextField
-            select
-            size="small"
-            label="Industry"
-            value={industryId}
-            onChange={(e) => setIndustryId(e.target.value)}
-            sx={{ minWidth: 220 }}
-          >
-            {industries.map((i) => (
-              <MenuItem key={i._id} value={i._id}>
-                {i.name} ({i.code})
-              </MenuItem>
-            ))}
-          </TextField>
-          <TextField
-            select
-            size="small"
-            label="Role"
-            value={roleId}
-            onChange={(e) => setRoleId(e.target.value)}
-            sx={{ minWidth: 220 }}
-            disabled={!roles.length}
-          >
-            {roles.map((r) => (
-              <MenuItem key={r._id} value={r._id}>
-                {r.name} ({r.key})
-              </MenuItem>
-            ))}
-          </TextField>
-        </Stack>
+            <Stack sx={{ minWidth: 0, flex: { xs: '1 1 4rem', sm: '1 1 12rem' } }}>
+              <Typography
+                variant="overline"
+                sx={{
+                  color: 'secondary.main',
+                  fontWeight: 700,
+                  letterSpacing: '0.08em',
+                  lineHeight: 1.4,
+                  mb: 0.5,
+                }}
+              >
+                Sidebar Permissions
+              </Typography>
+              <Typography
+                variant="body2"
+                sx={{
+                  color: 'text.secondary',
+                  lineHeight: 1.55,
+                }}
+              >
+                Pick which menus each (industry, role) sees. Saving overwrites the current set.
+              </Typography>
+            </Stack>
 
-        {loading ? (
-          <Box sx={{ display: 'flex', justifyContent: 'center', py: 6 }}>
-            <CircularProgress />
-          </Box>
-        ) : !roleId ? (
-          <Typography color="text.secondary" sx={{ py: 4, textAlign: 'center' }}>
-            Select an industry and role to manage permissions.
-          </Typography>
-        ) : menus.length === 0 ? (
-          <Typography color="text.secondary" sx={{ py: 4, textAlign: 'center' }}>
-            No menus exist yet — create some on the Menus page first.
-          </Typography>
-        ) : (
-          <Stack spacing={2}>
-            {groupedMenus.map(({ root, children }) => {
-              const allChildIds = children.map((c) => c._id)
-              const allOn =
-                enabled.has(root._id) && allChildIds.every((id) => enabled.has(id))
-              const someOn =
-                enabled.has(root._id) || allChildIds.some((id) => enabled.has(id))
-              return (
-                <Paper key={root._id} variant="outlined" sx={{ p: 2 }}>
-                  <Stack
-                    direction="row"
-                    justifyContent="space-between"
-                    alignItems="center"
-                    sx={{ mb: children.length ? 1 : 0 }}
-                  >
-                    <FormControlLabel
-                      control={
-                        <Checkbox
-                          checked={enabled.has(root._id)}
-                          indeterminate={!enabled.has(root._id) && someOn}
-                          onChange={() => toggle(root._id)}
-                        />
-                      }
-                      label={
-                        <Typography sx={{ fontWeight: 600 }}>
-                          {root.name}{' '}
-                          <Typography component="span" sx={{ color: 'text.secondary', fontWeight: 400 }}>
-                            ({root.key})
-                          </Typography>
-                        </Typography>
-                      }
-                    />
-                    {children.length > 0 && (
-                      <Button
-                        size="small"
-                        onClick={() => toggleGroup(root._id, allChildIds, allOn)}
-                      >
-                        {allOn ? 'Clear group' : 'Select group'}
-                      </Button>
-                    )}
-                  </Stack>
-                  {children.length > 0 && (
-                    <>
-                      <Divider sx={{ mb: 1 }} />
-                      <Box
-                        sx={{
-                          display: 'grid',
-                          gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr', md: '1fr 1fr 1fr' },
-                          rowGap: 0.5,
-                          columnGap: 2,
-                          pl: 4,
-                        }}
-                      >
-                        {children.map((child) => (
-                          <FormControlLabel
-                            key={child._id}
-                            control={
-                              <Checkbox
-                                checked={enabled.has(child._id)}
-                                onChange={() => toggle(child._id)}
-                              />
-                            }
-                            label={
-                              <Typography variant="body2">
-                                {child.name}{' '}
-                                <Typography
-                                  component="span"
-                                  variant="caption"
-                                  sx={{ color: 'text.secondary' }}
-                                >
-                                  ({child.key})
-                                </Typography>
-                              </Typography>
-                            }
-                          />
-                        ))}
-                      </Box>
-                    </>
-                  )}
-                </Paper>
-              )
-            })}
-
-            {orphanMenus.length > 0 && (
-              <Paper variant="outlined" sx={{ p: 2 }}>
-                <Typography sx={{ fontWeight: 600, mb: 1 }}>Orphans</Typography>
-                <Box
-                  sx={{
-                    display: 'grid',
-                    gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' },
-                    rowGap: 0.5,
-                    columnGap: 2,
-                  }}
-                >
-                  {orphanMenus.map((m) => (
-                    <FormControlLabel
-                      key={m._id}
-                      control={
-                        <Checkbox checked={enabled.has(m._id)} onChange={() => toggle(m._id)} />
-                      }
-                      label={`${m.name} (${m.key})`}
-                    />
-                  ))}
-                </Box>
-              </Paper>
-            )}
+            <Box sx={{
+              flexShrink: 0,
+              maxWidth: '100%',
+              alignSelf: { xs: 'stretch', sm: 'flex-start' },
+            }}>
+              <Button
+                variant="contained"
+                startIcon={<SaveIcon />}
+                onClick={save}
+                disabled={!industryId || !roleId || saving || loading}
+              >
+                {saving ? <CircularProgress size={18} sx={{ color: 'white' }} /> : 'Save'}
+              </Button>
+            </Box>
           </Stack>
-        )}
-      </AppCard>
+
+          {/* Fixed Selectors */}
+          <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} sx={{ mb: 2, flexShrink: 0, pt: 1.5 }}>
+            <TextField
+              select
+              size="small"
+              label="Industry"
+              value={industryId}
+              onChange={(e) => setIndustryId(e.target.value)}
+              sx={{ minWidth: 220 }}
+            >
+              {industries.map((i) => (
+                <MenuItem key={i._id} value={i._id}>
+                  {i.name} ({i.code})
+                </MenuItem>
+              ))}
+            </TextField>
+            <TextField
+              select
+              size="small"
+              label="Role"
+              value={roleId}
+              onChange={(e) => setRoleId(e.target.value)}
+              sx={{ minWidth: 220 }}
+              disabled={!roles.length}
+            >
+              {roles.map((r) => (
+                <MenuItem key={r._id} value={r._id}>
+                  {r.name} ({r.key})
+                </MenuItem>
+              ))}
+            </TextField>
+          </Stack>
+
+          <Divider sx={{ mb: 2, flexShrink: 0 }} />
+
+          {/* Scrollable Content Area */}
+          <Box sx={{ flex: 1, overflowY: 'auto', minHeight: 0, pr: 0.5 }}>
+            {loading ? (
+              <Box sx={{ display: 'flex', justifyContent: 'center', py: 6 }}>
+                <CircularProgress />
+              </Box>
+            ) : !roleId ? (
+              <Typography color="text.secondary" sx={{ py: 4, textAlign: 'center' }}>
+                Select an industry and role to manage permissions.
+              </Typography>
+            ) : menus.length === 0 ? (
+              <Typography color="text.secondary" sx={{ py: 4, textAlign: 'center' }}>
+                No menus exist yet — create some on the Menus page first.
+              </Typography>
+            ) : (
+              <Stack spacing={2}>
+                {groupedMenus.map(({ root, children }) => {
+                  const allChildIds = children.map((c) => c._id)
+                  const allOn =
+                    enabled.has(root._id) && allChildIds.every((id) => enabled.has(id))
+                  const someOn =
+                    enabled.has(root._id) || allChildIds.some((id) => enabled.has(id))
+                  return (
+                    <Paper key={root._id} variant="outlined" sx={{ p: 2 }}>
+                      <Stack
+                        direction="row"
+                        justifyContent="space-between"
+                        alignItems="center"
+                        sx={{ mb: children.length ? 1 : 0 }}
+                      >
+                        <FormControlLabel
+                          control={
+                            <Checkbox
+                              checked={enabled.has(root._id)}
+                              indeterminate={!enabled.has(root._id) && someOn}
+                              onChange={() => toggle(root._id)}
+                            />
+                          }
+                          label={
+                            <Typography sx={{ fontWeight: 600 }}>
+                              {root.name}{' '}
+                              <Typography component="span" sx={{ color: 'text.secondary', fontWeight: 400 }}>
+                                ({root.key})
+                              </Typography>
+                            </Typography>
+                          }
+                        />
+                        {children.length > 0 && (
+                          <Button
+                            size="small"
+                            onClick={() => toggleGroup(root._id, allChildIds, allOn)}
+                          >
+                            {allOn ? 'Clear group' : 'Select group'}
+                          </Button>
+                        )}
+                      </Stack>
+                      {children.length > 0 && (
+                        <>
+                          <Divider sx={{ mb: 1 }} />
+                          <Box
+                            sx={{
+                              display: 'grid',
+                              gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr', md: '1fr 1fr 1fr' },
+                              rowGap: 0.5,
+                              columnGap: 2,
+                              pl: 4,
+                            }}
+                          >
+                            {children.map((child) => (
+                              <FormControlLabel
+                                key={child._id}
+                                control={
+                                  <Checkbox
+                                    checked={enabled.has(child._id)}
+                                    onChange={() => toggle(child._id)}
+                                  />
+                                }
+                                label={
+                                  <Typography variant="body2">
+                                    {child.name}{' '}
+                                    <Typography
+                                      component="span"
+                                      variant="caption"
+                                      sx={{ color: 'text.secondary' }}
+                                    >
+                                      ({child.key})
+                                    </Typography>
+                                  </Typography>
+                                }
+                              />
+                            ))}
+                          </Box>
+                        </>
+                      )}
+                    </Paper>
+                  )
+                })}
+
+                {orphanMenus.length > 0 && (
+                  <Paper variant="outlined" sx={{ p: 2 }}>
+                    <Typography sx={{ fontWeight: 600, mb: 1 }}>Orphans</Typography>
+                    <Box
+                      sx={{
+                        display: 'grid',
+                        gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' },
+                        rowGap: 0.5,
+                        columnGap: 2,
+                      }}
+                    >
+                      {orphanMenus.map((m) => (
+                        <FormControlLabel
+                          key={m._id}
+                          control={
+                            <Checkbox checked={enabled.has(m._id)} onChange={() => toggle(m._id)} />
+                          }
+                          label={`${m.name} (${m.key})`}
+                        />
+                      ))}
+                    </Box>
+                  </Paper>
+                )}
+              </Stack>
+            )}
+          </Box>
+        </CardContent>
+      </Card>
 
       <Snackbar
         open={toast.open}

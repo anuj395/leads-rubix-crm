@@ -4,6 +4,7 @@ import CardContent from '@mui/material/CardContent'
 import Stack from '@mui/material/Stack'
 import Typography from '@mui/material/Typography'
 import { useTheme } from '@mui/material/styles'
+import type { SxProps, Theme } from '@mui/material/styles'
 import type { ReactNode } from 'react'
 
 interface AppCardProps {
@@ -11,20 +12,38 @@ interface AppCardProps {
   children: ReactNode
   subtitle?: string
   title: string
+  sx?: SxProps<Theme>
+  fullHeight?: boolean
 }
 
-export function AppCard({ action, children, subtitle, title }: AppCardProps) {
+export function AppCard({ action, children, subtitle, title, sx, fullHeight = false }: AppCardProps) {
   const theme = useTheme()
 
   return (
-    <Card sx={{ width: '100%', minWidth: 0 }}>
-      <CardContent>
+    <Card
+      sx={{
+        width: '100%',
+        minWidth: 0,
+        ...(fullHeight
+          ? { height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden' }
+          : {}),
+        ...sx,
+      }}
+    >
+      <CardContent
+        sx={{
+          height: '100%',
+          display: 'flex',
+          flexDirection: 'column',
+          ...(fullHeight ? { minHeight: 0, overflow: 'hidden' } : {}),
+        }}
+      >
         <Stack
           direction={{ xs: 'column', sm: 'row' }}
           justifyContent="space-between"
           alignItems={{ xs: 'stretch', sm: 'flex-start' }}
           spacing={{ xs: 1.5, sm: 2 }}
-          sx={{ mb: 2, minWidth: 0, flexWrap: 'wrap' }}
+          sx={{ mb: 2, minWidth: 0, flexWrap: 'wrap', flexShrink: 0 }}
         >
           {/* <Stack sx={{ minWidth: 0, flex: '1 1 12rem' }}> */}
           <Stack sx={{ minWidth: 0, flex: { xs: '1 1 4rem', sm: '1 1 12rem' } }}>
@@ -66,7 +85,13 @@ export function AppCard({ action, children, subtitle, title }: AppCardProps) {
           )}
         </Stack>
 
-        {children}
+        {fullHeight ? (
+          <Box sx={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+            {children}
+          </Box>
+        ) : (
+          children
+        )}
       </CardContent>
     </Card>
   )

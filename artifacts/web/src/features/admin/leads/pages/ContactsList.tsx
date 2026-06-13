@@ -31,6 +31,7 @@ import { useNavigate } from 'react-router-dom'
 
 import {
   DataGrid,
+  GridToolbar,
   useGridApiRef,
   type GridColDef,
   type GridRenderCellParams,
@@ -184,7 +185,7 @@ const ContactsListPage = () => {
   const [search, setSearch] = useState('')
   const [activeFilters] = useState<ActiveFilters>({})
   const [sort, setSort] = useState<SortState>({ field: 'name', order: 'asc' })
-  const [pagination, setPagination] = useState<PaginationState>({ page: 0, rowsPerPage: 10, total: 0 })
+  const [pagination, setPagination] = useState<PaginationState>({ page: 0, rowsPerPage: 25, total: 0 })
   const [selectedIds, setSelectedIds] = useState<GridRowId[]>([])
 
   const selectedCount = selectedIds.length
@@ -251,8 +252,22 @@ const ContactsListPage = () => {
 
   const columns = useMemo(
     () => buildColumns(dbColumns, handleEdit, handleDelete),
-    [dbColumns, handleEdit, handleDelete],
+    [dbColumns, handleEdit, handleDelete]
   )
+
+  const computedPageSizeOptions = useMemo(() => {
+    const base = [25, 50, 100]
+    if (total > 0 && !base.includes(total)) {
+      base.push(total)
+    }
+    const uniqueSorted = Array.from(new Set(base)).sort((a, b) => a - b)
+    return uniqueSorted.map((val) => {
+      if (val === total) {
+        return { value: val, label: `All (${val})` }
+      }
+      return val
+    })
+  }, [total])
 
   // ── Loading skeleton ──────────────────────────────────────────────────────
   if (configLoading && !dbColumns.length) {
@@ -359,7 +374,11 @@ const ContactsListPage = () => {
                 columns={columns}
                 loading={dataLoading}
 
+                slots={{ toolbar: GridToolbar }}
                 slotProps={{
+                  toolbar: {
+                    showQuickFilter: false,
+                  },
                   filterPanel: {
                     sx: {
                       '& .MuiDataGrid-filterForm, & .MuiDataGrid-filterPanel, & .MuiDataGrid-panel, & .MuiDataGrid-filterFormHeader': {
@@ -385,7 +404,7 @@ const ContactsListPage = () => {
                 onPaginationModelChange={(m) =>
                   setPagination((p) => ({ ...p, page: m.page, rowsPerPage: m.pageSize }))
                 }
-                pageSizeOptions={[5, 10, 25, 50]}
+                pageSizeOptions={computedPageSizeOptions}
 
                 sortingMode="server"
                 onSortModelChange={(model) => {

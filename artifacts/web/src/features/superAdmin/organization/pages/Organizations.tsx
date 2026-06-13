@@ -149,7 +149,7 @@ export default function OrganizationsListPage() {
   const closeDialog = () => { setDialogOpen(false); setEditing(null) }
 
   return (
-    <Box sx={{ p: { xs: 2, sm: 3 }, width: '100%', minWidth: 0 }}>
+    <Box sx={{ p: { xs: 2, sm: 3 }, width: '100%', minWidth: 0, height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
       <AppCard
         title="Organizations"
         subtitle="Organization records. Columns and the Add/Edit form are driven by the Screen Configuration system (screen key: organization)."
@@ -158,8 +158,10 @@ export default function OrganizationsListPage() {
             Add Organization
           </Button>
         }
+        fullHeight
       >
         <AppDataGrid
+          height="100%"
           rows={items}
           columns={gridColumns}
           loading={loading}
@@ -171,7 +173,6 @@ export default function OrganizationsListPage() {
           onPaginationModelChange={setPaginationModel}
           sortModel={sortModel}
           onSortModelChange={setSortModel}
-          pageSizeOptions={[10, 25, 50, 100]}
           filterMode="server"
           onFilterModelChange={(model: GridFilterModel) => {
             const next = (model.quickFilterValues ?? []).join(' ').trim()

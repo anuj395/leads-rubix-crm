@@ -94,7 +94,9 @@ export default function AdminRolesPage() {
         if (cancelled) return
         setIndustries(inds)
         setScreens(scr.filter((s) => s.is_active))
-        setFilterIndustry((cur) => cur || inds[0]?.code || '')
+        const realEstate = inds.find((i) => i.code === 'temp001')
+        const defaultCode = realEstate ? realEstate.code : (inds[0]?.code ?? '')
+        setFilterIndustry((cur) => cur || defaultCode)
       } catch (e) {
         const err = e as { response?: { data?: { message?: string } } }
         showToast(err?.response?.data?.message ?? 'Failed to load reference data', 'error')
@@ -287,7 +289,7 @@ export default function AdminRolesPage() {
   }
 
   return (
-    <Box sx={{ p: { xs: 2, sm: 3 }, width: '100%', minWidth: 0 }}>
+    <Box sx={{ p: { xs: 2, sm: 3 }, width: '100%', minWidth: 0, height: '100%', overflowY: 'auto' }}>
       <AppCard
         title="Admin Roles"
         subtitle="Manage the admins who run each organization, and which modules they can access."
@@ -297,7 +299,7 @@ export default function AdminRolesPage() {
           </Button>
         }
       >
-        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} sx={{ mb: 2 }}>
+        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} sx={{ mb: 2, pt: 1.5 }}>
           <TextField select size="small" label="Organization (Industry)"
             value={filterIndustry} onChange={(e) => setFilterIndustry(e.target.value)}
             sx={{ minWidth: 280 }}

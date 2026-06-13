@@ -155,7 +155,9 @@ export default function UserListPage() {
           const list = await getIndustries()
           if (cancelled) return
           setIndustries(list)
-          setFilterIndustry((cur) => cur || list[0]?.code || '')
+          const realEstate = list.find((i) => i.code === 'temp001')
+          const defaultCode = realEstate ? realEstate.code : (list[0]?.code ?? '')
+          setFilterIndustry((cur) => cur || defaultCode)
         } else if (authedUser?.industry_id) {
           setFilterIndustry(authedUser.industry_id)
         }
@@ -447,7 +449,7 @@ export default function UserListPage() {
   }
 
   return (
-    <Box sx={{ p: { xs: 2, sm: 3 }, width: '100%', minWidth: 0 }}>
+    <Box sx={{ p: { xs: 2, sm: 3 }, width: '100%', minWidth: 0, height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
       <AppCard
         title="Users"
         subtitle="Add, edit, and manage users. Per-role custom fields are configured in Users → Roles & Permissions."
@@ -463,8 +465,9 @@ export default function UserListPage() {
             </Button>
           ) : null
         }
+        fullHeight
       >
-        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} sx={{ mb: 2 }}>
+        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} sx={{ mb: 2, flexShrink: 0, pt: 1.5 }}>
           {isSuperAdmin && (
             <TextField
               select
@@ -487,6 +490,7 @@ export default function UserListPage() {
         </Stack>
 
         <AppDataGrid
+          height="100%"
           rows={items}
           columns={gridColumns}
           loading={loading}

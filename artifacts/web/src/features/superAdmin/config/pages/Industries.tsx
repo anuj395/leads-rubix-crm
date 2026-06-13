@@ -118,13 +118,14 @@ export default function IndustriesPage() {
   ], [])
 
   return (
-    <Box sx={{ p: { xs: 2, sm: 3 } }}>
+    <Box sx={{ p: { xs: 2, sm: 3 }, height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
       <AppCard
         title="Industries"
         subtitle="Tenants/verticals that the platform serves."
         action={<Button variant="contained" startIcon={<AddIcon />} onClick={openCreate}>Add Industry</Button>}
+        fullHeight
       >
-        <AppDataGrid rows={items} columns={gridColumns} loading={loading} getRowId={(r) => r._id} />
+        <AppDataGrid rows={items} columns={gridColumns} loading={loading} getRowId={(r) => r._id} height="100%" />
       </AppCard>
 
       <Dialog open={dialogOpen} onClose={() => setDialogOpen(false)} maxWidth="sm" fullWidth>

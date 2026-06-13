@@ -69,7 +69,7 @@ export default function ContactsListPage() {
   }, [columns])
 
   return (
-    <Box sx={{ p: { xs: 2, sm: 3 }, width: '100%', minWidth: 0 }}>
+    <Box sx={{ p: { xs: 2, sm: 3 }, width: '100%', minWidth: 0, height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
       <AppCard
         title="Contacts"
         subtitle="Customer / lead contacts. The columns and Add form are driven by the Screen Configuration system."
@@ -78,8 +78,10 @@ export default function ContactsListPage() {
             Add Contact
           </Button>
         }
+        fullHeight
       >
         <AppDataGrid
+          height="100%"
           rows={items}
           columns={gridColumns}
           loading={loading}

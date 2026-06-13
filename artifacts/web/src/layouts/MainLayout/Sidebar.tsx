@@ -174,6 +174,7 @@ export function Sidebar({ collapsed, onToggle, onMobileClose }: SidebarProps) {
           <Box
             component={NavLink}
             to={item.route}
+            end
             sx={{
               ...navItemBase,
               justifyContent: collapsed ? 'center' : 'flex-start',
@@ -240,7 +241,7 @@ export function Sidebar({ collapsed, onToggle, onMobileClose }: SidebarProps) {
             sx={{ mt: 0.25, ml: 1.5, pl: 1.25, borderLeft: `1.5px solid ${theme.palette.divider}` }}
           >
             {item.children?.map((child) => (
-              <Box key={child.id} component={NavLink} to={child.route} sx={childItemSx}>
+              <Box key={child.id} component={NavLink} to={child.route} end sx={childItemSx}>
                 <Typography variant="body2" sx={{ color: 'inherit', fontSize: '0.8125rem' }}>
                   {child.name}
                 </Typography>

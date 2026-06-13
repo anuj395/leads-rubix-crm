@@ -118,13 +118,14 @@ export default function ScreensPage() {
   ], [])
 
   return (
-    <Box sx={{ p: { xs: 2, sm: 3 } }}>
+    <Box sx={{ p: { xs: 2, sm: 3 }, height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
       <AppCard
         title="Screens"
         subtitle="Modules whose tables and forms are configured per role and industry."
         action={<Button variant="contained" startIcon={<AddIcon />} onClick={openCreate}>Add Screen</Button>}
+        fullHeight
       >
-        <AppDataGrid rows={items} columns={gridColumns} loading={loading} getRowId={(r) => r._id} />
+        <AppDataGrid rows={items} columns={gridColumns} loading={loading} getRowId={(r) => r._id} height="100%" />
       </AppCard>
 
       <Dialog open={dialogOpen} onClose={() => setDialogOpen(false)} maxWidth="sm" fullWidth>

@@ -96,7 +96,10 @@ exports.resolve = async ({ screen_key, industry_code, role_key, authedUser }) =>
     if (!industryCode) industryCode = u?.industry_id;
     if (!resolvedRoleKey) resolvedRoleKey = u?.role || authedUser?.role;
   }
-  if (!industryCode) {
+
+  const isSuperAdmin = resolvedRoleKey === 'superAdmin';
+
+  if (!isSuperAdmin && !industryCode) {
     const err = new Error('industry_code is required (none found on user)');
     err.status = 400;
     throw err;
@@ -107,18 +110,15 @@ exports.resolve = async ({ screen_key, industry_code, role_key, authedUser }) =>
     throw err;
   }
 
-  const industry = await industryModel.findByCode(industryCode);
-  if (!industry) {
-    const err = new Error(`Industry with code "${industryCode}" not found`);
-    err.status = 404;
-    throw err;
+  let industry = null;
+  if (industryCode) {
+    industry = await industryModel.findByCode(industryCode);
+    if (!industry && !isSuperAdmin) {
+      const err = new Error(`Industry with code "${industryCode}" not found`);
+      err.status = 404;
+      throw err;
+    }
   }
-
-  // SuperAdmin is a system-level role and isn't stored per-industry in the
-  // `roles` collection. Skip the role lookup + permission filter for them so
-  // they can preview any screen end-to-end without first having to seed a
-  // superAdmin row in every industry.
-  const isSuperAdmin = resolvedRoleKey === 'superAdmin';
 
   let role = null;
   if (!isSuperAdmin) {
@@ -187,7 +187,7 @@ exports.resolve = async ({ screen_key, industry_code, role_key, authedUser }) =>
 
   return {
     screen: { _id: screen._id, key: screen.key, name: screen.name },
-    industry_id: industry._id,
+    industry_id: industry ? industry._id : null,
     role_id: role ? role._id : null,
     table_headers,
     form_fields,

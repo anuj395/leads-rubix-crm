@@ -54,7 +54,9 @@ export default function ScreenPermissionsPage() {
         const [inds, scrs] = await Promise.all([getIndustries(), getScreens()])
         setIndustries(inds)
         setScreens(scrs)
-        if (inds[0]) setIndustryId(inds[0]._id)
+        const realEstate = inds.find((i) => i.code === 'temp001')
+        if (realEstate) setIndustryId(realEstate._id)
+        else if (inds[0]) setIndustryId(inds[0]._id)
         if (scrs[0]) setScreenId(scrs[0]._id)
       } catch (e: any) {
         setToast({ open: true, msg: e?.response?.data?.message ?? 'Failed to load', sev: 'error' })
@@ -174,7 +176,7 @@ export default function ScreenPermissionsPage() {
   const allOn = sortedFields.length > 0 && sortedFields.every((f) => enabled.has(f._id))
 
   return (
-    <Box sx={{ p: { xs: 2, sm: 3 } }}>
+    <Box sx={{ p: { xs: 2, sm: 3 }, height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
       <AppCard
         title="Screen Permissions"
         subtitle="Pick which fields each (industry, role) can see on each screen. Saving overwrites the current set."
@@ -188,8 +190,9 @@ export default function ScreenPermissionsPage() {
             {saving ? <CircularProgress size={18} sx={{ color: 'white' }} /> : 'Save'}
           </Button>
         }
+        fullHeight
       >
-        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} sx={{ mb: 2 }}>
+        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} sx={{ mb: 2, flexShrink: 0, pt: 1.5 }}>
           <TextField
             select
             size="small"
@@ -248,8 +251,8 @@ export default function ScreenPermissionsPage() {
             This screen has no fields yet — add some on the Screen Fields page.
           </Typography>
         ) : (
-          <Paper variant="outlined" sx={{ p: 2 }}>
-            <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 1 }}>
+          <Paper variant="outlined" sx={{ p: 2, flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+            <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 1, flexShrink: 0 }}>
               <Typography variant="subtitle2">
                 {sortedFields.length} field{sortedFields.length === 1 ? '' : 's'} • {enabled.size} enabled
               </Typography>
@@ -259,13 +262,17 @@ export default function ScreenPermissionsPage() {
                 </Button>
               </Stack>
             </Stack>
-            <Divider sx={{ mb: 1 }} />
+            <Divider sx={{ mb: 1, flexShrink: 0 }} />
             <Box
               sx={{
+                flex: 1,
+                overflowY: 'auto',
                 display: 'grid',
                 gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr', md: '1fr 1fr 1fr' },
-                rowGap: 0.5,
+                rowGap: 1.5,
                 columnGap: 2,
+                alignContent: 'start',
+                pr: 0.5,
               }}
             >
               {sortedFields.map((f) => (

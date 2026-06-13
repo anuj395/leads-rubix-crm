@@ -2,15 +2,11 @@ import { useEffect, useMemo, useState } from 'react'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import Stack from '@mui/material/Stack'
-import Table from '@mui/material/Table'
-import TableHead from '@mui/material/TableHead'
-import TableBody from '@mui/material/TableBody'
-import TableRow from '@mui/material/TableRow'
-import TableCell from '@mui/material/TableCell'
-import TableContainer from '@mui/material/TableContainer'
 import Paper from '@mui/material/Paper'
 import Chip from '@mui/material/Chip'
 import IconButton from '@mui/material/IconButton'
+import { AppDataGrid } from '@/components/ui/AppDataGrid'
+import type { GridColDef } from '@mui/x-data-grid'
 import Dialog from '@mui/material/Dialog'
 import DialogTitle from '@mui/material/DialogTitle'
 import DialogContent from '@mui/material/DialogContent'
@@ -167,8 +163,72 @@ export default function MenusPage() {
     }
   }
 
+  const gridColumns = useMemo<GridColDef<SidebarMenuRecord>[]>(
+    () => [
+      {
+        field: 'key',
+        headerName: 'Key',
+        flex: 1.2,
+        renderCell: (p) => {
+          const row = p.row
+          const parent = row.parent_id ? menuById.get(row.parent_id) : null
+          return (
+            <Box sx={{ pl: parent ? 3 : 0 }}>
+              <code>{row.key}</code>
+            </Box>
+          )
+        },
+      },
+      { field: 'name', headerName: 'Name', flex: 1 },
+      { field: 'route', headerName: 'Route', flex: 1.2, renderCell: (p) => p.value || '—' },
+      { field: 'icon', headerName: 'Icon', width: 100, renderCell: (p) => p.value || '—' },
+      {
+        field: 'parent_id',
+        headerName: 'Parent',
+        flex: 1,
+        valueGetter: (_, row) => {
+          const parent = row.parent_id ? menuById.get(row.parent_id) : null
+          return parent ? parent.name : '—'
+        },
+      },
+      { field: 'order', headerName: 'Order', width: 90, type: 'number' },
+      {
+        field: 'is_active',
+        headerName: 'Status',
+        width: 100,
+        renderCell: (p) => (
+          <Chip
+            size="small"
+            label={p.value ? 'Active' : 'Inactive'}
+            color={p.value ? 'success' : 'default'}
+          />
+        ),
+      },
+      {
+        field: '__actions',
+        headerName: 'Actions',
+        sortable: false,
+        filterable: false,
+        align: 'right',
+        headerAlign: 'right',
+        width: 110,
+        renderCell: (p) => (
+          <>
+            <IconButton size="small" onClick={() => openEdit(p.row)}>
+              <EditIcon fontSize="small" />
+            </IconButton>
+            <IconButton size="small" color="error" onClick={() => remove(p.row)}>
+              <DeleteIcon fontSize="small" />
+            </IconButton>
+          </>
+        ),
+      },
+    ],
+    [menuById, openEdit, remove],
+  )
+
   return (
-    <Box sx={{ p: { xs: 2, sm: 3 } }}>
+    <Box sx={{ p: { xs: 2, sm: 3 }, height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
       <AppCard
         title="Sidebar Menus"
         subtitle="Master catalog of every navigation entry. Use parent_id to nest children."
@@ -177,6 +237,7 @@ export default function MenusPage() {
             Add Menu
           </Button>
         }
+        fullHeight
       >
         {loading ? (
           <Box sx={{ display: 'flex', justifyContent: 'center', py: 6 }}>
@@ -187,56 +248,13 @@ export default function MenusPage() {
             No menus yet.
           </Typography>
         ) : (
-          <TableContainer component={Paper} variant="outlined">
-            <Table size="small">
-              <TableHead>
-                <TableRow>
-                  <TableCell>Key</TableCell>
-                  <TableCell>Name</TableCell>
-                  <TableCell>Route</TableCell>
-                  <TableCell>Icon</TableCell>
-                  <TableCell>Parent</TableCell>
-                  <TableCell>Order</TableCell>
-                  <TableCell>Status</TableCell>
-                  <TableCell align="right">Actions</TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {sorted.map((row) => {
-                  const parent = row.parent_id ? menuById.get(row.parent_id) : null
-                  return (
-                    <TableRow key={row._id} hover>
-                      <TableCell sx={{ pl: parent ? 4 : 2 }}>
-                        <code>{row.key}</code>
-                      </TableCell>
-                      <TableCell>{row.name}</TableCell>
-                      <TableCell sx={{ color: 'text.secondary' }}>{row.route || '—'}</TableCell>
-                      <TableCell sx={{ color: 'text.secondary' }}>{row.icon || '—'}</TableCell>
-                      <TableCell sx={{ color: 'text.secondary' }}>
-                        {parent ? parent.name : '—'}
-                      </TableCell>
-                      <TableCell>{row.order}</TableCell>
-                      <TableCell>
-                        <Chip
-                          size="small"
-                          label={row.is_active ? 'Active' : 'Inactive'}
-                          color={row.is_active ? 'success' : 'default'}
-                        />
-                      </TableCell>
-                      <TableCell align="right">
-                        <IconButton size="small" onClick={() => openEdit(row)}>
-                          <EditIcon fontSize="small" />
-                        </IconButton>
-                        <IconButton size="small" color="error" onClick={() => remove(row)}>
-                          <DeleteIcon fontSize="small" />
-                        </IconButton>
-                      </TableCell>
-                    </TableRow>
-                  )
-                })}
-              </TableBody>
-            </Table>
-          </TableContainer>
+          <AppDataGrid
+            height="100%"
+            rows={sorted}
+            columns={gridColumns}
+            loading={loading}
+            getRowId={(r) => r._id}
+          />
         )}
       </AppCard>
 

@@ -2,15 +2,11 @@ import { useEffect, useMemo, useState } from 'react'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import Stack from '@mui/material/Stack'
-import Table from '@mui/material/Table'
-import TableHead from '@mui/material/TableHead'
-import TableBody from '@mui/material/TableBody'
-import TableRow from '@mui/material/TableRow'
-import TableCell from '@mui/material/TableCell'
-import TableContainer from '@mui/material/TableContainer'
 import Paper from '@mui/material/Paper'
 import Chip from '@mui/material/Chip'
 import IconButton from '@mui/material/IconButton'
+import { AppDataGrid } from '@/components/ui/AppDataGrid'
+import type { GridColDef } from '@mui/x-data-grid'
 import Dialog from '@mui/material/Dialog'
 import DialogTitle from '@mui/material/DialogTitle'
 import DialogContent from '@mui/material/DialogContent'
@@ -206,13 +202,66 @@ export default function ScreenFieldsPage() {
     }
   }
 
-  const sorted = useMemo(
-    () => [...items].sort((a, b) => a.order - b.order || a.label.localeCompare(b.label)),
-    [items],
+  const gridColumns = useMemo<GridColDef<ScreenField>[]>(
+    () => [
+      { field: 'order', headerName: 'Order', width: 90, type: 'number' },
+      { field: 'field_key', headerName: 'Key', flex: 1, renderCell: (p) => <code>{p.value}</code> },
+      { field: 'label', headerName: 'Label', flex: 1.2 },
+      { field: 'type', headerName: 'Type', width: 110, renderCell: (p) => <Chip size="small" label={p.value} /> },
+      {
+        field: 'is_table_visible',
+        headerName: 'In Table',
+        width: 100,
+        renderCell: (p) => (p.value ? 'Yes' : '—'),
+      },
+      {
+        field: 'is_form_visible',
+        headerName: 'In Form',
+        width: 100,
+        renderCell: (p) => (p.value ? 'Yes' : '—'),
+      },
+      {
+        field: 'is_required',
+        headerName: 'Required',
+        width: 100,
+        renderCell: (p) => (p.value ? 'Yes' : '—'),
+      },
+      {
+        field: 'dropdown_source',
+        headerName: 'Source',
+        flex: 1.5,
+        valueGetter: (_, row) => {
+          if (row.type !== 'select') return '—'
+          if (row.dropdown_source === 'api') return `api (${row.dropdown_api})`
+          if (row.dropdown_source === 'static') return `static (${(row.options || []).length})`
+          return 'none'
+        },
+      },
+      {
+        field: '__actions',
+        headerName: 'Actions',
+        sortable: false,
+        filterable: false,
+        align: 'right',
+        headerAlign: 'right',
+        width: 110,
+        renderCell: (p) => (
+          <>
+            <IconButton size="small" onClick={() => openEdit(p.row)}>
+              <EditIcon fontSize="small" />
+            </IconButton>
+            <IconButton size="small" color="error" onClick={() => remove(p.row)}>
+              <DeleteIcon fontSize="small" />
+            </IconButton>
+          </>
+        ),
+      },
+    ],
+    [openEdit, remove],
   )
 
   return (
-    <Box sx={{ p: { xs: 2, sm: 3 } }}>
+    <Box sx={{ p: { xs: 2, sm: 3 }, height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
       <AppCard
         title="Screen Fields"
         subtitle="Master list of all fields available on each screen. Per-role/industry visibility is managed on the Screen Permissions page."
@@ -221,8 +270,9 @@ export default function ScreenFieldsPage() {
             Add Field
           </Button>
         }
+        fullHeight
       >
-        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} sx={{ mb: 2 }}>
+        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} sx={{ mb: 2, flexShrink: 0, pt: 1.5 }}>
           <TextField
             select
             size="small"
@@ -248,56 +298,23 @@ export default function ScreenFieldsPage() {
           <Typography color="text.secondary" sx={{ py: 4, textAlign: 'center' }}>
             Pick a screen to manage its fields.
           </Typography>
-        ) : sorted.length === 0 ? (
+        ) : items.length === 0 ? (
           <Typography color="text.secondary" sx={{ py: 4, textAlign: 'center' }}>
             No fields configured for this screen yet.
           </Typography>
         ) : (
-          <TableContainer component={Paper} variant="outlined">
-            <Table size="small">
-              <TableHead>
-                <TableRow>
-                  <TableCell>Order</TableCell>
-                  <TableCell>Key</TableCell>
-                  <TableCell>Label</TableCell>
-                  <TableCell>Type</TableCell>
-                  <TableCell>In Table</TableCell>
-                  <TableCell>In Form</TableCell>
-                  <TableCell>Required</TableCell>
-                  <TableCell>Status</TableCell>
-                  <TableCell align="right">Actions</TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {sorted.map((row) => (
-                  <TableRow key={row._id} hover>
-                    <TableCell>{row.order}</TableCell>
-                    <TableCell><code>{row.field_key}</code></TableCell>
-                    <TableCell>{row.label}</TableCell>
-                    <TableCell><Chip size="small" label={row.type} /></TableCell>
-                    <TableCell>{row.is_table_visible ? 'Yes' : 'No'}</TableCell>
-                    <TableCell>{row.is_form_visible ? 'Yes' : 'No'}</TableCell>
-                    <TableCell>{row.is_required ? 'Yes' : 'No'}</TableCell>
-                    <TableCell>
-                      <Chip
-                        size="small"
-                        label={row.is_active ? 'Active' : 'Inactive'}
-                        color={row.is_active ? 'success' : 'default'}
-                      />
-                    </TableCell>
-                    <TableCell align="right">
-                      <IconButton size="small" onClick={() => openEdit(row)}>
-                        <EditIcon fontSize="small" />
-                      </IconButton>
-                      <IconButton size="small" color="error" onClick={() => remove(row)}>
-                        <DeleteIcon fontSize="small" />
-                      </IconButton>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </TableContainer>
+          <AppDataGrid
+            height="100%"
+            rows={items}
+            columns={gridColumns}
+            loading={loading}
+            getRowId={(r) => r._id}
+            initialState={{
+              sorting: {
+                sortModel: [{ field: 'order', sort: 'asc' }],
+              },
+            }}
+          />
         )}
       </AppCard>
 

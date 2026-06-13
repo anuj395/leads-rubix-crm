@@ -178,13 +178,6 @@ export const superAdminMenuConfig: SuperAdminMenuItem[] = [
     module: "Configuration"
   },
   {
-    key: "configuration.sidebar",
-    name: "Side Bar (Legacy)",
-    route: "/configuration/sidebar",
-    icon: "sidebar",
-    module: "Configuration"
-  },
-  {
     key: "configuration.screens",
     name: "Screens",
     route: "/configuration/screens",

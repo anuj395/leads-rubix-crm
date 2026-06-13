@@ -1,3 +1,4 @@
+import { useMemo } from 'react'
 import Box from '@mui/material/Box'
 import { DataGrid, GridToolbar, type DataGridProps } from '@mui/x-data-grid'
 
@@ -43,6 +44,23 @@ export function AppDataGrid({
   getRowId,
   ...rest
 }: AppDataGridProps) {
+  const totalCount = rest.rowCount ?? rest.rows?.length ?? 0
+  const computedPageSizeOptions = useMemo(() => {
+    if (pageSizeOptions) return pageSizeOptions
+
+    const base = [25, 50, 100]
+    if (totalCount > 0 && !base.includes(totalCount)) {
+      base.push(totalCount)
+    }
+    const uniqueSorted = Array.from(new Set(base)).sort((a, b) => a - b)
+    return uniqueSorted.map((val) => {
+      if (val === totalCount) {
+        return { value: val, label: `All (${val})` }
+      }
+      return val
+    })
+  }, [pageSizeOptions, totalCount])
+
   return (
     <Box sx={{ height, width: '100%' }}>
       <DataGrid
@@ -61,7 +79,7 @@ export function AppDataGrid({
                 ...(slotProps ?? {}),
               }
         }
-        pageSizeOptions={pageSizeOptions ?? [10, 25, 50, 100]}
+        pageSizeOptions={computedPageSizeOptions}
         initialState={{
           pagination: { paginationModel: { page: 0, pageSize: 25 } },
           ...(initialState ?? {}),
