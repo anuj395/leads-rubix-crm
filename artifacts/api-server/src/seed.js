@@ -10,6 +10,9 @@ const mongoose = require('mongoose');
 const SEED_FILE = path.join(__dirname, '..', 'seed-data', 'users.json');
 const SIDEBAR_SEED_FILE = path.join(__dirname, '..', 'seed-data', 'sidebar_configs.json');
 const INDUSTRIES_SEED_FILE = path.join(__dirname, '..', 'seed-data', 'industries.json');
+const CONTACTS_SEED_FILE = path.join(__dirname, '..', 'seed-data', 'contacts.json');
+const ORGANIZATIONS_SEED_FILE = path.join(__dirname, '..', 'seed-data', 'organizations.json');
+const BOOKINGS_SEED_FILE = path.join(__dirname, '..', 'seed-data', 'bookings.json');
 
 const ROLE_DISPLAY_NAMES = {
   superAdmin: 'Super Administrator',
@@ -460,4 +463,60 @@ async function seedIndustries() {
   }
 }
 
-module.exports = { seedUsers, migrateAndSeedSidebar, seedScreens, seedIndustries };
+async function seedContacts() {
+  const Contact = mongoose.model('Contact');
+  const existing = await Contact.estimatedDocumentCount();
+
+  if (existing > 0) {
+    console.log(`[seed] contacts collection already has ${existing} doc(s) — skipping bulk seed`);
+  } else if (fs.existsSync(CONTACTS_SEED_FILE)) {
+    const raw = JSON.parse(fs.readFileSync(CONTACTS_SEED_FILE, 'utf8'));
+    const docs = (Array.isArray(raw) ? raw : [raw]).map(reviveEjson);
+    const result = await Contact.collection.insertMany(docs, { ordered: false });
+    console.log(`[seed] inserted ${result.insertedCount} contact(s) from seed-data/contacts.json`);
+  } else {
+    console.log('[seed] no seed-data/contacts.json found — skipping bulk contact seed');
+  }
+}
+
+async function seedOrganizations() {
+  const Organization = mongoose.model('Organization');
+  const existing = await Organization.estimatedDocumentCount();
+
+  if (existing > 0) {
+    console.log(`[seed] organizations collection already has ${existing} doc(s) — skipping bulk seed`);
+  } else if (fs.existsSync(ORGANIZATIONS_SEED_FILE)) {
+    const raw = JSON.parse(fs.readFileSync(ORGANIZATIONS_SEED_FILE, 'utf8'));
+    const docs = (Array.isArray(raw) ? raw : [raw]).map(reviveEjson);
+    const result = await Organization.collection.insertMany(docs, { ordered: false });
+    console.log(`[seed] inserted ${result.insertedCount} organization(s) from seed-data/organizations.json`);
+  } else {
+    console.log('[seed] no seed-data/organizations.json found — skipping bulk organization seed');
+  }
+}
+
+async function seedBookings() {
+  const Booking = mongoose.model('Booking');
+  const existing = await Booking.estimatedDocumentCount();
+
+  if (existing > 0) {
+    console.log(`[seed] bookings collection already has ${existing} doc(s) — skipping bulk seed`);
+  } else if (fs.existsSync(BOOKINGS_SEED_FILE)) {
+    const raw = JSON.parse(fs.readFileSync(BOOKINGS_SEED_FILE, 'utf8'));
+    const docs = (Array.isArray(raw) ? raw : [raw]).map(reviveEjson);
+    const result = await Booking.collection.insertMany(docs, { ordered: false });
+    console.log(`[seed] inserted ${result.insertedCount} booking(s) from seed-data/bookings.json`);
+  } else {
+    console.log('[seed] no seed-data/bookings.json found — skipping bulk booking seed');
+  }
+}
+
+module.exports = {
+  seedUsers,
+  migrateAndSeedSidebar,
+  seedScreens,
+  seedIndustries,
+  seedContacts,
+  seedOrganizations,
+  seedBookings,
+};

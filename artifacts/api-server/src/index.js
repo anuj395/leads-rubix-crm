@@ -16,8 +16,17 @@ require('./models/screenPermissionModel');
 require('./models/roleActionPermissionModel');
 require('./models/contactModel');
 require('./models/organizationModel');
+require('./models/bookingModel');
 
-const { seedUsers, migrateAndSeedSidebar, seedScreens, seedIndustries } = require('./seed');
+const {
+  seedUsers,
+  migrateAndSeedSidebar,
+  seedScreens,
+  seedIndustries,
+  seedContacts,
+  seedOrganizations,
+  seedBookings,
+} = require('./seed');
 
 const PORT = config.port || 3001;
 
@@ -46,6 +55,24 @@ const PORT = config.port || 3001;
     await seedScreens();
   } catch (err) {
     console.error('[seed] failed to seed screens:', err.message || err);
+  }
+
+  try {
+    await seedContacts();
+  } catch (err) {
+    console.error('[seed] failed to seed contacts:', err.message || err);
+  }
+
+  try {
+    await seedOrganizations();
+  } catch (err) {
+    console.error('[seed] failed to seed organizations:', err.message || err);
+  }
+
+  try {
+    await seedBookings();
+  } catch (err) {
+    console.error('[seed] failed to seed bookings:', err.message || err);
   }
 
   app.listen(PORT, () => {
