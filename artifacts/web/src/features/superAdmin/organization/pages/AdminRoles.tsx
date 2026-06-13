@@ -26,6 +26,7 @@ import type { GridColDef } from '@mui/x-data-grid'
 
 import { AppCard } from '@/components/ui/AppCard'
 import { AppDataGrid } from '@/components/ui/AppDataGrid'
+import { InputField } from '@/components/forms/InputField'
 import { useAppSelector } from '@/store/hooks'
 import {
   listUsers,
@@ -353,10 +354,10 @@ export default function AdminRolesPage() {
             <TextField size="small" label="Email *" type="email" value={core.email}
               onChange={(e) => setCore({ ...core, email: e.target.value })}
               disabled={!!editing} fullWidth />
-            <TextField size="small"
+            <InputField
               label={editing ? 'New Password (leave blank to keep)' : 'Password *'}
               type="password" value={core.password}
-              onChange={(e) => setCore({ ...core, password: e.target.value })} fullWidth />
+              onChange={(e) => setCore({ ...core, password: e.target.value })} />
             <TextField select size="small" label="Status"
               value={core.is_active ? 'active' : 'inactive'}
               onChange={(e) => setCore({ ...core, is_active: e.target.value === 'active' })} fullWidth>

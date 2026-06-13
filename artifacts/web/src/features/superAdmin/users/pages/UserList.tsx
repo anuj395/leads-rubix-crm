@@ -28,6 +28,7 @@ import type {
 import { AppCard } from '@/components/ui/AppCard'
 import { AppDataGrid } from '@/components/ui/AppDataGrid'
 import { DynamicForm } from '@/components/DynamicForm/DynamicForm'
+import { InputField } from '@/components/forms/InputField'
 import { useAppSelector } from '@/store/hooks'
 import {
   listUsersPaged,
@@ -547,13 +548,11 @@ export default function UserListPage() {
                     disabled={!!editing}
                     fullWidth
                   />
-                  <TextField
-                    size="small"
+                  <InputField
                     label={editing ? 'New Password (leave blank to keep)' : 'Password *'}
                     type="password"
                     value={core.password}
                     onChange={(e) => setCore({ ...core, password: e.target.value })}
-                    fullWidth
                   />
                   <TextField
                     select
