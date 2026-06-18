@@ -37,7 +37,7 @@ export function MainLayout() {
             ? '5.25rem minmax(0, 1fr)'
             : 'clamp(14rem, 18vw, 17rem) minmax(0, 1fr)',
         },
-        background: theme.palette.background.default,
+        background: 'transparent',
         overflow: 'hidden',
         transition: 'grid-template-columns 220ms ease',
         // Prevent any horizontal scroll

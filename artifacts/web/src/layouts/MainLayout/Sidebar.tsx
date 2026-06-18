@@ -116,23 +116,25 @@ export function Sidebar({ collapsed, onToggle, onMobileClose }: SidebarProps) {
   useEffect(() => { onMobileClose?.() }, [location.pathname]) // eslint-disable-line
 
   // ── Colours ───────────────────────────────────────────────────────────────
-  const activeBg    = isDark ? alpha(theme.palette.primary.main, 0.18) : alpha(theme.palette.primary.main, 0.10)
-  const activeColor = isDark ? theme.palette.primary.light            : theme.palette.primary.main
+  const activeBg    = isDark ? 'rgba(79, 106, 245, 0.11)' : 'rgba(79, 106, 245, 0.06)'
+  const activeColor = theme.palette.secondary.main
 
   const navItemBase = {
     display: 'flex',
     alignItems: 'center',
     gap: 1.25,
-    px: collapsed ? 0 : 1,
-    py: 0.8,
-    borderRadius: '8px',
+    px: collapsed ? 0 : 1.25,
+    py: 0.85,
+    borderRadius: '10px',
+    borderLeft: '3px solid transparent',
     textDecoration: 'none',
     color: theme.palette.text.secondary,
-    transition: 'all 160ms ease',
+    transition: 'all 200ms cubic-bezier(0.4, 0, 0.2, 1)',
     cursor: 'pointer',
     '&:hover': {
       color: theme.palette.text.primary,
-      backgroundColor: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)',
+      backgroundColor: isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.03)',
+      borderLeft: `3px solid ${alpha(theme.palette.secondary.main, 0.3)}`,
     },
   } as const
 
@@ -140,18 +142,25 @@ export function Sidebar({ collapsed, onToggle, onMobileClose }: SidebarProps) {
     display: 'flex',
     alignItems: 'center',
     gap: 1,
-    px: 1.5,
-    py: 0.55,
-    borderRadius: '6px',
+    px: 2,
+    py: 0.65,
+    borderRadius: '8px',
     textDecoration: 'none',
     color: theme.palette.text.secondary,
     fontSize: '0.8125rem',
-    transition: 'all 160ms ease',
+    borderLeft: '2px solid transparent',
+    transition: 'all 200ms cubic-bezier(0.4, 0, 0.2, 1)',
     '&:hover': {
       color: theme.palette.text.primary,
-      backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.04)',
+      backgroundColor: isDark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.03)',
+      borderLeft: `2px solid ${alpha(theme.palette.secondary.main, 0.3)}`,
     },
-    '&.active': { color: activeColor, fontWeight: 600, backgroundColor: activeBg },
+    '&.active': {
+      color: activeColor,
+      fontWeight: 700,
+      backgroundColor: isDark ? 'rgba(79, 106, 245, 0.08)' : 'rgba(79, 106, 245, 0.04)',
+      borderLeft: `2px solid ${activeColor}`,
+    },
   } as const
 
   // ── Render helpers ────────────────────────────────────────────────────────
@@ -161,7 +170,7 @@ export function Sidebar({ collapsed, onToggle, onMobileClose }: SidebarProps) {
       <>
         <Icon sx={{ fontSize: '1.2rem', flexShrink: 0 }} />
         {!collapsed && (
-          <Typography sx={{ fontSize: '0.875rem', fontWeight: 400, color: 'inherit' }}>
+          <Typography sx={{ fontSize: '0.875rem', fontWeight: 500, color: 'inherit' }}>
             {item.name}
           </Typography>
         )}
@@ -178,7 +187,7 @@ export function Sidebar({ collapsed, onToggle, onMobileClose }: SidebarProps) {
             sx={{
               ...navItemBase,
               justifyContent: collapsed ? 'center' : 'flex-start',
-              '&.active': { color: activeColor, backgroundColor: activeBg, fontWeight: 600 },
+              '&.active': { color: activeColor, backgroundColor: activeBg, fontWeight: 700, borderLeft: `3px solid ${activeColor}` },
             }}
           >
             {content}
@@ -212,6 +221,7 @@ export function Sidebar({ collapsed, onToggle, onMobileClose }: SidebarProps) {
               border: 'none',
               backgroundColor: isChildActive ? activeBg : 'transparent',
               color: isChildActive ? activeColor : theme.palette.text.secondary,
+              borderLeft: isChildActive ? `3px solid ${activeColor}` : '3px solid transparent',
               textAlign: 'left',
               justifyContent: collapsed ? 'center' : 'flex-start',
             }}
@@ -219,7 +229,7 @@ export function Sidebar({ collapsed, onToggle, onMobileClose }: SidebarProps) {
             <Icon sx={{ fontSize: '1.2rem', flexShrink: 0 }} />
             {!collapsed && (
               <>
-                <Typography sx={{ flexGrow: 1, fontSize: '0.875rem', fontWeight: isChildActive ? 500 : 400, color: 'inherit' }}>
+                <Typography sx={{ flexGrow: 1, fontSize: '0.875rem', fontWeight: isChildActive ? 700 : 500, color: 'inherit' }}>
                   {item.name}
                 </Typography>
                 <ChevronRightRoundedIcon
@@ -261,7 +271,9 @@ export function Sidebar({ collapsed, onToggle, onMobileClose }: SidebarProps) {
         height: '100%',
         display: 'flex',
         flexDirection: 'column',
-        backgroundColor: theme.palette.background.paper,
+        background: isDark ? 'rgba(10, 12, 26, 0.45)' : 'rgba(255, 255, 255, 0.55)',
+        backdropFilter: 'blur(20px)',
+        WebkitBackdropFilter: 'blur(20px)',
         borderRight: `1px solid ${theme.palette.divider}`,
         overflow: 'hidden',
         transition: 'width 220ms ease',
@@ -282,16 +294,14 @@ export function Sidebar({ collapsed, onToggle, onMobileClose }: SidebarProps) {
         {!collapsed && (
           <Box
             component="img"
-            src="https://leadsrubix.com/wp-content/uploads/2023/10/Logo.svg"
+            src={isDark ? '/companylogo_white.png' : '/companylogo_dark.png'}
             alt="Leads Rubix"
             sx={{
-              width: '8.5rem',
-              height: 'auto',
-              maxHeight: '1.625rem',
+              height: '2.25rem',
+              width: 'auto',
+              maxWidth: '10rem',
               objectFit: 'contain',
-              objectPosition: 'left center',
               flexShrink: 0,
-              filter: isDark ? 'brightness(0) invert(1)' : 'none',
             }}
           />
         )}

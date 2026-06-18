@@ -3,10 +3,10 @@ import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import Stack from '@mui/material/Stack'
 import Paper from '@mui/material/Paper'
-import Chip from '@mui/material/Chip'
 import IconButton from '@mui/material/IconButton'
 import { AppDataGrid } from '@/components/ui/AppDataGrid'
 import type { GridColDef } from '@mui/x-data-grid'
+import { StatusBadge } from '@/components/ui/StatusBadge'
 import Dialog from '@mui/material/Dialog'
 import DialogTitle from '@mui/material/DialogTitle'
 import DialogContent from '@mui/material/DialogContent'
@@ -207,7 +207,7 @@ export default function ScreenFieldsPage() {
       { field: 'order', headerName: 'Order', width: 90, type: 'number' },
       { field: 'field_key', headerName: 'Key', flex: 1, renderCell: (p) => <code>{p.value}</code> },
       { field: 'label', headerName: 'Label', flex: 1.2 },
-      { field: 'type', headerName: 'Type', width: 110, renderCell: (p) => <Chip size="small" label={p.value} /> },
+      { field: 'type', headerName: 'Type', width: 110, renderCell: (p) => <StatusBadge value={p.value} hideDot /> },
       {
         field: 'is_table_visible',
         headerName: 'In Table',

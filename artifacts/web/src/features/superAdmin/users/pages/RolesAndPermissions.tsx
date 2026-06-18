@@ -17,7 +17,7 @@ import Stack from '@mui/material/Stack'
 import Paper from '@mui/material/Paper'
 import { AppDataGrid } from '@/components/ui/AppDataGrid'
 import type { GridColDef, GridRenderCellParams } from '@mui/x-data-grid'
-import Chip from '@mui/material/Chip'
+import { StatusBadge } from '@/components/ui/StatusBadge'
 import Switch from '@mui/material/Switch'
 import FormControlLabel from '@mui/material/FormControlLabel'
 import Dialog from '@mui/material/Dialog'
@@ -492,11 +492,7 @@ export default function RolesAndPermissionsPage() {
         headerName: 'Status',
         width: 100,
         renderCell: (p) => (
-          <Chip
-            size="small"
-            label={p.value ? 'Active' : 'Inactive'}
-            color={p.value ? 'success' : 'default'}
-          />
+          <StatusBadge value={p.value ? 'Active' : 'Inactive'} />
         ),
       },
       {
@@ -527,7 +523,7 @@ export default function RolesAndPermissionsPage() {
       { field: 'order', headerName: 'Order', width: 90, type: 'number' },
       { field: 'field_key', headerName: 'Key', flex: 1, renderCell: (p) => <code>{p.value}</code> },
       { field: 'label', headerName: 'Label', flex: 1.2 },
-      { field: 'type', headerName: 'Type', width: 110, renderCell: (p) => <Chip size="small" label={p.value} /> },
+      { field: 'type', headerName: 'Type', width: 110, renderCell: (p) => <StatusBadge value={p.value} hideDot /> },
       {
         field: 'is_required',
         headerName: 'Required',
@@ -612,6 +608,54 @@ export default function RolesAndPermissionsPage() {
       })),
     ],
     [actionByScreen, actionSaving, isPrivilegedRole, toggleAction],
+  )
+
+  const perRoleColumns = useMemo<GridColDef<ScreenField>[]>(
+    () => [
+      {
+        field: 'order',
+        headerName: 'Order',
+        width: 80,
+        type: 'number',
+      },
+      {
+        field: 'field_key',
+        headerName: 'Field Key',
+        flex: 1,
+        renderCell: (p) => <code>{p.value}</code>,
+      },
+      {
+        field: 'label',
+        headerName: 'Display Label',
+        flex: 1.2,
+      },
+      {
+        field: 'type',
+        headerName: 'Field Type',
+        width: 120,
+        renderCell: (p) => <StatusBadge value={p.value} hideDot />,
+      },
+      {
+        field: 'enabled',
+        headerName: 'Form Visibility',
+        flex: 1,
+        align: 'center',
+        headerAlign: 'center',
+        sortable: false,
+        filterable: false,
+        renderCell: (p) => {
+          const f = p.row
+          return (
+            <Switch
+              size="small"
+              checked={enabledFieldIds.has(f._id)}
+              onChange={() => togglePerm(f._id)}
+            />
+          )
+        },
+      },
+    ],
+    [enabledFieldIds],
   )
 
   // ── Render ────────────────────────────────────────────────────────────────
@@ -760,28 +804,13 @@ export default function RolesAndPermissionsPage() {
                 No fields to assign yet.
               </Typography>
             ) : (
-              <Box sx={{
-                display: 'grid',
-                gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr', md: '1fr 1fr 1fr' },
-                gap: 1,
-              }}>
-                {fields.map((f) => (
-                  <FormControlLabel
-                    key={f._id}
-                    control={
-                      <Switch
-                        checked={enabledFieldIds.has(f._id)}
-                        onChange={() => togglePerm(f._id)}
-                      />
-                    }
-                    label={
-                      <span>
-                        {f.label} <Box component="code" sx={{ color: 'text.secondary', fontSize: '0.85em' }}>({f.field_key})</Box>
-                      </span>
-                    }
-                  />
-                ))}
-              </Box>
+              <AppDataGrid
+                height="45vh"
+                rows={fields}
+                columns={perRoleColumns}
+                loading={permsLoading}
+                getRowId={(f) => f._id}
+              />
             )}
           </AppCard>
         </Stack>

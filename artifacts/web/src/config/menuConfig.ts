@@ -67,7 +67,7 @@ interface SuperAdminChild {
   module?: string
 }
 
-interface SuperAdminMenuItem {
+export interface SuperAdminMenuItem {
   key: string
   name: string
   route?: string
@@ -85,13 +85,6 @@ export const superAdminMenuConfig: SuperAdminMenuItem[] = [
     route: "/analytics",
     icon: "analytics",
     module: "Analytics"
-  },
-  {
-    key: "organization.overview",
-    name: "Overview",
-    route: "/organization",
-    icon: "organization",
-    module: "Organization"
   },
   {
     key: "organization.list",
@@ -193,7 +186,7 @@ export const superAdminMenuConfig: SuperAdminMenuItem[] = [
   },
   {
     key: "configuration.screenPermissions",
-    name: "Screen Permissions",
+    name: "Permission Fields",
     route: "/configuration/screen-permissions",
     icon: "headers",
     module: "Configuration"
@@ -210,13 +203,6 @@ export const superAdminMenuConfig: SuperAdminMenuItem[] = [
     name: "API List",
     route: "/configuration/api",
     icon: "api",
-    module: "Configuration"
-  },
-  {
-    key: "configuration.bookingForm",
-    name: "Booking Form",
-    route: "/configuration/booking-form",
-    icon: "booking",
     module: "Configuration"
   },
   {
@@ -539,6 +525,13 @@ export const teamLeadMenuConfig: SuperAdminMenuItem[] = [
 ]
 
 export const salesMenuConfig: SuperAdminMenuItem[] = [
+  {
+    key: "analytics",
+    name: "Analytics",
+    route: "/analytics",
+    icon: "analytics",
+    module: "Analytics"
+  },
   {
     key: "leads.contacts",
     name: "Contacts List",

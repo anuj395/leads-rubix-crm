@@ -69,20 +69,93 @@ export function AppDataGrid({
 
   // On mobile, convert flex columns to fixed widths to force horizontal scrolling
   // and prevent text columns from shrinking to unreadable vertical strips.
+  // Enforces safe minWidth thresholds for common data fields on all viewports
+  // to prevent column cramping and word/badge cutoff.
   const responsiveColumns = useMemo(() => {
     if (!columns) return []
-    if (!isMobile) return columns
 
     return columns.map((col) => {
       const updated = { ...col }
-      if (updated.flex) {
-        const flexVal = typeof updated.flex === 'number' ? updated.flex : 1
-        updated.width = flexVal * 150
-        delete updated.flex
+      const fieldLower = String(updated.field).toLowerCase()
+
+      // Define safe responsive minimum widths based on field keys/types
+      let defaultMinWidth = 120
+      if (fieldLower.includes('email')) {
+        defaultMinWidth = 180
+      } else if (fieldLower.includes('role')) {
+        defaultMinWidth = 160
+      } else if (fieldLower.includes('phone') || fieldLower.includes('recipient') || fieldLower.includes('mobile')) {
+        defaultMinWidth = 150
+      } else if (fieldLower.includes('name') || fieldLower.includes('title')) {
+        defaultMinWidth = 150
+      } else if (fieldLower.includes('created') || fieldLower.includes('updated') || fieldLower.includes('time') || fieldLower.includes('date') || fieldLower.includes('timestamp')) {
+        defaultMinWidth = 180
+      } else if (fieldLower.includes('url') || fieldLower.includes('endpoint') || fieldLower.includes('path')) {
+        defaultMinWidth = 250
+      } else if (fieldLower.includes('message') || fieldLower.includes('description') || fieldLower.includes('content')) {
+        defaultMinWidth = 250
+      } else if (fieldLower.includes('status')) {
+        defaultMinWidth = 210
+      } else if (fieldLower.includes('active')) {
+        defaultMinWidth = 130
+      } else if (fieldLower.includes('industry')) {
+        defaultMinWidth = 140
+      } else if (fieldLower.includes('method')) {
+        defaultMinWidth = 100
       }
-      if (!updated.width && !updated.minWidth) {
-        updated.width = 120
+
+      // Respect explicit minWidth if it is larger than our safe default
+      if (updated.minWidth === undefined) {
+        updated.minWidth = defaultMinWidth
+      } else {
+        updated.minWidth = Math.max(updated.minWidth, defaultMinWidth)
       }
+
+      // For columns that contain fixed-size elements (badges, statuses, dates, phones, urls, industries, methods, codes/keys),
+      // we disable flex and use a fixed width matching their minWidth on all viewports.
+      // This prevents them from shrinking and cropping their contents when screen space is tight.
+      const isFixedColumn =
+        fieldLower.includes('role') ||
+        fieldLower.includes('status') ||
+        fieldLower.includes('active') ||
+        fieldLower.includes('phone') ||
+        fieldLower.includes('recipient') ||
+        fieldLower.includes('mobile') ||
+        fieldLower.includes('created') ||
+        fieldLower.includes('updated') ||
+        fieldLower.includes('time') ||
+        fieldLower.includes('date') ||
+        fieldLower.includes('timestamp') ||
+        fieldLower.includes('url') ||
+        fieldLower.includes('endpoint') ||
+        fieldLower.includes('path') ||
+        fieldLower.includes('industry') ||
+        fieldLower.includes('method') ||
+        fieldLower === 'code' ||
+        fieldLower.endsWith('_code') ||
+        fieldLower === 'key' ||
+        fieldLower.endsWith('_key')
+
+      if (isFixedColumn) {
+        if (updated.width === undefined) {
+          updated.width = updated.minWidth
+          delete updated.flex
+        } else {
+          updated.width = Math.max(updated.width, updated.minWidth)
+        }
+      }
+
+      if (isMobile) {
+        if (updated.flex) {
+          const flexVal = typeof updated.flex === 'number' ? updated.flex : 1
+          updated.width = flexVal * 150
+          delete updated.flex
+        }
+        if (!updated.width) {
+          updated.width = updated.minWidth
+        }
+      }
+
       return updated
     })
   }, [columns, isMobile])
@@ -122,13 +195,39 @@ export function AppDataGrid({
         }
         disableRowSelectionOnClick
         density="compact"
+        rowHeight={46}
+        columnHeaderHeight={46}
         sx={{
-          // Column header background follows the theme so dark mode looks right.
+          border: 'none',
+          backgroundColor: theme.palette.mode === 'dark' ? 'rgba(11, 14, 32, 0.45)' : 'rgba(255, 255, 255, 0.45)',
+          backdropFilter: 'blur(10px)',
+          borderRadius: '12px',
+          overflow: 'hidden',
           '& .MuiDataGrid-columnHeaders': {
             position: 'sticky',
             top: 0,
             zIndex: 2,
-            bgcolor: 'background.paper',
+            bgcolor: theme.palette.mode === 'dark' ? 'rgba(18, 22, 43, 0.75)' : 'rgba(245, 246, 250, 0.85)',
+            backdropFilter: 'blur(10px)',
+            borderBottom: `2px solid ${theme.palette.divider}`,
+          },
+          '& .MuiDataGrid-columnHeaderTitle': {
+            fontWeight: 700,
+            fontSize: '0.75rem',
+            color: theme.palette.text.secondary,
+            textTransform: 'uppercase',
+            letterSpacing: '0.06em',
+          },
+          '& .MuiDataGrid-cell': {
+            borderBottom: `1px solid ${theme.palette.divider}`,
+            fontSize: '0.8125rem',
+            whiteSpace: 'nowrap',
+            display: 'flex',
+            alignItems: 'center',
+            padding: '0 16px',
+          },
+          '& .MuiDataGrid-row:hover': {
+            backgroundColor: theme.palette.mode === 'dark' ? 'rgba(79, 106, 245, 0.12)' : 'rgba(79, 106, 245, 0.06)',
           },
           '& .MuiDataGrid-cell:focus, & .MuiDataGrid-cell:focus-within': {
             outline: 'none',
@@ -178,6 +277,7 @@ export function AppDataGrid({
                 },
                 '& .MuiDataGrid-cell': {
                   fontSize: '0.8rem !important',
+                  padding: '0 10px !important',
                 },
               }
             : {}),

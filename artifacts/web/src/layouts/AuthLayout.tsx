@@ -51,13 +51,12 @@ export default function AuthLayout() {
           >
             <Box
               component="img"
-              src="https://leadsrubix.com/wp-content/uploads/2023/10/Logo.svg"
+              src={isDark ? '/companylogo_white.png' : '/companylogo_dark.png'}
               alt="Leads Rubix"
               sx={{
-                height: 28,
+                height: 38,
                 width: 'auto',
                 mb: 3,
-                filter: isDark ? 'brightness(0) invert(1)' : 'none',
                 display: 'block',
                 maxWidth: '100%',
               }}
@@ -142,12 +141,11 @@ export default function AuthLayout() {
             >
               <Box
                 component="img"
-                src="https://leadsrubix.com/wp-content/uploads/2023/10/Logo.svg"
+                src={isDark ? '/companylogo_white.png' : '/companylogo_dark.png'}
                 alt="Leads Rubix"
                 sx={{
-                  height: 22,
+                  height: 30,
                   width: 'auto',
-                  filter: isDark ? 'brightness(0) invert(1)' : 'none',
                   maxWidth: '60vw',
                 }}
               />

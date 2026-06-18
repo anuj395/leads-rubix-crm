@@ -23,3 +23,28 @@ exports.create = async (req, res, next) => {
     next(err);
   }
 };
+
+exports.update = async (req, res, next) => {
+  try {
+    const item = await service.updateForUser({
+      id: req.params.id,
+      payload: req.body,
+      authedUser: req.user,
+    });
+    res.json(item);
+  } catch (err) {
+    next(err);
+  }
+};
+
+exports.remove = async (req, res, next) => {
+  try {
+    await service.deleteForUser({
+      id: req.params.id,
+      authedUser: req.user,
+    });
+    res.status(204).end();
+  } catch (err) {
+    next(err);
+  }
+};

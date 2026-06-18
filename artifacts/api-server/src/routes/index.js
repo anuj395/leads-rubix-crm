@@ -20,6 +20,7 @@ const bookingRoutes = require('./bookingRoutes');
 const headersRoutes = require('./headersRoutes');
 const formFieldsRoutes = require('./formFieldsRoutes');
 const optionsRoutes = require('./optionsRoutes');
+const analyticsRoutes = require('./analyticsRoutes');
 const screenController = require('../controllers/screenController');
 const { authenticate } = require('../middlewares/auth');
 
@@ -41,9 +42,11 @@ router.use('/organizations', organizationRoutes);
 router.use('/branches', branchRoutes);
 router.use('/teams', teamRoutes);
 router.use('/bookings', bookingRoutes);
+router.use('/tasks', bookingRoutes);
 router.use('/headers', headersRoutes);
 router.use('/formFields', formFieldsRoutes);
 router.use('/options', optionsRoutes);
+router.use('/analytics', analyticsRoutes);
 
 // Compat alias: GET /api/form-config?screen=contacts → flat form_fields[]
 // (matches the legacy contract some clients still use; internally calls the

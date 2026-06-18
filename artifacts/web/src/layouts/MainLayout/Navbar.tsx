@@ -63,6 +63,13 @@ export function Navbar({ onMobileMenuOpen }: NavbarProps) {
     const { logout, user } = useAuth()
     const navigate = useNavigate()
     const [profileAnchor, setProfileAnchor] = useState<HTMLElement | null>(null)
+    const [isRotating, setIsRotating] = useState(false)
+
+    const handleThemeToggle = () => {
+        setIsRotating(true)
+        toggleMode()
+        setTimeout(() => setIsRotating(false), 500)
+    }
 
     const breadcrumbs = breadcrumbMap[location.pathname] ?? ['Home', 'Workspace', 'Overview']
     const initials =
@@ -93,8 +100,8 @@ export function Navbar({ onMobileMenuOpen }: NavbarProps) {
         backgroundColor: theme.palette.background.default,
         transition: 'all 160ms ease',
         '&:hover': {
-            borderColor: theme.palette.primary.main,
-            backgroundColor: alpha(theme.palette.primary.main, 0.06),
+            borderColor: theme.palette.secondary.main,
+            backgroundColor: alpha(theme.palette.secondary.main, 0.06),
             transform: 'translateY(-1px)',
         },
         '&:active': {
@@ -127,7 +134,9 @@ export function Navbar({ onMobileMenuOpen }: NavbarProps) {
                     minHeight: { xs: '3.5rem', sm: '3.75rem', md: '4rem' },
                     px: { xs: 1, sm: 1.75, md: 3.5 },
                     py: { xs: 0.5, md: 1 },
-                    backgroundColor: theme.palette.background.paper,
+                    background: theme.palette.mode === 'dark' ? 'rgba(10, 12, 26, 0.45)' : 'rgba(255, 255, 255, 0.55)',
+                    backdropFilter: 'blur(20px)',
+                    WebkitBackdropFilter: 'blur(20px)',
                     borderBottom: `1px solid ${theme.palette.divider}`,
                     gap: { xs: 0.75, md: 2 },
                     // Prevent overflow
@@ -238,12 +247,13 @@ export function Navbar({ onMobileMenuOpen }: NavbarProps) {
                             px: 1.25,
                             py: 0.5,
                             borderRadius: '10px',
-                            backgroundColor: theme.palette.background.default,
-                            border: `1px solid ${theme.palette.divider}`,
-                            transition: 'border-color 160ms ease, box-shadow 160ms ease',
+                            backgroundColor: theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)',
+                            border: `1px solid ${theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.07)' : 'rgba(15,17,23,0.08)'}`,
+                            transition: 'all 200ms cubic-bezier(0.4, 0, 0.2, 1)',
                             '&:focus-within': {
-                                borderColor: theme.palette.primary.main,
-                                boxShadow: `0 0 0 3px ${alpha(theme.palette.primary.main, 0.12)}`,
+                                borderColor: theme.palette.secondary.main,
+                                boxShadow: `0 0 0 3px ${alpha(theme.palette.secondary.main, 0.16)}`,
+                                backgroundColor: theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.05)' : 'rgba(255,255,255,0.95)',
                             },
                         }}
                     >
@@ -276,7 +286,13 @@ export function Navbar({ onMobileMenuOpen }: NavbarProps) {
                     </Stack>
 
                     {/* Dark mode toggle */}
-                    <IconButton onClick={toggleMode} sx={iconBtnSx} aria-label="Toggle color mode">
+                    <IconButton onClick={handleThemeToggle} sx={{
+                        ...iconBtnSx,
+                        '& svg': {
+                            transition: 'transform 500ms cubic-bezier(0.4, 0, 0.2, 1)',
+                            transform: isRotating ? 'rotate(360deg)' : 'none'
+                        }
+                    }} aria-label="Toggle color mode">
                         {mode === 'dark'
                             ? <LightModeOutlinedIcon fontSize="small" />
                             : <DarkModeOutlinedIcon fontSize="small" />}
@@ -300,14 +316,14 @@ export function Navbar({ onMobileMenuOpen }: NavbarProps) {
                             borderRadius: '10px',
                             border: `1px solid ${isProfileMenuOpen ? theme.palette.divider : 'transparent'}`,
                             backgroundColor: isProfileMenuOpen
-                                ? alpha(theme.palette.primary.main, 0.06)
+                                ? alpha(theme.palette.secondary.main, 0.08)
                                 : 'transparent',
                             transition: 'all 180ms ease',
                             minHeight: { xs: 44, sm: 'auto' },
                             minWidth: { xs: 44, sm: 'auto' },
                             '&:hover': {
-                                backgroundColor: alpha(theme.palette.primary.main, theme.palette.mode === 'dark' ? 0.10 : 0.06),
-                                borderColor: theme.palette.divider,
+                                backgroundColor: alpha(theme.palette.secondary.main, theme.palette.mode === 'dark' ? 0.12 : 0.06),
+                                borderColor: theme.palette.secondary.main,
                             },
                         }}
                     >
@@ -317,8 +333,8 @@ export function Navbar({ onMobileMenuOpen }: NavbarProps) {
                                     width: { xs: '2rem', md: '2rem' },
                                     height: { xs: '2rem', md: '2rem' },
                                     flexShrink: 0,
-                                    bgcolor: alpha(theme.palette.primary.main, mode === 'dark' ? 0.3 : 0.15),
-                                    color: theme.palette.primary.main,
+                                    bgcolor: alpha(theme.palette.secondary.main, mode === 'dark' ? 0.22 : 0.12),
+                                    color: theme.palette.secondary.main,
                                     fontWeight: 700,
                                     fontSize: '0.8125rem',
                                 }}
@@ -413,8 +429,8 @@ export function Navbar({ onMobileMenuOpen }: NavbarProps) {
                             sx={{
                                 width: 52,
                                 height: 52,
-                                bgcolor: alpha(theme.palette.primary.main, mode === 'dark' ? 0.28 : 0.15),
-                                color: theme.palette.primary.main,
+                                bgcolor: alpha(theme.palette.secondary.main, mode === 'dark' ? 0.22 : 0.12),
+                                color: theme.palette.secondary.main,
                                 fontWeight: 700,
                                 fontSize: '1.125rem',
                             }}
@@ -478,7 +494,7 @@ export function Navbar({ onMobileMenuOpen }: NavbarProps) {
                                 color: theme.palette.text.primary,
                                 minHeight: 42,
                                 '&:hover': {
-                                    backgroundColor: alpha(theme.palette.primary.main, theme.palette.mode === 'dark' ? 0.10 : 0.06),
+                                    backgroundColor: theme.palette.action.hover,
                                 },
                             }}
                         >
@@ -504,7 +520,7 @@ export function Navbar({ onMobileMenuOpen }: NavbarProps) {
                                 color: theme.palette.text.primary,
                                 minHeight: 42,
                                 '&:hover': {
-                                    backgroundColor: alpha(theme.palette.primary.main, theme.palette.mode === 'dark' ? 0.10 : 0.06),
+                                    backgroundColor: theme.palette.action.hover,
                                 },
                             }}
                         >

@@ -2,19 +2,19 @@ import { useEffect, useMemo, useState } from 'react'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import Stack from '@mui/material/Stack'
-import Paper from '@mui/material/Paper'
 import TextField from '@mui/material/TextField'
 import MenuItem from '@mui/material/MenuItem'
 import Checkbox from '@mui/material/Checkbox'
-import FormControlLabel from '@mui/material/FormControlLabel'
 import CircularProgress from '@mui/material/CircularProgress'
 import Snackbar from '@mui/material/Snackbar'
 import Alert from '@mui/material/Alert'
 import Typography from '@mui/material/Typography'
-import Divider from '@mui/material/Divider'
 import Chip from '@mui/material/Chip'
 import { Save as SaveIcon } from '@mui/icons-material'
 import { AppCard } from '@/components/ui/AppCard'
+import { AppDataGrid } from '@/components/ui/AppDataGrid'
+import type { GridColDef } from '@mui/x-data-grid'
+import { StatusBadge } from '@/components/ui/StatusBadge'
 import {
   getIndustries,
   getRoles,
@@ -175,11 +175,65 @@ export default function ScreenPermissionsPage() {
 
   const allOn = sortedFields.length > 0 && sortedFields.every((f) => enabled.has(f._id))
 
+  const columns = useMemo<GridColDef<ScreenField>[]>(
+    () => [
+      {
+        field: 'order',
+        headerName: 'Order',
+        width: 80,
+        type: 'number',
+      },
+      {
+        field: 'field_key',
+        headerName: 'Field Key',
+        flex: 1,
+        renderCell: (p) => <code>{p.value}</code>,
+      },
+      {
+        field: 'label',
+        headerName: 'Display Label',
+        flex: 1.2,
+      },
+      {
+        field: 'type',
+        headerName: 'Field Type',
+        width: 120,
+        renderCell: (p) => <StatusBadge value={p.value} hideDot />,
+      },
+      {
+        field: 'is_required',
+        headerName: 'Required',
+        width: 100,
+        renderCell: (p) => (p.value ? 'Yes' : '—'),
+      },
+      {
+        field: 'enabled',
+        headerName: 'Form Access / Visibility',
+        flex: 1,
+        align: 'center',
+        headerAlign: 'center',
+        sortable: false,
+        filterable: false,
+        renderCell: (p) => {
+          const f = p.row
+          return (
+            <Checkbox
+              size="small"
+              checked={enabled.has(f._id)}
+              onChange={() => toggle(f._id)}
+            />
+          )
+        },
+      },
+    ],
+    [enabled],
+  )
+
   return (
     <Box sx={{ p: { xs: 2, sm: 3 }, height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
       <AppCard
-        title="Screen Permissions"
-        subtitle="Pick which fields each (industry, role) can see on each screen. Saving overwrites the current set."
+        title="Permission Fields"
+        subtitle="Manage field visibility and form access permissions per role and industry."
         action={
           <Button
             variant="contained"
@@ -251,52 +305,23 @@ export default function ScreenPermissionsPage() {
             This screen has no fields yet — add some on the Screen Fields page.
           </Typography>
         ) : (
-          <Paper variant="outlined" sx={{ p: 2, flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+          <Box sx={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
             <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 1, flexShrink: 0 }}>
-              <Typography variant="subtitle2">
+              <Typography variant="subtitle2" color="text.secondary">
                 {sortedFields.length} field{sortedFields.length === 1 ? '' : 's'} • {enabled.size} enabled
               </Typography>
-              <Stack direction="row" spacing={1}>
-                <Button size="small" onClick={allOn ? clearAll : selectAll}>
-                  {allOn ? 'Clear all' : 'Select all'}
-                </Button>
-              </Stack>
+              <Button size="small" onClick={allOn ? clearAll : selectAll}>
+                {allOn ? 'Clear all' : 'Select all'}
+              </Button>
             </Stack>
-            <Divider sx={{ mb: 1, flexShrink: 0 }} />
-            <Box
-              sx={{
-                flex: 1,
-                overflowY: 'auto',
-                display: 'grid',
-                gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr', md: '1fr 1fr 1fr' },
-                rowGap: 1.5,
-                columnGap: 2,
-                alignContent: 'start',
-                pr: 0.5,
-              }}
-            >
-              {sortedFields.map((f) => (
-                <FormControlLabel
-                  key={f._id}
-                  control={
-                    <Checkbox
-                      checked={enabled.has(f._id)}
-                      onChange={() => toggle(f._id)}
-                    />
-                  }
-                  label={
-                    <Stack direction="row" spacing={1} alignItems="center">
-                      <Typography variant="body2">{f.label}</Typography>
-                      <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-                        ({f.field_key})
-                      </Typography>
-                      <Chip size="small" label={f.type} variant="outlined" />
-                    </Stack>
-                  }
-                />
-              ))}
-            </Box>
-          </Paper>
+            <AppDataGrid
+              height="55vh"
+              rows={sortedFields}
+              columns={columns}
+              loading={loading}
+              getRowId={(f) => f._id}
+            />
+          </Box>
         )}
       </AppCard>
 

@@ -23,6 +23,7 @@ import {
 } from '@/services/organizationsService'
 import { resolveScreen, type ResolvedTableHeader } from '@/services/screenAdminService'
 import { useAppSelector } from '@/store/hooks'
+import { StatusBadge } from '@/components/ui/StatusBadge'
 
 const SERVER_SORTABLE = new Set(['createdAt', 'updatedAt', 'is_active'])
 
@@ -101,6 +102,10 @@ export default function OrganizationsListPage() {
       renderCell: (p) => {
         const v = p.value
         if (v == null || v === '') return <Box sx={{ color: 'text.secondary' }}>—</Box>
+        const lowerKey = c.key.toLowerCase()
+        if (lowerKey === 'is_active' || lowerKey === 'status' || typeof v === 'boolean') {
+          return <StatusBadge value={v} />
+        }
         return String(v)
       },
     }))

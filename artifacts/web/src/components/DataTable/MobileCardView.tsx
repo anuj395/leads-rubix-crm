@@ -195,7 +195,7 @@ function MobileCard<T extends MobileRow>({
             <IconButton
               size="small"
               onClick={() => onEdit(row)}
-              sx={{ color: 'text.secondary', '&:hover': { color: 'primary.main', bgcolor: 'action.hover' } }}
+              sx={{ color: 'text.secondary', '&:hover': { color: 'secondary.main', bgcolor: 'action.hover' } }}
             >
               <EditIcon sx={{ fontSize: 16 }} />
             </IconButton>

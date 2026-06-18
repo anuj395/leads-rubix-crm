@@ -17,6 +17,7 @@
   "_id": {
     "$oid": "69e337133bc8386fec5f1add"
   },
+  "name": "Chetan Joshi ji",
   "email": "admin@gmail.com",
   "password": "$2b$10$/gXLFgqbXCvJy1YI0y4RD.vxHQH5AXT3FGZoyFC8TKjzCeNokvUxm",
   "role": "admin",
@@ -33,6 +34,7 @@
   "_id": {
     "$oid": "69e5d05fac301a3740070ac7"
   },
+  "name": "Lead Manager",
   "email": "lm@gmail.com",
   "password": "$2b$10$RY9aTjboewLb5uy9m23wRetylUhQTtOQZk2kQvyqWf8KyNYlrbWO2",
   "role": "leadManager",
@@ -49,6 +51,7 @@
   "_id": {
     "$oid": "69e5d073ac301a3740070aca"
   },
+  "name": "Team Lead",
   "email": "tl@gmail.com",
   "password": "$2b$10$P6FzkpghRExDymMNCNAMOuVQtJ22yNZN1f/LRGxnTJLDDuHHdU9Se",
   "role": "teamLead",
@@ -65,10 +68,12 @@
   "_id": {
     "$oid": "69e5d083ac301a3740070acd"
   },
+  "name": "Karan Singh",
   "email": "sales@gmail.com",
   "password": "$2b$10$SkBic8PJ44VI3ItbnGoP9OJ2NswAWsZu2F9Idg3TjY06diTBEJ95C",
   "role": "sales",
   "industry_id": "temp001",
+  "reporting_to": "69e5d073ac301a3740070aca",
   "createdAt": {
     "$date": "2026-04-20T07:06:43.446Z"
   },

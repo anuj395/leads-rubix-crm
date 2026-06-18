@@ -114,7 +114,7 @@ export default function TableToolbar({
             flexWrap: 'wrap',
           }}
         >
-          <Typography variant="body2" fontWeight={600} color="primary.main">
+          <Typography variant="body2" fontWeight={600} color="secondary.main">
             {selectedCount} selected
           </Typography>
           <Button

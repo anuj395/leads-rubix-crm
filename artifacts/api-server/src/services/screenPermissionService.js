@@ -135,7 +135,7 @@ exports.resolve = async ({ screen_key, industry_code, role_key, authedUser }) =>
   if (fields.length === 0) {
     return {
       screen: { _id: screen._id, key: screen.key, name: screen.name },
-      industry_id: industry._id,
+      industry_id: industry ? industry._id : null,
       role_id: role ? role._id : null,
       table_headers: [],
       form_fields: [],

@@ -26,6 +26,7 @@ const {
   seedContacts,
   seedOrganizations,
   seedBookings,
+  fixIntegrationsSidebar,
 } = require('./seed');
 
 const PORT = config.port || 3001;
@@ -43,6 +44,12 @@ const PORT = config.port || 3001;
     await migrateAndSeedSidebar();
   } catch (err) {
     console.error('[seed] failed to migrate/seed sidebar:', err.message || err);
+  }
+
+  try {
+    await fixIntegrationsSidebar();
+  } catch (err) {
+    console.error('[seed] failed to fix integrations sidebar routes:', err.message || err);
   }
 
   try {

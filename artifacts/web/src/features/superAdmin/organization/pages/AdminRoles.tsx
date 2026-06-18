@@ -28,6 +28,7 @@ import { AppCard } from '@/components/ui/AppCard'
 import { AppDataGrid } from '@/components/ui/AppDataGrid'
 import { InputField } from '@/components/forms/InputField'
 import { useAppSelector } from '@/store/hooks'
+import { StatusBadge } from '@/components/ui/StatusBadge'
 import {
   listUsers,
   createUser,
@@ -249,7 +250,7 @@ export default function AdminRolesPage() {
       renderCell: (p) => p.value || <Box sx={{ color: 'text.secondary' }}>—</Box> },
     { field: 'email', headerName: 'Email', flex: 1.2, minWidth: 200 },
     { field: 'is_active', headerName: 'Status', minWidth: 110,
-      renderCell: (p) => <Chip size="small" label={p.value ? 'Active' : 'Inactive'} color={p.value ? 'success' : 'default'} />,
+      renderCell: (p) => <StatusBadge value={p.value ? 'Active' : 'Inactive'} />,
     },
     { field: '__actions', headerName: 'Actions', sortable: false, filterable: false, disableColumnMenu: true,
       align: 'right', headerAlign: 'right', width: 120,

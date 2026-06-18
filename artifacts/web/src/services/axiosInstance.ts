@@ -30,6 +30,10 @@ axiosInstance.interceptors.response.use(
   async (error) => {
     if (error.response?.status === 401) {
       storage.clearAuthSession()
+      const path = window.location.pathname
+      if (path !== '/login' && path !== '/signup' && path !== '/forgot-password') {
+        window.location.href = '/login'
+      }
     }
 
     return Promise.reject(error)

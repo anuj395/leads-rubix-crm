@@ -13,10 +13,10 @@ export interface TaskApiRow {
 }
 
 export interface TasksApiResponse {
-  data: TaskApiRow[]
-  total: number
-  page: number
-  limit: number
+  items: TaskApiRow[]
+  total?: number
+  page?: number
+  limit?: number
 }
 
 export interface FetchTasksParams {
@@ -47,11 +47,11 @@ export async function fetchTasks(params: FetchTasksParams): Promise<TasksApiResp
   // Build query params
   const queryParams: Record<string, string> = {
     industry_id,
-    page: String(page + 1), // backend is 1-based
-    limit: String(limit),
+    page: String(page), // backend is 0-based
+    pageSize: String(limit), // backend uses pageSize
   }
 
-  if (search) queryParams.search = search
+  if (search) queryParams.q = search // backend uses q
   if (sortField) queryParams.sortField = sortField
   if (sortOrder) queryParams.sortOrder = sortOrder
 

@@ -6,19 +6,27 @@ export const DEFAULT_THEME_MODE: ThemeMode = 'light'
 
 // ─── Design Tokens ────────────────────────────────────────────────────────────
 const fontFamily = [
+  'Inter',
   'ui-sans-serif',
   'system-ui',
   '-apple-system',
   'BlinkMacSystemFont',
   '"Segoe UI"',
   'Roboto',
-  'Helvetica',
-  'Arial',
   'sans-serif',
 ].join(', ')
 
-const headingFontFamily = fontFamily
-const baseBorderRadius = 10
+const headingFontFamily = [
+  'Outfit',
+  'ui-sans-serif',
+  'system-ui',
+  '-apple-system',
+  'BlinkMacSystemFont',
+  '"Segoe UI"',
+  'Roboto',
+  'sans-serif',
+].join(', ')
+const baseBorderRadius = 12
 
 const sharedTokens = {
   fontFamily,
@@ -57,8 +65,8 @@ function getPalette(mode: ThemeMode) {
         secondary: '#9CA3AF',
       },
       background: {
-        default: '#0B0D1A',
-        paper: '#111629',
+        default: '#060713',
+        paper: '#0B0E20',
       },
       divider: 'rgba(255,255,255,0.07)',
       action: {
@@ -87,7 +95,7 @@ function getPalette(mode: ThemeMode) {
       secondary: sharedTokens.textSecondary,
     },
     background: {
-      default: '#F5F6FA',
+      default: '#F8FAFC',
       paper: '#FFFFFF',
     },
     divider: 'rgba(15,17,23,0.08)',
@@ -139,6 +147,20 @@ export function createAppTheme(mode: ThemeMode = DEFAULT_THEME_MODE) {
         fontWeight: sharedTokens.fontWeightSemiBold as number,
         lineHeight: 1.35,
         letterSpacing: '-0.015em',
+      },
+      h5: {
+        fontFamily: headingFontFamily,
+        fontSize: 'clamp(0.875rem, 1.8vw, 0.9375rem)',
+        fontWeight: sharedTokens.fontWeightSemiBold as number,
+        lineHeight: 1.4,
+        letterSpacing: '-0.01em',
+      },
+      h6: {
+        fontFamily: headingFontFamily,
+        fontSize: 'clamp(0.75rem, 1.6vw, 0.8125rem)',
+        fontWeight: sharedTokens.fontWeightSemiBold as number,
+        lineHeight: 1.45,
+        letterSpacing: '-0.005em',
       },
       body1: {
         fontFamily,
@@ -281,27 +303,29 @@ export function createAppTheme(mode: ThemeMode = DEFAULT_THEME_MODE) {
           // ── Contained Primary: use app primary with subtle depth ──────
           containedPrimary: ({ theme: t }) => ({
             background: isDark
-              ? `linear-gradient(135deg, ${lighten(t.palette.primary.main, 0.06)} 0%, ${t.palette.primary.main} 100%)`
-              : `linear-gradient(135deg, ${darken(t.palette.primary.main, 0.08)} 0%, ${t.palette.primary.main} 100%)`,
-            color: t.palette.primary.contrastText,
+              ? `linear-gradient(135deg, #37395C 0%, #272944 100%)`
+              : `linear-gradient(135deg, #272944 0%, #16182D 100%)`,
+            color: '#FFFFFF',
+            border: isDark ? '1px solid rgba(79, 106, 245, 0.35)' : 'none',
             boxShadow: isDark
-              ? `0 4px 14px ${alpha(t.palette.primary.main, 0.34)}, 0 1px 3px rgba(0,0,0,0.18)`
-              : `0 4px 16px ${alpha(t.palette.primary.main, 0.18)}, 0 1px 3px rgba(0,0,0,0.08)`,
+              ? `0 4px 12px rgba(39, 41, 68, 0.4), 0 1px 3px rgba(0,0,0,0.18)`
+              : `0 4px 14px rgba(39, 41, 68, 0.2), 0 1px 3px rgba(0,0,0,0.08)`,
             '&:hover': {
               background: isDark
-                ? `linear-gradient(135deg, ${lighten(t.palette.primary.main, 0.12)} 0%, ${lighten(t.palette.primary.main, 0.02)} 100%)`
-                : `linear-gradient(135deg, ${darken(t.palette.primary.main, 0.14)} 0%, ${darken(t.palette.primary.main, 0.02)} 100%)`,
+                ? `linear-gradient(135deg, #4A4D78 0%, #272944 100%)`
+                : `linear-gradient(135deg, #3A3D66 0%, #1B1D33 100%)`,
+              border: isDark ? '1px solid rgba(79, 106, 245, 0.55)' : 'none',
               boxShadow: isDark
-                ? `0 8px 24px ${alpha(t.palette.primary.main, 0.44)}`
-                : `0 8px 28px ${alpha(t.palette.primary.main, 0.22)}`,
+                ? `0 8px 24px rgba(79, 106, 245, 0.45)`
+                : `0 8px 24px rgba(39, 41, 68, 0.3)`,
             },
             '&:active': {
               background: isDark
-                ? `linear-gradient(135deg, ${darken(t.palette.primary.main, 0.06)} 0%, ${lighten(t.palette.primary.main, 0.02)} 100%)`
-                : `linear-gradient(135deg, ${darken(t.palette.primary.main, 0.18)} 0%, ${darken(t.palette.primary.main, 0.06)} 100%)`,
+                ? `linear-gradient(135deg, #272944 0%, #1B1D33 100%)`
+                : `linear-gradient(135deg, #16182D 0%, #272944 100%)`,
               boxShadow: isDark
-                ? `0 2px 8px ${alpha(t.palette.primary.main, 0.28)}`
-                : `0 2px 8px ${alpha(t.palette.primary.main, 0.16)}`,
+                ? `0 2px 8px rgba(39, 41, 68, 0.3)`
+                : `0 2px 8px rgba(39, 41, 68, 0.16)`,
             },
             '&.Mui-disabled': {
               background: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)',
@@ -377,8 +401,10 @@ export function createAppTheme(mode: ThemeMode = DEFAULT_THEME_MODE) {
         styleOverrides: {
           root: ({ theme: t }) => ({
             borderRadius: baseBorderRadius * 1.4,
-            border: `1px solid ${t.palette.divider}`,
-            backgroundColor: t.palette.background.paper,
+            border: isDark ? '1px solid rgba(255,255,255,0.05)' : '1px solid rgba(15,17,23,0.06)',
+            backgroundColor: isDark ? 'rgba(17, 22, 41, 0.75)' : 'rgba(255, 255, 255, 0.75)',
+            backdropFilter: 'blur(12px)',
+            WebkitBackdropFilter: 'blur(12px)',
             backgroundImage: 'none',
             boxShadow: isDark
               ? '0 1px 3px rgba(0,0,0,0.40), 0 8px 24px rgba(0,0,0,0.24)'
@@ -520,12 +546,14 @@ export function createAppTheme(mode: ThemeMode = DEFAULT_THEME_MODE) {
         styleOverrides: {
           root: ({ theme: t }) => ({
             borderRadius: baseBorderRadius,
-            backgroundColor: t.palette.background.paper,
-            transition: 'box-shadow 160ms ease, border-color 160ms ease',
+            backgroundColor: isDark ? 'rgba(8, 10, 24, 0.45)' : 'rgba(255, 255, 255, 0.55)',
+            backdropFilter: 'blur(4px)',
+            transition: 'box-shadow 160ms ease, border-color 160ms ease, background-color 160ms ease',
             '&:hover .MuiOutlinedInput-notchedOutline': {
               borderColor: isDark ? 'rgba(255,255,255,0.25)' : 'rgba(0,0,0,0.25)',
             },
             '&.Mui-focused': {
+              backgroundColor: isDark ? 'rgba(8, 10, 24, 0.7)' : 'rgba(255, 255, 255, 0.85)',
               boxShadow: `0 0 0 3px ${isDark ? 'rgba(79,106,245,0.22)' : 'rgba(79,106,245,0.14)'}`,
             },
             '&.Mui-focused .MuiOutlinedInput-notchedOutline': {

@@ -14,6 +14,7 @@ import { DynamicForm } from '@/components/DynamicForm/DynamicForm'
 import { listContacts, createContact, type Contact } from '@/services/contactsService'
 import { resolveScreen, type ResolvedTableHeader } from '@/services/screenAdminService'
 import { useAppSelector } from '@/store/hooks'
+import { StatusBadge } from '@/components/ui/StatusBadge'
 
 export default function ContactsListPage() {
   const user = useAppSelector((s) => s.auth.user)
@@ -63,6 +64,17 @@ export default function ContactsListPage() {
       renderCell: (p) => {
         const v = p.value
         if (v == null || v === '') return <Box sx={{ color: 'text.secondary' }}>—</Box>
+        if (c.type === 'date' || c.key === 'createdAt' || c.key.toLowerCase().includes('date')) {
+          return new Date(v as string).toLocaleString()
+        }
+        if (
+          c.type === 'badge' ||
+          c.key.toLowerCase().includes('status') ||
+          c.key.toLowerCase().includes('priority') ||
+          c.key.toLowerCase() === 'lead_type'
+        ) {
+          return <StatusBadge value={v} />
+        }
         return String(v)
       },
     }))

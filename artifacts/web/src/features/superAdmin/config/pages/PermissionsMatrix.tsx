@@ -2,19 +2,19 @@ import { useEffect, useMemo, useState } from 'react'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import Stack from '@mui/material/Stack'
-import Paper from '@mui/material/Paper'
 import Card from '@mui/material/Card'
 import CardContent from '@mui/material/CardContent'
 import TextField from '@mui/material/TextField'
 import MenuItem from '@mui/material/MenuItem'
 import Checkbox from '@mui/material/Checkbox'
-import FormControlLabel from '@mui/material/FormControlLabel'
 import CircularProgress from '@mui/material/CircularProgress'
 import Snackbar from '@mui/material/Snackbar'
 import Alert from '@mui/material/Alert'
 import Typography from '@mui/material/Typography'
 import Divider from '@mui/material/Divider'
 import { Save as SaveIcon } from '@mui/icons-material'
+import { AppDataGrid } from '@/components/ui/AppDataGrid'
+import type { GridColDef } from '@mui/x-data-grid'
 import {
   getIndustries,
   getRoles,
@@ -57,12 +57,11 @@ export default function PermissionsMatrixPage() {
     })()
   }, [])
 
-  // Reload roles whenever industry changes. Use a `cancelled` flag so a fast
-  // industry change doesn't apply stale role lists / clobber the new selection.
+  // Reload roles whenever industry changes.
   useEffect(() => {
     if (!industryId) return
     let cancelled = false
-    setRoleId('') // clear immediately so the perms effect below also pauses
+    setRoleId('')
     void (async () => {
       try {
         const list = await getRoles(industryId)
@@ -79,7 +78,7 @@ export default function PermissionsMatrixPage() {
     }
   }, [industryId])
 
-  // Reload current selections whenever (industry, role) changes — also race-safe.
+  // Reload current selections whenever (industry, role) changes.
   useEffect(() => {
     if (!industryId || !roleId) {
       setEnabled(new Set())
@@ -108,9 +107,8 @@ export default function PermissionsMatrixPage() {
     }
   }, [industryId, roleId])
 
-  // Group menus by parent for an organised matrix.
+  // Group menus by parent for flat ordering.
   const groupedMenus = useMemo(() => {
-    const byId = new Map(menus.map((m) => [m._id, m]))
     const roots = menus.filter((m) => !m.parent_id).sort((a, b) => a.order - b.order)
     return roots.map((root) => ({
       root,
@@ -118,8 +116,6 @@ export default function PermissionsMatrixPage() {
         .filter((m) => m.parent_id === root._id)
         .sort((a, b) => a.order - b.order),
     }))
-    // include reference to map for orphan handling — currently unused
-    void byId
   }, [menus])
 
   const orphanMenus = useMemo(() => {
@@ -127,25 +123,27 @@ export default function PermissionsMatrixPage() {
     return menus.filter((m) => m.parent_id && !byId.has(m.parent_id))
   }, [menus])
 
+  const flatMenus = useMemo(() => {
+    const list: SidebarMenuRecord[] = []
+    groupedMenus.forEach(({ root, children }) => {
+      list.push(root)
+      children.forEach((c) => {
+        list.push(c)
+      })
+    })
+    orphanMenus.forEach((o) => {
+      if (!list.some((existing) => existing._id === o._id)) {
+        list.push(o)
+      }
+    })
+    return list
+  }, [groupedMenus, orphanMenus])
+
   const toggle = (id: string) => {
     setEnabled((prev) => {
       const next = new Set(prev)
       if (next.has(id)) next.delete(id)
       else next.add(id)
-      return next
-    })
-  }
-
-  const toggleGroup = (rootId: string, childIds: string[], allOn: boolean) => {
-    setEnabled((prev) => {
-      const next = new Set(prev)
-      if (allOn) {
-        next.delete(rootId)
-        childIds.forEach((c) => next.delete(c))
-      } else {
-        next.add(rootId)
-        childIds.forEach((c) => next.add(c))
-      }
       return next
     })
   }
@@ -166,6 +164,67 @@ export default function PermissionsMatrixPage() {
       setSaving(false)
     }
   }
+
+  const columns = useMemo<GridColDef<SidebarMenuRecord>[]>(
+    () => [
+      {
+        field: 'parent_name',
+        headerName: 'Parent Menu',
+        flex: 1,
+        valueGetter: (_, row) => {
+          if (!row.parent_id) return '— (Root)'
+          const parent = menus.find((m) => m._id === row.parent_id)
+          return parent ? `${parent.name}` : '—'
+        },
+      },
+      {
+        field: 'name',
+        headerName: 'Menu Name',
+        flex: 1.2,
+        renderCell: (p) => {
+          const m = p.row
+          const isRoot = !m.parent_id
+          return (
+            <span style={{ fontWeight: isRoot ? 600 : 400, paddingLeft: isRoot ? 0 : 16 }}>
+              {!isRoot ? '↳ ' : ''}{m.name}
+            </span>
+          )
+        },
+      },
+      {
+        field: 'key',
+        headerName: 'Menu Key',
+        flex: 1,
+        renderCell: (p) => <code>{p.value}</code>,
+      },
+      {
+        field: 'route',
+        headerName: 'Route',
+        flex: 1.2,
+        renderCell: (p) => (p.value ? <code>{p.value}</code> : <span style={{ color: '#aaa' }}>—</span>),
+      },
+      {
+        field: 'visible',
+        headerName: 'Sidebar Visibility',
+        width: 160,
+        align: 'center',
+        headerAlign: 'center',
+        sortable: false,
+        filterable: false,
+        renderCell: (p) => {
+          const m = p.row
+          return (
+            <Checkbox
+              size="small"
+              checked={enabled.has(m._id)}
+              onChange={() => toggle(m._id)}
+            />
+          )
+        },
+      },
+    ],
+    [menus, enabled],
+  )
 
   return (
     <Box sx={{ p: { xs: 2, sm: 3 }, height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
@@ -254,8 +313,8 @@ export default function PermissionsMatrixPage() {
 
           <Divider sx={{ mb: 2, flexShrink: 0 }} />
 
-          {/* Scrollable Content Area */}
-          <Box sx={{ flex: 1, overflowY: 'auto', minHeight: 0, pr: 0.5 }}>
+          {/* Table Area */}
+          <Box sx={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
             {loading ? (
               <Box sx={{ display: 'flex', justifyContent: 'center', py: 6 }}>
                 <CircularProgress />
@@ -264,118 +323,18 @@ export default function PermissionsMatrixPage() {
               <Typography color="text.secondary" sx={{ py: 4, textAlign: 'center' }}>
                 Select an industry and role to manage permissions.
               </Typography>
-            ) : menus.length === 0 ? (
+            ) : flatMenus.length === 0 ? (
               <Typography color="text.secondary" sx={{ py: 4, textAlign: 'center' }}>
                 No menus exist yet — create some on the Menus page first.
               </Typography>
             ) : (
-              <Stack spacing={2}>
-                {groupedMenus.map(({ root, children }) => {
-                  const allChildIds = children.map((c) => c._id)
-                  const allOn =
-                    enabled.has(root._id) && allChildIds.every((id) => enabled.has(id))
-                  const someOn =
-                    enabled.has(root._id) || allChildIds.some((id) => enabled.has(id))
-                  return (
-                    <Paper key={root._id} variant="outlined" sx={{ p: 2 }}>
-                      <Stack
-                        direction="row"
-                        justifyContent="space-between"
-                        alignItems="center"
-                        sx={{ mb: children.length ? 1 : 0 }}
-                      >
-                        <FormControlLabel
-                          control={
-                            <Checkbox
-                              checked={enabled.has(root._id)}
-                              indeterminate={!enabled.has(root._id) && someOn}
-                              onChange={() => toggle(root._id)}
-                            />
-                          }
-                          label={
-                            <Typography sx={{ fontWeight: 600 }}>
-                              {root.name}{' '}
-                              <Typography component="span" sx={{ color: 'text.secondary', fontWeight: 400 }}>
-                                ({root.key})
-                              </Typography>
-                            </Typography>
-                          }
-                        />
-                        {children.length > 0 && (
-                          <Button
-                            size="small"
-                            onClick={() => toggleGroup(root._id, allChildIds, allOn)}
-                          >
-                            {allOn ? 'Clear group' : 'Select group'}
-                          </Button>
-                        )}
-                      </Stack>
-                      {children.length > 0 && (
-                        <>
-                          <Divider sx={{ mb: 1 }} />
-                          <Box
-                            sx={{
-                              display: 'grid',
-                              gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr', md: '1fr 1fr 1fr' },
-                              rowGap: 0.5,
-                              columnGap: 2,
-                              pl: 4,
-                            }}
-                          >
-                            {children.map((child) => (
-                              <FormControlLabel
-                                key={child._id}
-                                control={
-                                  <Checkbox
-                                    checked={enabled.has(child._id)}
-                                    onChange={() => toggle(child._id)}
-                                  />
-                                }
-                                label={
-                                  <Typography variant="body2">
-                                    {child.name}{' '}
-                                    <Typography
-                                      component="span"
-                                      variant="caption"
-                                      sx={{ color: 'text.secondary' }}
-                                    >
-                                      ({child.key})
-                                    </Typography>
-                                  </Typography>
-                                }
-                              />
-                            ))}
-                          </Box>
-                        </>
-                      )}
-                    </Paper>
-                  )
-                })}
-
-                {orphanMenus.length > 0 && (
-                  <Paper variant="outlined" sx={{ p: 2 }}>
-                    <Typography sx={{ fontWeight: 600, mb: 1 }}>Orphans</Typography>
-                    <Box
-                      sx={{
-                        display: 'grid',
-                        gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' },
-                        rowGap: 0.5,
-                        columnGap: 2,
-                      }}
-                    >
-                      {orphanMenus.map((m) => (
-                        <FormControlLabel
-                          key={m._id}
-                          control={
-                            <Checkbox checked={enabled.has(m._id)} onChange={() => toggle(m._id)} />
-                          }
-                          label={`${m.name} (${m.key})`}
-                        />
-                      ))}
-                    </Box>
-                  </Paper>
-                )}
-              </Stack>
+              <AppDataGrid
+                height="55vh"
+                rows={flatMenus}
+                columns={columns}
+                loading={loading}
+                getRowId={(m) => m._id}
+              />
             )}
           </Box>
         </CardContent>

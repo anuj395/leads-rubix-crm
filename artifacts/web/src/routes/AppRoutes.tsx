@@ -4,17 +4,20 @@ import { ForgotPasswordPage, LoginPage, SignupPage } from '@/features/auth'
 import AuthLayout from '@/layouts/AuthLayout'
 import { MainLayout } from '@/layouts/MainLayout/MainLayout'
 import { ProtectedRoute } from './ProtectedRoute'
-import { superAdminMenuConfig, adminMenuConfig } from '@/config/menuConfig'
+import { superAdminMenuConfig, getMenuConfigForRole, type SuperAdminMenuItem } from '@/config/menuConfig'
 import { routeComponentMap as superAdminRouteMap } from './superAdminRouteMap'
 import { routeComponentMap as adminRouteMap } from './adminRouteMap'
 import { useAuth } from '@/hooks/useAuth'
 import { Loader } from '@/components/common/Loader'
 import NotFoundPage from '@/features/superAdmin/pages/NotFound'
+import type { UserRole } from '@/types/user'
 
 export function AppRoutes() {
   const { user } = useAuth()
   const role = user?.role ?? undefined;
-  const menuConfig = role === 'superAdmin' ? superAdminMenuConfig : adminMenuConfig
+  const menuConfig = (role === 'superAdmin'
+    ? superAdminMenuConfig
+    : getMenuConfigForRole(role as UserRole)) as SuperAdminMenuItem[]
   const routeComponentMap = role === 'superAdmin' ? superAdminRouteMap : adminRouteMap
 
   return (

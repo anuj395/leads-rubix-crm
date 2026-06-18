@@ -18,6 +18,7 @@ import { Edit as EditIcon, Delete as DeleteIcon, Add as AddIcon } from '@mui/ico
 import type { GridColDef } from '@mui/x-data-grid'
 import { AppCard } from '@/components/ui/AppCard'
 import { AppDataGrid } from '@/components/ui/AppDataGrid'
+import { StatusBadge } from '@/components/ui/StatusBadge'
 import {
   getIndustries,
   createIndustryRecord,
@@ -102,9 +103,7 @@ export default function IndustriesPage() {
     { field: 'description', headerName: 'Description', flex: 1.5, minWidth: 200,
       renderCell: (p) => p.value ? String(p.value) : <Box sx={{ color: 'text.secondary' }}>—</Box> },
     { field: 'is_active', headerName: 'Status', minWidth: 110,
-      renderCell: (p) => (
-        <Chip size="small" label={p.value ? 'Active' : 'Inactive'} color={p.value ? 'success' : 'default'} />
-      ),
+      renderCell: (p) => <StatusBadge value={p.value ? 'Active' : 'Inactive'} />,
     },
     { field: '__actions', headerName: 'Actions', sortable: false, filterable: false, disableColumnMenu: true,
       align: 'right', headerAlign: 'right', width: 120,

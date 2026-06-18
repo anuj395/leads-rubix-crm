@@ -231,8 +231,8 @@ export function useTasks({
           })
 
           if (!cancelled) {
-            setRows(result.data)
-            setTotal(result.total)
+            setRows(result.items || [])
+            setTotal(result.total ?? result.items?.length ?? 0)
           }
         } else {
           // ── Mock / dev fallback ───────────────────────────────────────────

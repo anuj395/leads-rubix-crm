@@ -30,6 +30,7 @@ import { AppDataGrid } from '@/components/ui/AppDataGrid'
 import { DynamicForm } from '@/components/DynamicForm/DynamicForm'
 import { InputField } from '@/components/forms/InputField'
 import { useAppSelector } from '@/store/hooks'
+import { StatusBadge } from '@/components/ui/StatusBadge'
 import {
   listUsersPaged,
   createUser,
@@ -248,37 +249,37 @@ export default function UserListPage() {
   )
 
   const gridColumns = useMemo<GridColDef<AdminUser>[]>(() => {
-    const cols: GridColDef<AdminUser>[] = allColumns.map((c) => ({
-      field: c.key,
-      headerName: c.label,
-      flex: 1,
-      minWidth: 140,
-      // We run `sortingMode="server"`, but the API only sorts a fixed set of
-      // columns (see SERVER_SORTABLE). Disable sorting for everything else so
-      // the header doesn't pretend to sort when it can't.
-      sortable: c.sortable !== false && SERVER_SORTABLE.has(c.key),
-      // Pull dynamic field values out of `row.fields` since they aren't on the
-      // top-level row object.
-      valueGetter: (_value, row) => {
-        if (c.key in row) return (row as unknown as Record<string, unknown>)[c.key]
-        return (row.fields as Record<string, unknown>)?.[c.key]
-      },
-      renderCell: (params: GridRenderCellParams<AdminUser>) => {
-        if (c.key === 'is_active') {
-          return (
-            <Chip
-              size="small"
-              label={params.row.is_active ? 'Active' : 'Inactive'}
-              color={params.row.is_active ? 'success' : 'default'}
-            />
-          )
-        }
-        if (c.key === 'role') return <Chip size="small" label={params.row.role} />
-        const v = params.value
-        if (v == null || v === '') return <Box sx={{ color: 'text.secondary' }}>—</Box>
-        return String(v)
-      },
-    }))
+    const cols: GridColDef<AdminUser>[] = allColumns.map((c) => {
+      const isFixed = ['role', 'is_active', 'industry_id', 'phone', 'employee_id', 'department', 'designation'].includes(c.key)
+      const columnWidthProps = isFixed
+        ? { width: c.key === 'role' ? 160 : c.key === 'is_active' ? 130 : c.key === 'industry_id' ? 120 : 150 }
+        : { flex: 1, minWidth: 140 }
+
+      return {
+        field: c.key,
+        headerName: c.label,
+        ...columnWidthProps,
+        // We run `sortingMode="server"`, but the API only sorts a fixed set of
+        // columns (see SERVER_SORTABLE). Disable sorting for everything else so
+        // the header doesn't pretend to sort when it can't.
+        sortable: c.sortable !== false && SERVER_SORTABLE.has(c.key),
+        // Pull dynamic field values out of `row.fields` since they aren't on the
+        // top-level row object.
+        valueGetter: (_value, row) => {
+          if (c.key in row) return (row as unknown as Record<string, unknown>)[c.key]
+          return (row.fields as Record<string, unknown>)?.[c.key]
+        },
+        renderCell: (params: GridRenderCellParams<AdminUser>) => {
+          if (c.key === 'is_active') {
+            return <StatusBadge value={params.row.is_active ? 'Active' : 'Inactive'} />
+          }
+          if (c.key === 'role') return <StatusBadge value={params.row.role} hideDot />
+          const v = params.value
+          if (v == null || v === '') return <Box sx={{ color: 'text.secondary' }}>—</Box>
+          return String(v)
+        },
+      }
+    })
 
     cols.push({
       field: '__actions',

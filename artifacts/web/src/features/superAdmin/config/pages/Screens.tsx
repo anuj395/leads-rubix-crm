@@ -18,6 +18,7 @@ import { Edit as EditIcon, Delete as DeleteIcon, Add as AddIcon } from '@mui/ico
 import type { GridColDef } from '@mui/x-data-grid'
 import { AppCard } from '@/components/ui/AppCard'
 import { AppDataGrid } from '@/components/ui/AppDataGrid'
+import { StatusBadge } from '@/components/ui/StatusBadge'
 import {
   getScreens,
   createScreen,
@@ -102,9 +103,7 @@ export default function ScreensPage() {
     { field: 'description', headerName: 'Description', flex: 1.5, minWidth: 200,
       renderCell: (p) => p.value ? String(p.value) : <Box sx={{ color: 'text.secondary' }}>—</Box> },
     { field: 'is_active', headerName: 'Status', minWidth: 110,
-      renderCell: (p) => (
-        <Chip size="small" label={p.value ? 'Active' : 'Inactive'} color={p.value ? 'success' : 'default'} />
-      ),
+      renderCell: (p) => <StatusBadge value={p.value ? 'Active' : 'Inactive'} />,
     },
     { field: '__actions', headerName: 'Actions', sortable: false, filterable: false, disableColumnMenu: true,
       align: 'right', headerAlign: 'right', width: 120,
@@ -121,7 +120,7 @@ export default function ScreensPage() {
     <Box sx={{ p: { xs: 2, sm: 3 }, height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
       <AppCard
         title="Screens"
-        subtitle="Modules whose tables and forms are configured per role and industry."
+        subtitle="Manage dynamic form sections and screen modules configuration."
         action={<Button variant="contained" startIcon={<AddIcon />} onClick={openCreate}>Add Screen</Button>}
         fullHeight
       >

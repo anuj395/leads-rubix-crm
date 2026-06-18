@@ -44,19 +44,44 @@ function capitalize(s) {
 
 async function seedUsers() {
   const User = mongoose.model('User');
-  const existing = await User.estimatedDocumentCount();
-
-  if (existing > 0) {
-    console.log(`[seed] users collection already has ${existing} doc(s) — skipping bulk seed`);
-  } else if (fs.existsSync(SEED_FILE)) {
+  const bcrypt = require('bcryptjs');
+  const hashedDevPassword = bcrypt.hashSync('rubix1234', 10);
+  if (fs.existsSync(SEED_FILE)) {
     const raw = JSON.parse(fs.readFileSync(SEED_FILE, 'utf8'));
     const docs = (Array.isArray(raw) ? raw : [raw]).map(reviveEjson);
-    // Use the native collection to bypass the schema's pre('save') hook,
-    // which would otherwise re-hash the already-hashed passwords.
-    const result = await User.collection.insertMany(docs, { ordered: false });
-    console.log(`[seed] inserted ${result.insertedCount} user(s) from seed-data/users.json`);
+    let synced = 0;
+    for (const d of docs) {
+      await User.updateOne(
+        { email: d.email },
+        {
+          $set: {
+            name: d.name,
+            role: d.role,
+            industry_id: d.industry_id,
+            reporting_to: d.reporting_to || '',
+          },
+          $setOnInsert: {
+            _id: d._id,
+            password: hashedDevPassword,
+          }
+        },
+        { upsert: true }
+      );
+      synced++;
+    }
+    console.log(`[seed] synchronized ${synced} user(s) from seed-data/users.json`);
   } else {
-    console.log('[seed] no seed-data/users.json found — skipping bulk user seed');
+    console.log('[seed] no seed-data/users.json found — skipping user seed');
+  }
+
+  // Ensure all existing users in the database are updated to password 'rubix1234'
+  const list = await User.find({});
+  for (const u of list) {
+    const match = await bcrypt.compare('rubix1234', u.password);
+    if (!match) {
+      await User.updateOne({ _id: u._id }, { $set: { password: hashedDevPassword } });
+      console.log(`[seed] reset password for user ${u.email} to 'rubix1234'`);
+    }
   }
 
   // Ensure a known dev superAdmin is present — DEV/TEST environments only.
@@ -308,6 +333,19 @@ const SCREEN_DEFAULTS = [
       { field_key: 'website',       label: 'Website',       type: 'text',     is_required: false, order: 6 },
     ],
   },
+  {
+    key: 'bookings',
+    name: 'Bookings',
+    description: 'Customer booking records — fully dynamic table & form',
+    fields: [
+      { field_key: 'customer_name', label: 'Customer Name', type: 'text',     is_required: true,  order: 1 },
+      { field_key: 'contact_no',    label: 'Phone Number',  type: 'text',     is_required: false, order: 2 },
+      { field_key: 'project',       label: 'Project Name',  type: 'text',     is_required: false, order: 3 },
+      { field_key: 'location',      label: 'Location',      type: 'text',     is_required: false, order: 4 },
+      { field_key: 'branch',        label: 'Branch',        type: 'text',     is_required: false, order: 5 },
+      { field_key: 'team',          label: 'Assigned Team',  type: 'text',     is_required: false, order: 6 },
+    ],
+  },
 ];
 
 async function seedScreens() {
@@ -511,6 +549,85 @@ async function seedBookings() {
   }
 }
 
+async function fixIntegrationsSidebar() {
+  const SidebarMenu = mongoose.model('SidebarMenu');
+  
+  // 1. Rename integrations.api_list to integrations.api
+  const apiListMenu = await SidebarMenu.findOne({ key: 'integrations.api_list' });
+  if (apiListMenu) {
+    const existingApi = await SidebarMenu.findOne({ key: 'integrations.api' });
+    if (!existingApi) {
+      await SidebarMenu.updateOne(
+        { _id: apiListMenu._id },
+        { 
+          $set: { 
+            key: 'integrations.api',
+            route: '/integrations/api',
+            name: 'API List',
+            icon: 'api'
+          } 
+        }
+      );
+      console.log('[seed] migrated integrations.api_list to integrations.api');
+    } else {
+      await SidebarMenu.deleteOne({ _id: apiListMenu._id });
+      console.log('[seed] deleted redundant integrations.api_list');
+    }
+  }
+
+  // 2. Rename integrations.api_data to integrations.apiData
+  const apiDataMenu = await SidebarMenu.findOne({ key: 'integrations.api_data' });
+  if (apiDataMenu) {
+    const existingApiData = await SidebarMenu.findOne({ key: 'integrations.apiData' });
+    if (!existingApiData) {
+      await SidebarMenu.updateOne(
+        { _id: apiDataMenu._id },
+        { 
+          $set: { 
+            key: 'integrations.apiData',
+            route: '/integrations/api-data',
+            name: 'API Data',
+            icon: 'apiData'
+          } 
+        }
+      );
+      console.log('[seed] migrated integrations.api_data to integrations.apiData');
+    } else {
+      await SidebarMenu.deleteOne({ _id: apiDataMenu._id });
+      console.log('[seed] deleted redundant integrations.api_data');
+    }
+  }
+
+  // 3. Ensure integrations.integrations is updated
+  const mainIntegrations = await SidebarMenu.findOne({ key: 'integrations.integrations' });
+  if (mainIntegrations) {
+    await SidebarMenu.updateOne(
+      { _id: mainIntegrations._id },
+      { 
+        $set: { 
+          route: '/integrations',
+          name: 'Integrations',
+          icon: 'integrations'
+        } 
+      }
+    );
+    console.log('[seed] verified integrations.integrations route and configuration');
+  }
+
+  // 4. Double check routes
+  const apiMenu = await SidebarMenu.findOne({ key: 'integrations.api' });
+  if (apiMenu && apiMenu.route !== '/integrations/api') {
+    await SidebarMenu.updateOne({ _id: apiMenu._id }, { $set: { route: '/integrations/api', icon: 'api', name: 'API List' } });
+    console.log('[seed] corrected route for integrations.api to /integrations/api');
+  }
+
+  const apiDataDoc = await SidebarMenu.findOne({ key: 'integrations.apiData' });
+  if (apiDataDoc && apiDataDoc.route !== '/integrations/api-data') {
+    await SidebarMenu.updateOne({ _id: apiDataDoc._id }, { $set: { route: '/integrations/api-data', icon: 'apiData', name: 'API Data' } });
+    console.log('[seed] corrected route for integrations.apiData to /integrations/api-data');
+  }
+}
+
 module.exports = {
   seedUsers,
   migrateAndSeedSidebar,
@@ -519,4 +636,5 @@ module.exports = {
   seedContacts,
   seedOrganizations,
   seedBookings,
+  fixIntegrationsSidebar,
 };

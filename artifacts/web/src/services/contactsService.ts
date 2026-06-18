@@ -20,3 +20,12 @@ export async function createContact(payload: Record<string, unknown>): Promise<C
   const res = await api.post('contacts', payload)
   return res.data as Contact
 }
+
+export async function updateContact(id: string, payload: Record<string, unknown>): Promise<Contact> {
+  const res = await api.put(`contacts/${id}`, payload)
+  return res.data as Contact
+}
+
+export async function deleteContact(id: string): Promise<void> {
+  await api.delete(`contacts/${id}`)
+}

@@ -23,8 +23,15 @@ exports.list = async ({ activeOnly = false } = {}) => {
 
 exports.findById = async (id) => Industry.findById(id).lean().exec();
 
-exports.findByCode = async (code) =>
-  Industry.findOne({ code: String(code || '').toLowerCase() }).lean().exec();
+exports.findByCode = async (code) => {
+  if (!code) return null;
+  const lower = String(code).toLowerCase().trim();
+  let doc = await Industry.findOne({ code: lower }).lean().exec();
+  if (!doc && mongoose.Types.ObjectId.isValid(code)) {
+    doc = await Industry.findById(code).lean().exec();
+  }
+  return doc;
+};
 
 exports.create = async ({ code, name, description, is_active }) => {
   const doc = await Industry.create({

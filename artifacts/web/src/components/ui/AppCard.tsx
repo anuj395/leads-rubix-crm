@@ -21,6 +21,7 @@ export function AppCard({ action, children, subtitle, title, sx, fullHeight = fa
 
   return (
     <Card
+      className="glass-card"
       sx={{
         width: '100%',
         minWidth: 0,

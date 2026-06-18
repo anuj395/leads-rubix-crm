@@ -56,6 +56,8 @@ export function AppProviders({ children, mode: initialMode }: AppProvidersProps)
   useEffect(() => {
     globalThis.localStorage?.setItem(THEME_MODE_STORAGE_KEY, mode)
     document.documentElement.style.colorScheme = mode
+    document.documentElement.setAttribute('data-mui-color-scheme', mode)
+    document.documentElement.setAttribute('data-theme', mode)
   }, [mode])
 
   const contextValue = useMemo<ThemeModeContextValue>(

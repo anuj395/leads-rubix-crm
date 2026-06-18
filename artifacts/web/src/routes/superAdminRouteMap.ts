@@ -1,5 +1,4 @@
 import AnalyticsPage from '@/features/superAdmin/pages/Analytics'
-import OrganizationPage from '@/features/superAdmin/pages/Organization'
 import OrganizationsListPage from '@/features/superAdmin/organization/pages/Organizations'
 import AdminRolesPage from '@/features/superAdmin/organization/pages/AdminRoles'
 import UserListPage from '@/features/superAdmin/users/pages/UserList'
@@ -29,10 +28,21 @@ import FaqListPage from '@/features/superAdmin/support/pages/FaqList'
 import LicensesPage from '@/features/superAdmin/setting/pages/Licenses'
 import CouponsPage from '@/features/superAdmin/setting/pages/Coupons'
 import UpdatePasswordPage from '@/features/superAdmin/setting/pages/UpdatePassword'
+import SubscriptionDetailsPage from '@/features/admin/setting/pages/SubscriptionDetails'
+
+import HolidayConfigPage from '@/features/admin/config/pages/HolidayConfig'
+import DaysConfigPage from '@/features/admin/config/pages/DaysConfig'
+
+import IntegrationsPage from '@/features/admin/integrations/pages/Integrations'
+import IntegrationsApiPage from '@/features/admin/integrations/pages/IntegrationsApi'
+import IntegrationsApiDataPage from '@/features/admin/integrations/pages/IntegrationsApiData'
+
+import AreaConverterPage from '@/features/admin/tool/pages/AreaConverter'
+import CalculatorPage from '@/features/admin/tool/pages/Calculator'
+import EmiCalculatorPage from '@/features/admin/tool/pages/EmiCalculator'
 
 export const routeComponentMap: Record<string, any> = {
   "/analytics": AnalyticsPage,
-  "/organization": OrganizationPage,
   "/organization/list": OrganizationsListPage,
   "/organization/admin-roles": AdminRolesPage,
   "/users": UserListPage,
@@ -55,11 +65,22 @@ export const routeComponentMap: Record<string, any> = {
   "/configuration/industries": IndustriesPage,
   "/configuration/menus": MenusPage,
   "/configuration/permissions": PermissionsMatrixPage,
+  "/configuration/holiday-config": HolidayConfigPage,
+  "/configuration/days-config": DaysConfigPage,
+
+  "/integrations": IntegrationsPage,
+  "/integrations/api": IntegrationsApiPage,
+  "/integrations/api-data": IntegrationsApiDataPage,
 
   "/support/news": NewsListPage,
   "/support/faq": FaqListPage,
 
   "/account/licenses": LicensesPage,
   "/account/coupons": CouponsPage,
+  "/account/subscription-details": SubscriptionDetailsPage,
   "/account/update-password": UpdatePasswordPage,
+
+  "/tool/areaConverter": AreaConverterPage,
+  "/tool/calculator": CalculatorPage,
+  "/tool/emi-calculator": EmiCalculatorPage,
 }

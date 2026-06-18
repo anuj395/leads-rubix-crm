@@ -3,10 +3,10 @@ import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import Stack from '@mui/material/Stack'
 import Paper from '@mui/material/Paper'
-import Chip from '@mui/material/Chip'
 import IconButton from '@mui/material/IconButton'
 import { AppDataGrid } from '@/components/ui/AppDataGrid'
 import type { GridColDef } from '@mui/x-data-grid'
+import { StatusBadge } from '@/components/ui/StatusBadge'
 import Dialog from '@mui/material/Dialog'
 import DialogTitle from '@mui/material/DialogTitle'
 import DialogContent from '@mui/material/DialogContent'
@@ -196,13 +196,7 @@ export default function MenusPage() {
         field: 'is_active',
         headerName: 'Status',
         width: 100,
-        renderCell: (p) => (
-          <Chip
-            size="small"
-            label={p.value ? 'Active' : 'Inactive'}
-            color={p.value ? 'success' : 'default'}
-          />
-        ),
+        renderCell: (p) => <StatusBadge value={p.value ? 'Active' : 'Inactive'} />,
       },
       {
         field: '__actions',

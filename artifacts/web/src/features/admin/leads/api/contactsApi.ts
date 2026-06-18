@@ -13,10 +13,10 @@ export interface ContactApiRow {
 }
 
 export interface ContactsApiResponse {
-  data: ContactApiRow[]
-  total: number
-  page: number
-  limit: number
+  items: ContactApiRow[]
+  total?: number
+  page?: number
+  limit?: number
 }
 
 export interface FetchContactsParams {
