@@ -73,7 +73,7 @@ export default function OrganizationsListPage() {
         }),
         resolveScreen({
           screen_key: 'organization',
-          industry_code: isSuperAdmin ? 'temp001' : undefined,
+          industry_code: isSuperAdmin ? 'temp0001' : undefined,
           role_key: isSuperAdmin ? 'admin' : undefined,
         }).catch(() => ({ table_headers: [] as ResolvedTableHeader[], form_fields: [] })),
       ])

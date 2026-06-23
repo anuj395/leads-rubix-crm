@@ -8,7 +8,7 @@
     "lead_type": "Inbound",
     "project": "Bayview Estates",
     "lead_source": "Website",
-    "industry_id": "temp001",
+    "industry_id": "temp0001",
     "created_by": { "$oid": "69e5d083ac301a3740070acd" },
     "createdAt": { "$date": "2026-06-13T10:00:00.000Z" },
     "updatedAt": { "$date": "2026-06-13T10:00:00.000Z" }
@@ -22,7 +22,7 @@
     "lead_type": "Outbound",
     "project": "Downtown Plaza",
     "lead_source": "Referral",
-    "industry_id": "temp001",
+    "industry_id": "temp0001",
     "created_by": { "$oid": "69e5d083ac301a3740070acd" },
     "createdAt": { "$date": "2026-06-13T11:30:00.000Z" },
     "updatedAt": { "$date": "2026-06-13T11:30:00.000Z" }
@@ -36,7 +36,7 @@
     "lead_type": "Inbound",
     "project": "Lakeview Homes",
     "lead_source": "Email Campaign",
-    "industry_id": "temp001",
+    "industry_id": "temp0001",
     "created_by": { "$oid": "69df2dad1e9a5faf25c430c3" },
     "createdAt": { "$date": "2026-06-13T09:15:00.000Z" },
     "updatedAt": { "$date": "2026-06-13T09:15:00.000Z" }
@@ -50,7 +50,7 @@
     "lead_type": "Inbound",
     "project": "Bayview Estates",
     "lead_source": "Website",
-    "industry_id": "temp001",
+    "industry_id": "temp0001",
     "created_by": { "$oid": "69df2dad1e9a5faf25c430c3" },
     "createdAt": { "$date": "2026-06-13T14:45:00.000Z" },
     "updatedAt": { "$date": "2026-06-13T14:45:00.000Z" }

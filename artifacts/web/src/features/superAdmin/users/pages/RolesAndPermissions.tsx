@@ -161,7 +161,7 @@ export default function RolesAndPermissionsPage() {
         const [inds, screens] = await Promise.all([getIndustries(), getScreens()])
         setIndustries(inds)
         if (!filterIndustry) {
-          const realEstate = inds.find((i) => i.code === 'temp001')
+          const realEstate = inds.find((i) => i.code === 'temp0001')
           if (realEstate) setFilterIndustry(realEstate._id)
           else if (inds[0]) setFilterIndustry(inds[0]._id)
         }

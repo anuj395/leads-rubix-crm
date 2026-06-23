@@ -1,0 +1,43 @@
+[
+  {
+    "_id": {
+      "$oid": "69240a5bbfc52249a2022bb7"
+    },
+    "organization_id": "kz5bGUL6CXO7L3UeIixW",
+    "address": "GURGAON",
+    "admin_contact_number": "9811399800",
+    "admin_email_id": "peeyush.sapra@cbre.com",
+    "admin_first_name": "Peeyush",
+    "admin_last_name": "Sapra",
+    "auth_id": "7nJvfPJ9vgWeBVqRJCst6vpH8E13",
+    "city": "Gurgaon",
+    "country": "India",
+    "created_at": {
+      "$date": "2025-11-29T09:39:45.087Z"
+    },
+    "designations": [],
+    "email_id": "peeyush.sapra@cbre.com",
+    "mobile_number": "9811399800",
+    "no_of_employees": "5",
+    "organization_name": "CBRE",
+    "state": "Haryana",
+    "status": "ACTIVE",
+    "teams": [],
+    "industry_id": "temp0001",
+    "allowDuplicateLeads": true,
+    "payment_status": false,
+    "pincode": "122002",
+    "showAnalytics": true,
+    "showData": true,
+    "trial_period": false,
+    "valid_till": {
+      "$date": "2025-11-29T09:39:45.087Z"
+    },
+    "cost_per_license": "1000",
+    "org_trial_period_users_licenses": "20",
+    "__v": 0,
+    "admin_contact_code": 91,
+    "grace_period": 7,
+    "organization_mobile_code": 91
+  }
+]

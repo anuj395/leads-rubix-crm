@@ -29,6 +29,8 @@ import Checkbox from '@mui/material/Checkbox'
 import CircularProgress from '@mui/material/CircularProgress'
 import Typography from '@mui/material/Typography'
 import Alert from '@mui/material/Alert'
+import Select from '@mui/material/Select'
+import InputAdornment from '@mui/material/InputAdornment'
 import { resolveScreen, type ResolvedFormField } from '@/services/screenAdminService'
 import { api } from '@/services/api'
 
@@ -59,6 +61,60 @@ function normalizeOptions(raw: unknown): DropdownOption[] {
 
 // Module-level cache so re-mounting the form doesn't refetch the same dropdown.
 const dropdownCache = new Map<string, DropdownOption[]>()
+
+const DIALING_CODES = [
+  { code: '+91', flag: '🇮🇳', label: '🇮🇳 +91 (India)' },
+  { code: '+1', flag: '🇺🇸', label: '🇺🇸 +1 (US)' },
+  { code: '+1', flag: '🇨🇦', label: '🇨🇦 +1 (Canada)' },
+  { code: '+44', flag: '🇬🇧', label: '🇬🇧 +44 (UK)' },
+  { code: '+61', flag: '🇦🇺', label: '🇦🇺 +61 (Australia)' },
+  { code: '+971', flag: '🇦🇪', label: '🇦🇪 +971 (UAE)' },
+  { code: '+65', flag: '🇸🇬', label: '🇸🇬 +65 (Singapore)' },
+  { code: '+966', flag: '🇸🇦', label: '🇸🇦 +966 (Saudi Arabia)' },
+  { code: '+49', flag: '🇩🇪', label: '🇩🇪 +49 (Germany)' },
+  { code: '+33', flag: '🇫🇷', label: '🇫🇷 +33 (France)' },
+  { code: '+27', flag: '🇿🇦', label: '🇿🇦 +27 (South Africa)' },
+  { code: '+81', flag: '🇯🇵', label: '🇯🇵 +81 (Japan)' },
+  { code: '+64', flag: '🇳🇿', label: '🇳🇿 +64 (New Zealand)' },
+  { code: '+60', flag: '🇲🇾', label: '🇲🇾 +60 (Malaysia)' },
+  { code: '+353', flag: '🇮🇪', label: '🇮🇪 +353 (Ireland)' },
+  { code: '+39', flag: '🇮🇹', label: '🇮🇹 +39 (Italy)' },
+  { code: '+31', flag: '🇳🇱', label: '🇳🇱 +31 (Netherlands)' },
+  { code: '+34', flag: '🇪🇸', label: '🇪🇸 +34 (Spain)' },
+  { code: '+41', flag: '🇨🇭', label: '🇨🇭 +41 (Switzerland)' },
+  { code: '+46', flag: '🇸🇪', label: '🇸🇪 +46 (Sweden)' },
+  { code: '+47', flag: '🇳🇴', label: '🇳🇴 +47 (Norway)' },
+  { code: '+45', flag: '🇩🇰', label: '🇩🇰 +45 (Denmark)' },
+  { code: '+358', flag: '🇫🇮', label: '🇫🇮 +358 (Finland)' },
+  { code: '+55', flag: '🇧🇷', label: '🇧🇷 +55 (Brazil)' },
+  { code: '+52', flag: '🇲🇽', label: '🇲🇽 +52 (Mexico)' },
+  { code: '+7', flag: '🇷🇺', label: '🇷🇺 +7 (Russia)' },
+  { code: '+86', flag: '🇨🇳', label: '🇨🇳 +86 (China)' },
+  { code: '+852', flag: '🇭🇰', label: '🇭🇰 +852 (Hong Kong)' },
+  { code: '+886', flag: '🇹🇼', label: '🇹🇼 +886 (Taiwan)' },
+  { code: '+82', flag: '🇰🇷', label: '🇰🇷 +82 (South Korea)' },
+  { code: '+90', flag: '🇹🇷', label: '🇹🇷 +90 (Turkey)' },
+  { code: '+20', flag: '🇪🇬', label: '🇪🇬 +20 (Egypt)' },
+  { code: '+234', flag: '🇳🇬', label: '🇳🇬 +234 (Nigeria)' },
+  { code: '+254', flag: '🇰🇪', label: '🇰🇪 +254 (Kenya)' },
+  { code: '+880', flag: '🇧🇩', label: '🇧🇩 +880 (Bangladesh)' },
+  { code: '+92', flag: '🇵🇰', label: '🇵🇰 +92 (Pakistan)' },
+  { code: '+94', flag: '🇱🇰', label: '🇱🇰 +94 (Sri Lanka)' },
+  { code: '+977', flag: '🇳🇵', label: '🇳🇵 +977 (Nepal)' },
+  { code: '+66', flag: '🇹🇭', label: '🇹🇭 +66 (Thailand)' },
+  { code: '+84', flag: '🇻🇳', label: '🇻🇳 +84 (Vietnam)' },
+  { code: '+62', flag: '🇮🇩', label: '🇮🇩 +62 (Indonesia)' },
+  { code: '+63', flag: '🇵🇭', label: '🇵🇭 +63 (Philippines)' },
+  { code: '+54', flag: '🇦🇷', label: '🇦🇷 +54 (Argentina)' },
+  { code: '+57', flag: '🇨🇴', label: '🇨🇴 +57 (Colombia)' },
+  { code: '+51', flag: '🇵🇪', label: '🇵🇪 +51 (Peru)' },
+  { code: '+56', flag: '🇨🇱', label: '🇨🇱 +56 (Chile)' },
+  { code: '+43', flag: '🇦🇹', label: '🇦🇹 +43 (Austria)' },
+  { code: '+32', flag: '🇧🇪', label: '🇧🇪 +32 (Belgium)' },
+  { code: '+48', flag: '🇵🇱', label: '🇵🇱 +48 (Poland)' },
+  { code: '+30', flag: '🇬🇷', label: '🇬🇷 +30 (Greece)' },
+]
+
 
 interface Props {
   screen: string
@@ -154,7 +210,12 @@ export function DynamicForm({
       (f) => f.type === 'select' && f.dropdown_source === 'api' && f.dropdown_api,
     )
     for (const f of apiFields) {
-      const url = f.dropdown_api
+      let url = f.dropdown_api
+      // Append country to states API dynamically so we fetch the country-specific states
+      if (url.includes('options/states') && values.country) {
+        url = `${url}?country=${encodeURIComponent(String(values.country))}`
+      }
+      
       if (dropdownCache.has(url)) {
         // already cached — hydrate immediately
         setDropdowns((prev) => (prev[url] ? prev : { ...prev, [url]: dropdownCache.get(url)! }))
@@ -195,13 +256,21 @@ export function DynamicForm({
     return () => {
       cancelled = true
     }
-  }, [fields])
+  }, [fields, values.country])
 
   const setValue = (key: string, value: Value) => {
     setValues((prev) => ({ ...prev, [key]: value }))
     // Clear field-level error on change
     setErrors((prev) => (prev[key] ? { ...prev, [key]: '' } : prev))
   }
+
+  // Reset state selection if country changes so we don't submit invalid state/country combos
+  const countryValue = values.country
+  useEffect(() => {
+    if (values.state) {
+      setValues((prev) => ({ ...prev, state: '' }))
+    }
+  }, [countryValue])
 
   const validate = useMemo(
     () => () => {
@@ -290,6 +359,15 @@ export function DynamicForm({
                 helperText={err || dropdownErr || (isLoading ? 'Loading options…' : '')}
                 disabled={isLoading}
                 fullWidth
+                SelectProps={{
+                  MenuProps: {
+                    PaperProps: {
+                      style: {
+                        maxHeight: 250,
+                      },
+                    },
+                  },
+                }}
               >
                 <MenuItem value=""><em>—</em></MenuItem>
                 {opts.map((o) => (
@@ -328,6 +406,89 @@ export function DynamicForm({
                   />
                 }
                 label={labelWithRequired}
+              />
+            )
+          }
+
+          if (f.type === 'phone') {
+            const valStr = (value as string) ?? ''
+            let detectedCode = '+91' // default
+            let localNumber = valStr
+
+            for (const dc of DIALING_CODES) {
+              if (valStr.startsWith(dc.code + ' ')) {
+                detectedCode = dc.code
+                localNumber = valStr.substring(dc.code.length + 1)
+                break
+              } else if (valStr.startsWith(dc.code)) {
+                detectedCode = dc.code
+                localNumber = valStr.substring(dc.code.length)
+                break
+              }
+            }
+
+            return (
+              <TextField
+                key={f.key}
+                size="small"
+                type="text"
+                label={labelWithRequired}
+                value={localNumber}
+                onChange={(e) => {
+                  const nextNum = e.target.value
+                  setValue(f.key, `${detectedCode} ${nextNum}`.trim())
+                }}
+                error={!!err}
+                helperText={err}
+                fullWidth
+                slotProps={{
+                  input: {
+                    startAdornment: (
+                      <InputAdornment position="start" sx={{ mr: 1 }}>
+                        <Select
+                          variant="standard"
+                          value={detectedCode}
+                          onChange={(e) => {
+                            const nextCode = e.target.value as string
+                            setValue(f.key, `${nextCode} ${localNumber}`.trim())
+                          }}
+                          disableUnderline
+                          renderValue={(value) => {
+                            const match = DIALING_CODES.find((dc) => dc.code === value)
+                            return match ? `${match.flag} ${match.code}` : (value as string)
+                          }}
+                          MenuProps={{
+                            PaperProps: {
+                              style: {
+                                maxHeight: 300,
+                                width: 220,
+                              },
+                            },
+                          }}
+                          sx={{
+                            fontSize: '0.9rem',
+                            '& .MuiSelect-select': {
+                              display: 'flex',
+                              alignItems: 'center',
+                              pr: '18px !important',
+                              pl: 0.5,
+                            }
+                          }}
+                        >
+                          {DIALING_CODES.map((dc, idx) => (
+                            <MenuItem key={`${dc.code}-${dc.flag}-${idx}`} value={dc.code}>
+                              <Box component="span" sx={{ mr: 1 }}>{dc.flag}</Box>
+                              <Box component="span">{dc.code}</Box>
+                              <Box component="span" sx={{ ml: 1, opacity: 0.5, fontSize: '0.8rem' }}>
+                                ({dc.label.split('(')[1]}
+                              </Box>
+                            </MenuItem>
+                          ))}
+                        </Select>
+                      </InputAdornment>
+                    )
+                  }
+                }}
               />
             )
           }

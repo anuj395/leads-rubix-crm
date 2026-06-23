@@ -105,7 +105,7 @@ async function ensureDevAdmin() {
     email,
     password: 'rubix1234',
     role: 'superAdmin',
-    industry_id: 'temp001',
+    industry_id: 'temp0001',
   });
   await dev.save();
   console.log(`[seed] created dev superAdmin: ${email} / rubix1234`);
@@ -325,12 +325,20 @@ const SCREEN_DEFAULTS = [
     name: 'Organization',
     description: 'Organization records — fully dynamic table & form',
     fields: [
-      { field_key: 'name',          label: 'Name',          type: 'text',     is_required: true,  order: 1 },
-      { field_key: 'code',          label: 'Code',          type: 'text',     is_required: false, order: 2 },
-      { field_key: 'email',         label: 'Email',         type: 'email',    is_required: false, order: 3 },
-      { field_key: 'phone',         label: 'Phone',         type: 'text',     is_required: false, order: 4 },
-      { field_key: 'address',       label: 'Address',       type: 'textarea', is_required: false, order: 5 },
-      { field_key: 'website',       label: 'Website',       type: 'text',     is_required: false, order: 6 },
+      { field_key: 'first_name',    label: 'First Name',    type: 'text',     is_required: false, order: 1 },
+      { field_key: 'last_name',     label: 'Last Name',     type: 'text',     is_required: false, order: 2 },
+      { field_key: 'contact_no',    label: 'Contact Number', type: 'phone',    is_required: true,  order: 3 },
+      { field_key: 'email_id',      label: 'Email ID',      type: 'email',    is_required: false, order: 4 },
+      { field_key: 'country',       label: 'Country',       type: 'select',   is_required: true,  order: 5,
+        dropdown_source: 'api', dropdown_api: '/api/options/countries' },
+      { field_key: 'state',         label: 'State',         type: 'select',   is_required: true,  order: 6,
+        dropdown_source: 'api', dropdown_api: '/api/options/states' },
+      { field_key: 'city',          label: 'City',          type: 'text',     is_required: true,  order: 7 },
+      { field_key: 'pincode',       label: 'Pincode',       type: 'text',     is_required: false, order: 8 },
+      { field_key: 'industry_id',   label: 'Industry ID',   type: 'select',   is_required: true,  order: 9,
+        dropdown_source: 'api', dropdown_api: '/api/options/industries' },
+      { field_key: 'num_employees', label: 'Number of Employees', type: 'number', is_required: false, order: 10 },
+      { field_key: 'address',       label: 'Address',       type: 'textarea', is_required: false, order: 11 },
     ],
   },
   {
@@ -391,6 +399,9 @@ async function seedScreens() {
       );
       fieldDocs.push(doc);
     }
+    // Clean up any fields that are no longer in the spec.
+    const specKeys = spec.fields.map((f) => f.field_key);
+    await ScreenField.deleteMany({ screen_id: screen._id, field_key: { $nin: specKeys } });
     fieldsByScreen.set(String(screen._id), { screen, fields: fieldDocs });
   }
 

@@ -96,7 +96,7 @@ export default function AdminRolesPage() {
         if (cancelled) return
         setIndustries(inds)
         setScreens(scr.filter((s) => s.is_active))
-        const realEstate = inds.find((i) => i.code === 'temp001')
+        const realEstate = inds.find((i) => i.code === 'temp0001')
         const defaultCode = realEstate ? realEstate.code : (inds[0]?.code ?? '')
         setFilterIndustry((cur) => cur || defaultCode)
       } catch (e) {

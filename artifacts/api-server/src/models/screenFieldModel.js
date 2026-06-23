@@ -1,6 +1,6 @@
 const mongoose = require('mongoose');
 
-const FIELD_TYPES = ['text', 'number', 'select', 'date', 'email', 'textarea', 'checkbox', 'badge', 'avatar'];
+const FIELD_TYPES = ['text', 'number', 'select', 'date', 'email', 'textarea', 'checkbox', 'badge', 'avatar', 'phone'];
 const DROPDOWN_SOURCES = ['none', 'static', 'api'];
 
 const screenFieldSchema = new mongoose.Schema(

@@ -157,7 +157,7 @@ export default function UserListPage() {
           const list = await getIndustries()
           if (cancelled) return
           setIndustries(list)
-          const realEstate = list.find((i) => i.code === 'temp001')
+          const realEstate = list.find((i) => i.code === 'temp0001')
           const defaultCode = realEstate ? realEstate.code : (list[0]?.code ?? '')
           setFilterIndustry((cur) => cur || defaultCode)
         } else if (authedUser?.industry_id) {

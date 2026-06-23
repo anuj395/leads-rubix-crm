@@ -8,14 +8,14 @@ let memoryServer = null;
 
 const connect = async () => {
   let uri = config.mongoUri;
-  const useMemory = !process.env.MONGO_URI;
+  const useMemory = process.env.USE_MEMORY_DB === 'true';
 
   try {
     if (useMemory) {
       const { MongoMemoryServer } = require('mongodb-memory-server');
       memoryServer = await MongoMemoryServer.create();
       uri = memoryServer.getUri();
-      console.log('[db] No MONGO_URI provided — started in-memory MongoDB at', uri);
+      console.log('[db] Started in-memory MongoDB at', uri);
     }
 
     await mongoose.connect(uri);

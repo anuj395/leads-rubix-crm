@@ -57,7 +57,7 @@ export default function TasksListPage() {
         api.get('tasks'),
         resolveScreen({
           screen_key: 'tasks',
-          industry_code: user?.role === 'superAdmin' ? 'temp001' : undefined,
+          industry_code: user?.role === 'superAdmin' ? 'temp0001' : undefined,
           role_key: user?.role === 'superAdmin' ? 'admin' : undefined,
         }),
       ])

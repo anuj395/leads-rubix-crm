@@ -28,9 +28,10 @@ export type ScreenFieldType =
   | 'checkbox'
   | 'badge'
   | 'avatar'
+  | 'phone'
 
 export const SCREEN_FIELD_TYPES: ScreenFieldType[] = [
-  'text', 'number', 'select', 'date', 'email', 'textarea', 'checkbox', 'badge', 'avatar',
+  'text', 'number', 'select', 'date', 'email', 'textarea', 'checkbox', 'badge', 'avatar', 'phone',
 ]
 
 export type DropdownSource = 'none' | 'static' | 'api'

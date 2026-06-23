@@ -48,7 +48,7 @@ export default function PermissionsMatrixPage() {
         const [inds, allMenus] = await Promise.all([getIndustries(), getMenus()])
         setIndustries(inds)
         setMenus(allMenus)
-        const realEstate = inds.find((i) => i.code === 'temp001')
+        const realEstate = inds.find((i) => i.code === 'temp0001')
         if (realEstate) setIndustryId(realEstate._id)
         else if (inds[0]) setIndustryId(inds[0]._id)
       } catch (e: any) {

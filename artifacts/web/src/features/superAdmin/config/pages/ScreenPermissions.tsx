@@ -54,7 +54,7 @@ export default function ScreenPermissionsPage() {
         const [inds, scrs] = await Promise.all([getIndustries(), getScreens()])
         setIndustries(inds)
         setScreens(scrs)
-        const realEstate = inds.find((i) => i.code === 'temp001')
+        const realEstate = inds.find((i) => i.code === 'temp0001')
         if (realEstate) setIndustryId(realEstate._id)
         else if (inds[0]) setIndustryId(inds[0]._id)
         if (scrs[0]) setScreenId(scrs[0]._id)

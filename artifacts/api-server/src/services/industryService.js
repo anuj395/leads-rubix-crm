@@ -17,18 +17,38 @@ exports.get = async (id) => {
 };
 
 exports.create = async (payload) => {
-  if (!payload?.code || !payload?.name) {
-    const err = new Error('code and name are required');
+  if (!payload?.name) {
+    const err = new Error('name is required');
     err.status = 400;
     throw err;
   }
-  const existing = await industryModel.findByCode(payload.code);
+  
+  // Find all industries to determine the next serial number
+  const all = await industryModel.list();
+  let maxSeq = 0;
+  for (const item of all) {
+    const match = /^temp(\d+)$/i.exec(item.code);
+    if (match) {
+      const num = parseInt(match[1], 10);
+      if (num > maxSeq) maxSeq = num;
+    }
+  }
+  const nextSeq = maxSeq + 1;
+  const nextCode = `temp${String(nextSeq).padStart(4, '0')}`;
+
+  const existing = await industryModel.findByCode(nextCode);
   if (existing) {
-    const err = new Error('Industry code already exists');
+    const err = new Error('Generated industry code already exists');
     err.status = 409;
     throw err;
   }
-  return industryModel.create(payload);
+
+  return industryModel.create({
+    code: nextCode,
+    name: payload.name,
+    description: payload.description,
+    is_active: payload.is_active,
+  });
 };
 
 exports.update = async (id, patch) => {

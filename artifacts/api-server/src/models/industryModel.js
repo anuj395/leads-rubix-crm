@@ -18,7 +18,7 @@ exports.Industry = Industry;
 
 exports.list = async ({ activeOnly = false } = {}) => {
   const q = activeOnly ? { is_active: true } : {};
-  return Industry.find(q).sort({ name: 1 }).lean().exec();
+  return Industry.find(q).sort({ code: 1 }).lean().exec();
 };
 
 exports.findById = async (id) => Industry.findById(id).lean().exec();

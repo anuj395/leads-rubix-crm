@@ -33,7 +33,7 @@ export default function ContactsListPage() {
         listContacts(),
         resolveScreen({
           screen_key: 'contacts',
-          industry_code: user?.role === 'superAdmin' ? 'temp001' : undefined,
+          industry_code: user?.role === 'superAdmin' ? 'temp0001' : undefined,
           role_key: user?.role === 'superAdmin' ? 'admin' : undefined,
         }),
       ])

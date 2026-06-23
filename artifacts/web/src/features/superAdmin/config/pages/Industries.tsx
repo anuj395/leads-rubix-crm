@@ -132,7 +132,7 @@ export default function IndustriesPage() {
         <DialogContent>
           <Stack spacing={2} sx={{ mt: 1 }}>
             <TextField label="Code" value={form.code} onChange={(e) => setForm({ ...form, code: e.target.value })}
-              helperText="Stable identifier (e.g. temp001, real-estate)" disabled={!!form._id} fullWidth />
+              helperText="Stable identifier (e.g. temp0001, real-estate)" disabled={!!form._id} fullWidth />
             <TextField label="Display Name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} fullWidth />
             <TextField label="Description" value={form.description}
               onChange={(e) => setForm({ ...form, description: e.target.value })} multiline rows={2} fullWidth />

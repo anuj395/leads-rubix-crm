@@ -14,14 +14,14 @@ async function test() {
 
     console.log('\n--- GET /api/sidebar/user for admin ---');
     const sidebarAdmin = await axios.post('http://localhost:8080/api/sidebar/user', {
-      industry_id: 'temp001',
+      industry_id: 'temp0001',
       role: 'admin'
     }, { headers });
     console.log(JSON.stringify(sidebarAdmin.data, null, 2));
 
     console.log('\n--- GET /api/sidebar/user for leadManager ---');
     const sidebarLM = await axios.post('http://localhost:8080/api/sidebar/user', {
-      industry_id: 'temp001',
+      industry_id: 'temp0001',
       role: 'leadManager'
     }, { headers });
     console.log(JSON.stringify(sidebarLM.data, null, 2));
@@ -29,7 +29,7 @@ async function test() {
     console.log('\n--- POST /api/screens/resolve for tasks ---');
     const resolveTasks = await axios.post('http://localhost:8080/api/screens/resolve', {
       screen_key: 'tasks',
-      industry_code: 'temp001'
+      industry_code: 'temp0001'
     }, { headers });
     console.log(JSON.stringify(resolveTasks.data, null, 2));
 
