@@ -329,103 +329,24 @@ export default function NewsListPage() {
         overflow: 'hidden',
       }}
     >
-      {isOrgAdmin && (
-        <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 2 }}>
-          <Tabs value={activeTab} onChange={(_, val) => setActiveTab(val)}>
-            <Tab label="News Reader" id="news-tab-0" />
-            <Tab label="News Articles Manager" id="news-tab-1" />
-          </Tabs>
-        </Box>
-      )}
-
-      {(!isOrgAdmin || activeTab === 0) && (
-        <Box
-          sx={{
-            flex: 1,
-            minHeight: 0,
-            overflowY: 'auto',
-            display: 'flex',
-            flexDirection: 'column',
-            gap: 3,
-            pb: 2,
-          }}
+      <Box sx={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
+        <AppCard
+          title="News Articles Manager"
+          subtitle="Manage news articles and announcements."
+          action={
+            isOrgAdmin ? (
+              <Button variant="contained" startIcon={<AddIcon />} onClick={openAddDialog}>
+                Add News
+              </Button>
+            ) : undefined
+          }
+          fullHeight
         >
-          <Box sx={{ maxWidth: '850px', width: '100%', mx: 'auto', display: 'flex', flexDirection: 'column', gap: 3 }}>
-            <TextField
-              placeholder="Search News..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              InputProps={{
-                startAdornment: (
-                  <SearchIcon sx={{ color: 'text.secondary', mr: 1 }} />
-                ),
-              }}
-              fullWidth
-              size="small"
-              sx={{ bgcolor: 'background.paper', borderRadius: 1 }}
-            />
-
-            <AppCard title="Company News & Announcements" subtitle="Quick accordion viewer of the most commonly asked queries.">
-              <Box sx={{ pt: 1, display: 'flex', flexDirection: 'column', gap: 1.5 }}>
-                {activeNews.map((news) => (
-                   <Accordion key={news.id} TransitionProps={{ unmountOnExit: true }} sx={{ boxShadow: 'none', border: '1px solid', borderColor: 'divider', '&:before': { display: 'none' } }}>
-                    <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-                      <Typography variant="subtitle2" fontWeight={600}>
-                        {news.name}
-                      </Typography>
-                    </AccordionSummary>
-                    <AccordionDetails sx={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
-                      <Typography color="text.secondary" variant="body2" sx={{ mb: 1, wordBreak: 'break-all' }}>
-                        Source URL:{' '}
-                        <Box
-                          component="a"
-                          href={news.link}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          sx={{ color: 'primary.main', textDecoration: 'underline' }}
-                        >
-                          {news.link}
-                        </Box>
-                      </Typography>
-                      {news.link && (
-                        <Box sx={{ width: '100%', maxWidth: '600px', alignSelf: 'center' }}>
-                          <LinkViewer url={news.link} />
-                        </Box>
-                      )}
-                    </AccordionDetails>
-                  </Accordion>
-                ))}
-                {activeNews.length === 0 && (
-                  <Typography variant="body2" color="text.secondary" sx={{ textAlign: 'center', py: 4 }}>
-                    No News found matching your search criteria.
-                  </Typography>
-                )}
-              </Box>
-            </AppCard>
+          <Box sx={{ flex: 1, minHeight: 0 }}>
+            <AppDataGrid rows={items} columns={columns} getRowId={(r) => r.id} loading={loading} />
           </Box>
-        </Box>
-      )}
-
-      {isOrgAdmin && activeTab === 1 && (
-        <Box sx={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
-          <AppCard
-            title="News Articles Manager"
-            subtitle="Manage news articles and announcements."
-            action={
-              isOrgAdmin ? (
-                <Button variant="contained" startIcon={<AddIcon />} onClick={openAddDialog}>
-                  Add News
-                </Button>
-              ) : undefined
-            }
-            fullHeight
-          >
-            <Box sx={{ flex: 1, minHeight: 0 }}>
-              <AppDataGrid rows={items} columns={columns} getRowId={(r) => r.id} loading={loading} />
-            </Box>
-          </AppCard>
-        </Box>
-      )}
+        </AppCard>
+      </Box>
 
       <Dialog
         open={dialogOpen}
