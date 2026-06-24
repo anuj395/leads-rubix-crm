@@ -338,7 +338,9 @@ const SCREEN_DEFAULTS = [
       { field_key: 'industry_id',   label: 'Industry ID',   type: 'select',   is_required: true,  order: 9,
         dropdown_source: 'api', dropdown_api: '/api/options/industries' },
       { field_key: 'num_employees', label: 'Number of Employees', type: 'number', is_required: false, order: 10 },
-      { field_key: 'address',       label: 'Address',       type: 'textarea', is_required: false, order: 11 },
+      { field_key: 'cost_per_license', label: 'License Cost', type: 'number', is_required: false, order: 11 },
+      { field_key: 'org_trial_period_users_licenses', label: 'Number of Licenses (Trial Period)', type: 'number', is_required: false, order: 12 },
+      { field_key: 'address',       label: 'Address',       type: 'textarea', is_required: false, order: 13 },
     ],
   },
   {

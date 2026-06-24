@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import Dialog from '@mui/material/Dialog'
@@ -17,6 +17,7 @@ import { Add as AddIcon, Edit as EditIcon, Delete as DeleteIcon } from '@mui/ico
 import type { GridColDef } from '@mui/x-data-grid'
 import { AppCard } from '@/components/ui/AppCard'
 import { AppDataGrid } from '@/components/ui/AppDataGrid'
+import api from '@/services/axiosInstance'
 
 export interface Coupon {
   id: string
@@ -73,7 +74,8 @@ const INITIAL_COUPONS: Coupon[] = [
 ]
 
 export default function CouponsPage() {
-  const [items, setItems] = useState<Coupon[]>(INITIAL_COUPONS)
+  const [items, setItems] = useState<Coupon[]>([])
+  const [loading, setLoading] = useState(false)
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editing, setEditing] = useState<Coupon | null>(null)
   const [toast, setToast] = useState<{ open: boolean; msg: string; sev: 'success' | 'error' }>({
@@ -92,6 +94,36 @@ export default function CouponsPage() {
     usageLimit: 100,
     usageCount: 0,
   })
+
+  const refreshCoupons = async () => {
+    setLoading(true)
+    try {
+      const res = await api.get('/coupons')
+      const mapped = (res.data || []).map((c: any) => ({
+        id: c._id,
+        code: c.code,
+        discountType: c.discountType,
+        discountValue: c.discountValue,
+        status: c.status,
+        expiryDate: c.expiryDate ? new Date(c.expiryDate).toISOString().split('T')[0] : '',
+        usageLimit: c.usageLimit,
+        usageCount: c.usageCount,
+      }))
+      setItems(mapped)
+    } catch (e: any) {
+      setToast({
+        open: true,
+        msg: e?.response?.data?.message ?? 'Failed to load coupons',
+        sev: 'error',
+      })
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    void refreshCoupons()
+  }, [])
 
   const openAddDialog = () => {
     setEditing(null)
@@ -121,40 +153,45 @@ export default function CouponsPage() {
     setDialogOpen(true)
   }
 
-  const handleDelete = (id: string) => {
+  const handleDelete = async (id: string) => {
     if (window.confirm('Are you sure you want to delete this coupon?')) {
-      setItems((prev) => prev.filter((c) => c.id !== id))
-      setToast({ open: true, msg: 'Coupon deleted successfully', sev: 'success' })
+      try {
+        await api.delete(`/coupons/${id}`)
+        setToast({ open: true, msg: 'Coupon deleted successfully', sev: 'success' })
+        void refreshCoupons()
+      } catch (e: any) {
+        setToast({
+          open: true,
+          msg: e?.response?.data?.message ?? 'Failed to delete coupon',
+          sev: 'error',
+        })
+      }
     }
   }
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!form.code || !form.expiryDate) {
       setToast({ open: true, msg: 'Code and Expiry Date are required', sev: 'error' })
       return
     }
 
-    if (editing) {
-      setItems((prev) =>
-        prev.map((c) =>
-          c.id === editing.id
-            ? {
-                ...c,
-                ...form,
-              }
-            : c,
-        ),
-      )
-      setToast({ open: true, msg: 'Coupon updated successfully', sev: 'success' })
-    } else {
-      const newCoupon: Coupon = {
-        id: `coupon_${Date.now()}`,
-        ...form,
+    try {
+      if (editing) {
+        await api.put(`/coupons/${editing.id}`, form)
+        setToast({ open: true, msg: 'Coupon updated successfully', sev: 'success' })
+      } else {
+        await api.post('/coupons', form)
+        setToast({ open: true, msg: 'Coupon added successfully', sev: 'success' })
       }
-      setItems((prev) => [newCoupon, ...prev])
-      setToast({ open: true, msg: 'Coupon added successfully', sev: 'success' })
+      setDialogOpen(false)
+      void refreshCoupons()
+    } catch (e: any) {
+      setToast({
+        open: true,
+        msg: e?.response?.data?.message ?? 'Failed to save coupon',
+        sev: 'error',
+      })
     }
-    setDialogOpen(false)
   }
 
   const columns = useMemo<GridColDef<Coupon>[]>(
@@ -246,7 +283,7 @@ export default function CouponsPage() {
         }
         fullHeight
       >
-        <AppDataGrid height="100%" rows={items} columns={columns} getRowId={(r) => r.id} />
+        <AppDataGrid height="100%" rows={items} columns={columns} getRowId={(r) => r.id} loading={loading} />
       </AppCard>
 
       <Dialog open={dialogOpen} onClose={() => setDialogOpen(false)} maxWidth="sm" fullWidth>

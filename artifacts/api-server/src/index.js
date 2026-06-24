@@ -17,6 +17,8 @@ require('./models/roleActionPermissionModel');
 require('./models/contactModel');
 require('./models/organizationModel');
 require('./models/bookingModel');
+require('./models/pricingPlanModel');
+require('./models/couponModel');
 
 const {
   seedUsers,

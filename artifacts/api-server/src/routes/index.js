@@ -21,6 +21,8 @@ const headersRoutes = require('./headersRoutes');
 const formFieldsRoutes = require('./formFieldsRoutes');
 const optionsRoutes = require('./optionsRoutes');
 const analyticsRoutes = require('./analyticsRoutes');
+const pricingPlanRoutes = require('./pricingPlanRoutes');
+const couponRoutes = require('./couponRoutes');
 const screenController = require('../controllers/screenController');
 const { authenticate } = require('../middlewares/auth');
 
@@ -28,6 +30,8 @@ const router = express.Router();
 
 router.use('/auth', authRoutes);
 router.use('/users', userRoutes);
+router.use('/pricing-plans', pricingPlanRoutes);
+router.use('/coupons', couponRoutes);
 router.use('/sidebar', sidebarRoutes);
 router.use('/industries', industryRoutes);
 router.use('/roles', roleRoutes);

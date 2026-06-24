@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import Dialog from '@mui/material/Dialog'
@@ -6,74 +6,34 @@ import DialogTitle from '@mui/material/DialogTitle'
 import DialogContent from '@mui/material/DialogContent'
 import DialogActions from '@mui/material/DialogActions'
 import TextField from '@mui/material/TextField'
-import { StatusBadge } from '@/components/ui/StatusBadge'
 import Snackbar from '@mui/material/Snackbar'
 import Alert from '@mui/material/Alert'
-import MenuItem from '@mui/material/MenuItem'
 import Stack from '@mui/material/Stack'
 import Tooltip from '@mui/material/Tooltip'
 import IconButton from '@mui/material/IconButton'
+import CircularProgress from '@mui/material/CircularProgress'
 import { Add as AddIcon, Edit as EditIcon, Delete as DeleteIcon } from '@mui/icons-material'
 import type { GridColDef } from '@mui/x-data-grid'
 import { AppCard } from '@/components/ui/AppCard'
 import { AppDataGrid } from '@/components/ui/AppDataGrid'
+import api from '@/services/axiosInstance'
 
 export interface PricingPlan {
   id: string
   name: string
   costPerUser: number
-  billingCycle: 'Monthly' | 'Yearly'
+  billingCycle: string
   maxLeads: string
   integrationsCount: string
-  status: 'Active' | 'Deprecated'
+  status: string
   description: string
+  licensesCost: number
+  trialPeriodLicenses: number
 }
 
-const INITIAL_PLANS: PricingPlan[] = [
-  {
-    id: 'plan_1',
-    name: 'Basic Starter',
-    costPerUser: 15,
-    billingCycle: 'Monthly',
-    maxLeads: '1,000 / mo',
-    integrationsCount: '2 Integrations',
-    status: 'Active',
-    description: 'Perfect for small local agencies or solo agents.',
-  },
-  {
-    id: 'plan_2',
-    name: 'Business Pro',
-    costPerUser: 35,
-    billingCycle: 'Monthly',
-    maxLeads: '10,000 / mo',
-    integrationsCount: '5 Integrations',
-    status: 'Active',
-    description: 'Complete lead automation and WhatsApp integration for growing teams.',
-  },
-  {
-    id: 'plan_3',
-    name: 'Enterprise Scale',
-    costPerUser: 75,
-    billingCycle: 'Monthly',
-    maxLeads: 'Unlimited',
-    integrationsCount: 'All Integrations',
-    status: 'Active',
-    description: 'Dedicated support, custom field mappings, and advanced reporting dashboard.',
-  },
-  {
-    id: 'plan_4',
-    name: 'Legacy Basic',
-    costPerUser: 9,
-    billingCycle: 'Monthly',
-    maxLeads: '500 / mo',
-    integrationsCount: '1 Integration',
-    status: 'Deprecated',
-    description: 'Old starter plan. No longer sold to new tenants.',
-  },
-]
-
 export default function LicensesPage() {
-  const [items, setItems] = useState<PricingPlan[]>(INITIAL_PLANS)
+  const [items, setItems] = useState<PricingPlan[]>([])
+  const [loading, setLoading] = useState(false)
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editing, setEditing] = useState<PricingPlan | null>(null)
   const [toast, setToast] = useState<{ open: boolean; msg: string; sev: 'success' | 'error' }>({
@@ -84,25 +44,51 @@ export default function LicensesPage() {
 
   // Form state
   const [form, setForm] = useState({
-    name: '',
-    costPerUser: 20,
-    billingCycle: 'Monthly' as PricingPlan['billingCycle'],
-    maxLeads: '5,000 / mo',
-    integrationsCount: '3 Integrations',
-    status: 'Active' as PricingPlan['status'],
-    description: '',
+    licensesCost: 1000,
+    trialPeriodLicenses: 20,
   })
+
+  const refreshPlans = async () => {
+    setLoading(true)
+    try {
+      const res = await api.get('/pricing-plans')
+      // Sort plans by creation date (oldest first) so Plan names stay stable
+      const sorted = (res.data || []).sort(
+        (a: any, b: any) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+      )
+      const mapped = sorted.map((p: any, idx: number) => ({
+        id: p._id,
+        name: `Plan ${idx + 1}`,
+        costPerUser: 0,
+        billingCycle: 'Monthly',
+        maxLeads: '—',
+        integrationsCount: '—',
+        status: 'Active',
+        description: '',
+        licensesCost: p.licensesCost,
+        trialPeriodLicenses: p.trialPeriodLicenses,
+      }))
+      setItems(mapped)
+    } catch (e: any) {
+      setToast({
+        open: true,
+        msg: e?.response?.data?.message ?? 'Failed to load plans',
+        sev: 'error',
+      })
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    void refreshPlans()
+  }, [])
 
   const openAddDialog = () => {
     setEditing(null)
     setForm({
-      name: '',
-      costPerUser: 20,
-      billingCycle: 'Monthly',
-      maxLeads: '5,000 / mo',
-      integrationsCount: '3 Integrations',
-      status: 'Active',
-      description: '',
+      licensesCost: 1000,
+      trialPeriodLicenses: 20,
     })
     setDialogOpen(true)
   }
@@ -110,51 +96,52 @@ export default function LicensesPage() {
   const openEditDialog = (plan: PricingPlan) => {
     setEditing(plan)
     setForm({
-      name: plan.name,
-      costPerUser: plan.costPerUser,
-      billingCycle: plan.billingCycle,
-      maxLeads: plan.maxLeads,
-      integrationsCount: plan.integrationsCount,
-      status: plan.status,
-      description: plan.description,
+      licensesCost: plan.licensesCost ?? 1000,
+      trialPeriodLicenses: plan.trialPeriodLicenses ?? 20,
     })
     setDialogOpen(true)
   }
 
-  const handleDelete = (id: string) => {
+  const handleDelete = async (id: string) => {
     if (window.confirm('Are you sure you want to delete this pricing plan?')) {
-      setItems((prev) => prev.filter((p) => p.id !== id))
-      setToast({ open: true, msg: 'Pricing plan deleted successfully', sev: 'success' })
+      try {
+        await api.delete(`/pricing-plans/${id}`)
+        setToast({ open: true, msg: 'Pricing plan deleted successfully', sev: 'success' })
+        void refreshPlans()
+      } catch (e: any) {
+        setToast({
+          open: true,
+          msg: e?.response?.data?.message ?? 'Failed to delete pricing plan',
+          sev: 'error',
+        })
+      }
     }
   }
 
-  const handleSave = () => {
-    if (!form.name) {
-      setToast({ open: true, msg: 'Plan Name is required', sev: 'error' })
-      return
-    }
-
-    if (editing) {
-      setItems((prev) =>
-        prev.map((p) =>
-          p.id === editing.id
-            ? {
-                ...p,
-                ...form,
-              }
-            : p,
-        ),
-      )
-      setToast({ open: true, msg: 'Pricing plan updated successfully', sev: 'success' })
-    } else {
-      const newPlan: PricingPlan = {
-        id: `plan_${Date.now()}`,
-        ...form,
+  const handleSave = async () => {
+    try {
+      if (editing) {
+        await api.put(`/pricing-plans/${editing.id}`, {
+          licensesCost: form.licensesCost,
+          trialPeriodLicenses: form.trialPeriodLicenses,
+        })
+        setToast({ open: true, msg: 'Pricing plan updated successfully', sev: 'success' })
+      } else {
+        await api.post('/pricing-plans', {
+          licensesCost: form.licensesCost,
+          trialPeriodLicenses: form.trialPeriodLicenses,
+        })
+        setToast({ open: true, msg: 'Pricing plan added successfully', sev: 'success' })
       }
-      setItems((prev) => [newPlan, ...prev])
-      setToast({ open: true, msg: 'Pricing plan added successfully', sev: 'success' })
+      setDialogOpen(false)
+      void refreshPlans()
+    } catch (e: any) {
+      setToast({
+        open: true,
+        msg: e?.response?.data?.message ?? 'Failed to save pricing plan',
+        sev: 'error',
+      })
     }
-    setDialogOpen(false)
   }
 
   const columns = useMemo<GridColDef<PricingPlan>[]>(
@@ -167,24 +154,21 @@ export default function LicensesPage() {
         renderCell: (p) => <Box sx={{ fontWeight: 600 }}>{p.value}</Box>,
       },
       {
-        field: 'costPerUser',
-        headerName: 'User / Month',
-        width: 130,
-        renderCell: (p) => `$${p.value}`,
+        field: 'licensesCost',
+        headerName: 'Licenses Cost',
+        width: 180,
+        renderCell: (p) => `${p.value ?? ''}`,
       },
-      { field: 'billingCycle', headerName: 'Billing Cycle', width: 130 },
-      { field: 'maxLeads', headerName: 'Leads SLA Limit', width: 140 },
-      { field: 'integrationsCount', headerName: 'Included Integrations', width: 180 },
       {
-        field: 'status',
-        headerName: 'Status',
-        width: 120,
-        renderCell: (p) => <StatusBadge value={p.value} />,
+        field: 'trialPeriodLicenses',
+        headerName: 'Trial Period Licenses',
+        width: 220,
+        renderCell: (p) => `${p.value ?? ''}`,
       },
       {
         field: '__actions',
         headerName: 'Actions',
-        width: 100,
+        width: 120,
         sortable: false,
         filterable: false,
         renderCell: (p) => (
@@ -194,16 +178,11 @@ export default function LicensesPage() {
                 <EditIcon fontSize="small" />
               </IconButton>
             </Tooltip>
-            <Tooltip title="Delete">
-              <IconButton size="small" color="error" onClick={() => handleDelete(p.row.id)}>
-                <DeleteIcon fontSize="small" />
-              </IconButton>
-            </Tooltip>
           </Stack>
         ),
       },
     ],
-    [],
+    [items],
   )
 
   return (
@@ -222,13 +201,18 @@ export default function LicensesPage() {
         title="Tenant License Costs Manager"
         subtitle="Manage available pricing tiers, billing cycle rules, and feature flags for client industries."
         action={
-          <Button variant="contained" startIcon={<AddIcon />} onClick={openAddDialog}>
+          <Button
+            variant="contained"
+            startIcon={<AddIcon />}
+            onClick={openAddDialog}
+            disabled={items.length >= 1}
+          >
             Add Plan
           </Button>
         }
         fullHeight
       >
-        <AppDataGrid height="100%" rows={items} columns={columns} getRowId={(r) => r.id} />
+        <AppDataGrid height="100%" rows={items} columns={columns} getRowId={(r) => r.id} loading={loading} />
       </AppCard>
 
       <Dialog open={dialogOpen} onClose={() => setDialogOpen(false)} maxWidth="sm" fullWidth>
@@ -241,12 +225,13 @@ export default function LicensesPage() {
               gap: 2,
             }}
           >
-            <Box sx={{ gridColumn: 'span 2' }}>
+            <Box>
               <TextField
                 fullWidth
-                label="Plan Name"
-                value={form.name}
-                onChange={(e) => setForm({ ...form, name: e.target.value })}
+                type="number"
+                label="Licenses Cost"
+                value={form.licensesCost}
+                onChange={(e) => setForm({ ...form, licensesCost: parseInt(e.target.value) || 0 })}
                 required
               />
             </Box>
@@ -254,59 +239,10 @@ export default function LicensesPage() {
               <TextField
                 fullWidth
                 type="number"
-                label="Cost Per User ($)"
-                value={form.costPerUser}
-                onChange={(e) => setForm({ ...form, costPerUser: parseInt(e.target.value) || 0 })}
-              />
-            </Box>
-            <Box>
-              <TextField
-                select
-                fullWidth
-                label="Billing Cycle"
-                value={form.billingCycle}
-                onChange={(e) => setForm({ ...form, billingCycle: e.target.value as PricingPlan['billingCycle'] })}
-              >
-                <MenuItem value="Monthly">Monthly</MenuItem>
-                <MenuItem value="Yearly">Yearly</MenuItem>
-              </TextField>
-            </Box>
-            <Box>
-              <TextField
-                fullWidth
-                label="Max Leads / Month (e.g. 5,000 / mo)"
-                value={form.maxLeads}
-                onChange={(e) => setForm({ ...form, maxLeads: e.target.value })}
-              />
-            </Box>
-            <Box>
-              <TextField
-                fullWidth
-                label="Included Integrations (e.g. 3 Integrations)"
-                value={form.integrationsCount}
-                onChange={(e) => setForm({ ...form, integrationsCount: e.target.value })}
-              />
-            </Box>
-            <Box sx={{ gridColumn: 'span 2' }}>
-              <TextField
-                select
-                fullWidth
-                label="Status"
-                value={form.status}
-                onChange={(e) => setForm({ ...form, status: e.target.value as PricingPlan['status'] })}
-              >
-                <MenuItem value="Active">Active</MenuItem>
-                <MenuItem value="Deprecated">Deprecated</MenuItem>
-              </TextField>
-            </Box>
-            <Box sx={{ gridColumn: 'span 2' }}>
-              <TextField
-                fullWidth
-                multiline
-                rows={2}
-                label="Description"
-                value={form.description}
-                onChange={(e) => setForm({ ...form, description: e.target.value })}
+                label="Number of Licenses(trial period)"
+                value={form.trialPeriodLicenses}
+                onChange={(e) => setForm({ ...form, trialPeriodLicenses: parseInt(e.target.value) || 0 })}
+                required
               />
             </Box>
           </Box>

@@ -94,13 +94,6 @@ export const superAdminMenuConfig: SuperAdminMenuItem[] = [
     module: "Organization"
   },
   {
-    key: "organization.adminRoles",
-    name: "Admin Roles",
-    route: "/organization/admin-roles",
-    icon: "shield",
-    module: "Organization"
-  },
-  {
     key: "users.list",
     name: "Users List",
     route: "/users",
