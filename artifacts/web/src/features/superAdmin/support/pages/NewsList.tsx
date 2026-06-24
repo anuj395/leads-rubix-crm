@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import Dialog from '@mui/material/Dialog'
@@ -6,77 +6,120 @@ import DialogTitle from '@mui/material/DialogTitle'
 import DialogContent from '@mui/material/DialogContent'
 import DialogActions from '@mui/material/DialogActions'
 import TextField from '@mui/material/TextField'
-import Chip from '@mui/material/Chip'
-import Snackbar from '@mui/material/Snackbar'
-import Alert from '@mui/material/Alert'
 import MenuItem from '@mui/material/MenuItem'
 import Stack from '@mui/material/Stack'
 import Tooltip from '@mui/material/Tooltip'
 import IconButton from '@mui/material/IconButton'
 import Typography from '@mui/material/Typography'
-import { Add as AddIcon, Edit as EditIcon, Delete as DeleteIcon, Visibility as ViewIcon } from '@mui/icons-material'
+import Accordion from '@mui/material/Accordion'
+import AccordionSummary from '@mui/material/AccordionSummary'
+import AccordionDetails from '@mui/material/AccordionDetails'
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore'
+import Tabs from '@mui/material/Tabs'
+import Tab from '@mui/material/Tab'
+import Snackbar from '@mui/material/Snackbar'
+import Alert from '@mui/material/Alert'
+import { Add as AddIcon, Edit as EditIcon, Delete as DeleteIcon, Search as SearchIcon } from '@mui/icons-material'
 import type { GridColDef } from '@mui/x-data-grid'
 import { AppCard } from '@/components/ui/AppCard'
 import { AppDataGrid } from '@/components/ui/AppDataGrid'
 import { StatusBadge } from '@/components/ui/StatusBadge'
+import api from '@/services/axiosInstance'
 
 export interface NewsArticle {
   id: string
-  title: string
-  category: 'System Alert' | 'Product Update' | 'Announcement' | 'Industry News'
-  publishedAt: string
-  author: string
-  status: 'Published' | 'Draft'
-  content: string
+  name: string
+  link: string
+  status: 'Active' | 'Draft'
+  created_by?: string
+  organization_id?: string | null
 }
 
-const INITIAL_NEWS: NewsArticle[] = [
-  {
-    id: 'n1',
-    title: 'Scheduled System Maintenance - June 15',
-    category: 'System Alert',
-    publishedAt: '2026-06-12',
-    author: 'IT Ops Team',
-    status: 'Published',
-    content: 'We will be performing scheduled database optimizations on June 15, 2026, from 02:00 AM to 04:00 AM EST. During this window, the CRM dashboard and API webhook endpoints may experience intermittent latency of up to 5 minutes. No data loss is expected.',
-  },
-  {
-    id: 'n2',
-    title: 'WhatsApp Meta Cloud Integration is Live',
-    category: 'Product Update',
-    publishedAt: '2026-06-10',
-    author: 'Product Team',
-    status: 'Published',
-    content: 'You can now configure your own Meta Cloud permanent access tokens directly from the WhatsApp API Configuration page under Settings. Enable instant automated messaging for newly captured inbound leads and assign chat responsibilities directly to sales reps.',
-  },
-  {
-    id: 'n3',
-    title: 'Quarterly Sales Kickoff & New Lead Routing Rules',
-    category: 'Announcement',
-    publishedAt: '2026-06-05',
-    author: 'Sales Operations',
-    status: 'Published',
-    content: 'Starting next Monday, lead routing rules are updated to ensure high-priority inbound leads are automatically routed to the top performing agents on the Alpha Team. Please review your designated active working hours to avoid SLA timeouts.',
-  },
-  {
-    id: 'n4',
-    title: 'Upcoming Real Estate Market Expansion Catalog',
-    category: 'Industry News',
-    publishedAt: '2026-06-01',
-    author: 'Research Desk',
-    status: 'Draft',
-    content: 'An analysis of residential and commercial property conversion metrics shows that residential apartment interest has spiked by 24% month-over-month. We will soon launch a new project catalog mapping detailed area conversions for the Austin and SF suburbs.',
-  },
-]
+function getEmbedUrl(url: string): { type: 'iframe' | 'video' | 'link'; embedUrl: string } {
+  if (!url) return { type: 'link', embedUrl: '' };
+  
+  // YouTube
+  const ytMatch = url.match(/(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/i);
+  if (ytMatch && ytMatch[1]) {
+    return { type: 'iframe', embedUrl: `https://www.youtube.com/embed/${ytMatch[1]}` };
+  }
+
+  // Vimeo
+  const vimeoMatch = url.match(/(?:vimeo\.com\/)(?:video\/)?([0-9]+)/i);
+  if (vimeoMatch && vimeoMatch[1]) {
+    return { type: 'iframe', embedUrl: `https://player.vimeo.com/video/${vimeoMatch[1]}` };
+  }
+
+  // Direct HTML5 Video
+  if (url.match(/\.(mp4|webm|ogg)$/i)) {
+    return { type: 'video', embedUrl: url };
+  }
+
+  return { type: 'iframe', embedUrl: url };
+}
+
+const LinkViewer = ({ url }: { url: string }) => {
+  const { type, embedUrl } = getEmbedUrl(url);
+
+  if (type === 'iframe') {
+    return (
+      <Box
+        sx={{
+          width: '100%',
+          aspectRatio: '16/9',
+          mt: 2,
+          borderRadius: 1,
+          overflow: 'hidden',
+          border: '1px solid',
+          borderColor: 'divider',
+        }}
+      >
+        <iframe
+          src={embedUrl}
+          style={{ width: '100%', height: '100%', border: 0 }}
+          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+          allowFullScreen
+          title="Link Viewer"
+        />
+      </Box>
+    );
+  }
+
+  if (type === 'video') {
+    return (
+      <Box sx={{ width: '100%', mt: 2, borderRadius: 1, overflow: 'hidden', border: '1px solid', borderColor: 'divider' }}>
+        <video src={embedUrl} controls style={{ width: '100%', display: 'block' }} />
+      </Box>
+    );
+  }
+
+  return (
+    <Box sx={{ mt: 1.5 }}>
+      <Typography variant="caption" sx={{ fontWeight: 600, display: 'block' }}>
+        Link:{' '}
+        <Box
+          component="a"
+          href={url}
+          target="_blank"
+          rel="noopener noreferrer"
+          sx={{ color: 'primary.main', textDecoration: 'underline', fontWeight: 500 }}
+        >
+          {url}
+        </Box>
+      </Typography>
+    </Box>
+  );
+};
 
 export default function NewsListPage() {
-  const [items, setItems] = useState<NewsArticle[]>(INITIAL_NEWS)
+  const [items, setItems] = useState<NewsArticle[]>([])
+  const [loading, setLoading] = useState(false)
   const [dialogOpen, setDialogOpen] = useState(false)
-  const [viewOpen, setViewOpen] = useState(false)
   const [editing, setEditing] = useState<NewsArticle | null>(null)
-  const [selectedNews, setSelectedNews] = useState<NewsArticle | null>(null)
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false)
   const [deletingId, setDeletingId] = useState<string | null>(null)
+  const [activeTab, setActiveTab] = useState(0)
+  const [searchQuery, setSearchQuery] = useState('')
   const [toast, setToast] = useState<{ open: boolean; msg: string; sev: 'success' | 'error' }>({
     open: false,
     msg: '',
@@ -85,21 +128,45 @@ export default function NewsListPage() {
 
   // Form state
   const [form, setForm] = useState({
-    title: '',
-    category: 'Announcement' as NewsArticle['category'],
-    author: 'Super Admin',
-    status: 'Published' as NewsArticle['status'],
-    content: '',
+    name: '',
+    link: '',
+    status: 'Active' as NewsArticle['status'],
   })
+
+  const refreshNews = async () => {
+    setLoading(true)
+    try {
+      const res = await api.get('/news')
+      const mapped = (res.data || []).map((n: any) => ({
+        id: n._id,
+        name: n.name,
+        link: n.link,
+        status: n.status,
+        created_by: n.created_by || '',
+        organization_id: n.organization_id || null,
+      }))
+      setItems(mapped)
+    } catch (e: any) {
+      setToast({
+        open: true,
+        msg: e?.response?.data?.message ?? 'Failed to load news items',
+        sev: 'error',
+      })
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    void refreshNews()
+  }, [])
 
   const openAddDialog = () => {
     setEditing(null)
     setForm({
-      title: '',
-      category: 'Announcement',
-      author: 'Super Admin',
-      status: 'Published',
-      content: '',
+      name: '',
+      link: '',
+      status: 'Active',
     })
     setDialogOpen(true)
   }
@@ -107,18 +174,11 @@ export default function NewsListPage() {
   const openEditDialog = (art: NewsArticle) => {
     setEditing(art)
     setForm({
-      title: art.title,
-      category: art.category,
-      author: art.author,
+      name: art.name,
+      link: art.link,
       status: art.status,
-      content: art.content,
     })
     setDialogOpen(true)
-  }
-
-  const openViewDialog = (art: NewsArticle) => {
-    setSelectedNews(art)
-    setViewOpen(true)
   }
 
   const handleDeleteClick = (id: string) => {
@@ -126,58 +186,79 @@ export default function NewsListPage() {
     setDeleteConfirmOpen(true)
   }
 
-  const handleDelete = (id: string) => {
-    setItems((prev) => prev.filter((n) => n.id !== id))
-    setToast({ open: true, msg: 'Article deleted successfully', sev: 'success' })
+  const handleDelete = async (id: string) => {
+    try {
+      await api.delete(`/news/${id}`)
+      setToast({ open: true, msg: 'News deleted successfully', sev: 'success' })
+      void refreshNews()
+    } catch (e: any) {
+      setToast({
+        open: true,
+        msg: e?.response?.data?.message ?? 'Failed to delete news',
+        sev: 'error',
+      })
+    }
   }
 
-  const handleSave = () => {
-    if (!form.title || !form.content) {
-      setToast({ open: true, msg: 'Title and Content are required', sev: 'error' })
+  const handleSave = async () => {
+    if (!form.name || !form.link) {
+      setToast({ open: true, msg: 'Name and Link are required', sev: 'error' })
       return
     }
 
-    if (editing) {
-      setItems((prev) =>
-        prev.map((n) =>
-          n.id === editing.id
-            ? {
-                ...n,
-                ...form,
-              }
-            : n,
-        ),
-      )
-      setToast({ open: true, msg: 'Article updated successfully', sev: 'success' })
-    } else {
-      const newArt: NewsArticle = {
-        id: `news_${Date.now()}`,
-        publishedAt: new Date().toISOString().split('T')[0],
-        ...form,
+    try {
+      if (editing) {
+        await api.put(`/news/${editing.id}`, form)
+        setToast({ open: true, msg: 'News updated successfully', sev: 'success' })
+      } else {
+        await api.post('/news', form)
+        setToast({ open: true, msg: 'News published successfully', sev: 'success' })
       }
-      setItems((prev) => [newArt, ...prev])
-      setToast({ open: true, msg: 'Article published successfully', sev: 'success' })
+      setDialogOpen(false)
+      void refreshNews()
+    } catch (e: any) {
+      setToast({
+        open: true,
+        msg: e?.response?.data?.message ?? 'Failed to save news',
+        sev: 'error',
+      })
     }
-    setDialogOpen(false)
   }
 
   const columns = useMemo<GridColDef<NewsArticle>[]>(
     () => [
       {
-        field: 'title',
-        headerName: 'Title',
-        flex: 1.5,
-        minWidth: 220,
+        field: 'name',
+        headerName: 'Name',
+        flex: 1.2,
+        minWidth: 200,
         renderCell: (p) => <Box sx={{ fontWeight: 600 }}>{p.value}</Box>,
       },
       {
-        field: 'category',
-        headerName: 'Category',
-        width: 150,
-        renderCell: (p) => <StatusBadge value={p.value} hideDot />,
+        field: 'link',
+        headerName: 'Link',
+        flex: 1.5,
+        minWidth: 250,
+        renderCell: (p) => p.value ? (
+          <Box
+            component="a"
+            href={p.value}
+            target="_blank"
+            rel="noopener noreferrer"
+            sx={{
+              color: 'primary.main',
+              textDecoration: 'underline',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap',
+              display: 'block',
+              width: '100%',
+            }}
+          >
+            {p.value}
+          </Box>
+        ) : '—',
       },
-      { field: 'publishedAt', headerName: 'Publish Date', width: 130 },
-      { field: 'author', headerName: 'Publisher', width: 140 },
       {
         field: 'status',
         headerName: 'Status',
@@ -187,16 +268,11 @@ export default function NewsListPage() {
       {
         field: '__actions',
         headerName: 'Actions',
-        width: 130,
+        width: 100,
         sortable: false,
         filterable: false,
         renderCell: (p) => (
           <Stack direction="row" spacing={0.5} sx={{ height: '100%', alignItems: 'center' }}>
-            <Tooltip title="View Announcement">
-              <IconButton size="small" onClick={() => openViewDialog(p.row)}>
-                <ViewIcon fontSize="small" />
-              </IconButton>
-            </Tooltip>
             <Tooltip title="Edit">
               <IconButton size="small" onClick={() => openEditDialog(p.row)}>
                 <EditIcon fontSize="small" />
@@ -214,6 +290,15 @@ export default function NewsListPage() {
     [],
   )
 
+  const activeNews = useMemo(() => {
+    return items.filter((n) => {
+      const isSearchMatch =
+        n.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        n.link.toLowerCase().includes(searchQuery.toLowerCase())
+      return n.status === 'Active' && isSearchMatch
+    })
+  }, [items, searchQuery])
+
   return (
     <Box
       sx={{
@@ -226,18 +311,99 @@ export default function NewsListPage() {
         overflow: 'hidden',
       }}
     >
-      <AppCard
-        title="Company News & Announcements Master"
-        subtitle="Manage news articles and announcements (Super Admin View)."
-        action={
-          <Button variant="contained" startIcon={<AddIcon />} onClick={openAddDialog}>
-            Publish Article
-          </Button>
-        }
-        fullHeight
-      >
-        <AppDataGrid height="100%" rows={items} columns={columns} getRowId={(r) => r.id} />
-      </AppCard>
+      <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 2 }}>
+        <Tabs value={activeTab} onChange={(_, val) => setActiveTab(val)}>
+          <Tab label="News Reader" id="news-tab-0" />
+          <Tab label="News Articles Manager" id="news-tab-1" />
+        </Tabs>
+      </Box>
+
+      {activeTab === 0 && (
+        <Box
+          sx={{
+            flex: 1,
+            minHeight: 0,
+            overflowY: 'auto',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 3,
+            pb: 2,
+          }}
+        >
+          <Box sx={{ maxWidth: '850px', width: '100%', mx: 'auto', display: 'flex', flexDirection: 'column', gap: 3 }}>
+            <TextField
+              placeholder="Search News..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              InputProps={{
+                startAdornment: (
+                  <SearchIcon sx={{ color: 'text.secondary', mr: 1 }} />
+                ),
+              }}
+              fullWidth
+              size="small"
+              sx={{ bgcolor: 'background.paper', borderRadius: 1 }}
+            />
+
+            <AppCard title="Company News & Announcements" subtitle="Quick accordion viewer of the most commonly asked queries.">
+              <Box sx={{ pt: 1, display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+                {activeNews.map((news) => (
+                   <Accordion key={news.id} TransitionProps={{ unmountOnExit: true }} sx={{ boxShadow: 'none', border: '1px solid', borderColor: 'divider', '&:before': { display: 'none' } }}>
+                    <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                      <Typography variant="subtitle2" fontWeight={600}>
+                        {news.name}
+                      </Typography>
+                    </AccordionSummary>
+                    <AccordionDetails sx={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
+                      <Typography color="text.secondary" variant="body2" sx={{ mb: 1, wordBreak: 'break-all' }}>
+                        Source URL:{' '}
+                        <Box
+                          component="a"
+                          href={news.link}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          sx={{ color: 'primary.main', textDecoration: 'underline' }}
+                        >
+                          {news.link}
+                        </Box>
+                      </Typography>
+                      {news.link && (
+                        <Box sx={{ width: '100%', maxWidth: '600px', alignSelf: 'center' }}>
+                          <LinkViewer url={news.link} />
+                        </Box>
+                      )}
+                    </AccordionDetails>
+                  </Accordion>
+                ))}
+                {activeNews.length === 0 && (
+                  <Typography variant="body2" color="text.secondary" sx={{ textAlign: 'center', py: 4 }}>
+                    No News found matching your search criteria.
+                  </Typography>
+                )}
+              </Box>
+            </AppCard>
+          </Box>
+        </Box>
+      )}
+
+      {activeTab === 1 && (
+        <Box sx={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
+          <AppCard
+            title="News Articles Manager"
+            subtitle="Manage news articles and announcements."
+            action={
+              <Button variant="contained" startIcon={<AddIcon />} onClick={openAddDialog}>
+                Add News
+              </Button>
+            }
+            fullHeight
+          >
+            <Box sx={{ flex: 1, minHeight: 0 }}>
+              <AppDataGrid rows={items} columns={columns} getRowId={(r) => r.id} loading={loading} />
+            </Box>
+          </AppCard>
+        </Box>
+      )}
 
       <Dialog
         open={dialogOpen}
@@ -251,7 +417,7 @@ export default function NewsListPage() {
           },
         }}
       >
-        <DialogTitle>{editing ? 'Edit Announcement' : 'Publish New Announcement'}</DialogTitle>
+        <DialogTitle>{editing ? 'Edit News' : 'Publish New News'}</DialogTitle>
         <DialogContent dividers>
           <Box
             sx={{
@@ -263,31 +429,20 @@ export default function NewsListPage() {
           >
             <TextField
               fullWidth
-              label="Article Title"
-              value={form.title}
-              onChange={(e) => setForm({ ...form, title: e.target.value })}
+              label="News Name"
+              value={form.name}
+              onChange={(e) => setForm({ ...form, name: e.target.value })}
               required
             />
 
-            <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 2 }}>
-              <TextField
-                select
-                fullWidth
-                label="Category"
-                value={form.category}
-                onChange={(e) => setForm({ ...form, category: e.target.value as NewsArticle['category'] })}
-              >
-                <MenuItem value="System Alert">System Alert</MenuItem>
-                <MenuItem value="Product Update">Product Update</MenuItem>
-                <MenuItem value="Announcement">Announcement</MenuItem>
-                <MenuItem value="Industry News">Industry News</MenuItem>
-              </TextField>
-
+            <Box sx={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 2 }}>
               <TextField
                 fullWidth
-                label="Author / Publisher"
-                value={form.author}
-                onChange={(e) => setForm({ ...form, author: e.target.value })}
+                label="Link / Video URL"
+                value={form.link}
+                onChange={(e) => setForm({ ...form, link: e.target.value })}
+                placeholder="e.g. https://youtube.com/... or https://..."
+                required
               />
 
               <TextField
@@ -297,63 +452,24 @@ export default function NewsListPage() {
                 value={form.status}
                 onChange={(e) => setForm({ ...form, status: e.target.value as NewsArticle['status'] })}
               >
-                <MenuItem value="Published">Published</MenuItem>
+                <MenuItem value="Active">Active</MenuItem>
                 <MenuItem value="Draft">Draft</MenuItem>
               </TextField>
             </Box>
-
-            <TextField
-              fullWidth
-              multiline
-              rows={6}
-              label="Article Content"
-              value={form.content}
-              onChange={(e) => setForm({ ...form, content: e.target.value })}
-              required
-            />
           </Box>
         </DialogContent>
         <DialogActions sx={{ p: 2 }}>
           <Button onClick={() => setDialogOpen(false)}>Cancel</Button>
           <Button onClick={handleSave} variant="contained">
-            Publish
+            Save
           </Button>
         </DialogActions>
-      </Dialog>
-
-      {/* Reader View Dialog */}
-      <Dialog open={viewOpen} onClose={() => setViewOpen(false)} maxWidth="sm" fullWidth>
-        {selectedNews && (
-          <>
-            <DialogTitle sx={{ pb: 1 }}>
-              <Typography variant="h5" fontWeight={700}>
-                {selectedNews.title}
-              </Typography>
-              <Stack direction="row" spacing={1.5} sx={{ mt: 1 }}>
-                <StatusBadge value={selectedNews.category} hideDot />
-                <Typography variant="caption" color="text.secondary" sx={{ display: 'flex', alignItems: 'center' }}>
-                  Published: {new Date(selectedNews.publishedAt).toLocaleDateString()} by {selectedNews.author}
-                </Typography>
-              </Stack>
-            </DialogTitle>
-            <DialogContent dividers>
-              <Typography variant="body1" sx={{ whiteSpace: 'pre-wrap', lineHeight: 1.6, color: 'text.primary' }}>
-                {selectedNews.content}
-              </Typography>
-            </DialogContent>
-            <DialogActions sx={{ p: 2 }}>
-              <Button onClick={() => setViewOpen(false)} variant="contained">
-                Close Reader
-              </Button>
-            </DialogActions>
-          </>
-        )}
       </Dialog>
 
       <Dialog open={deleteConfirmOpen} onClose={() => setDeleteConfirmOpen(false)} maxWidth="xs" fullWidth>
         <DialogTitle sx={{ fontWeight: 600 }}>Confirm Deletion</DialogTitle>
         <DialogContent>
-          Are you sure you want to delete this announcement? This action cannot be undone.
+          Are you sure you want to delete this news? This action cannot be undone.
         </DialogContent>
         <DialogActions sx={{ p: 2 }}>
           <Button onClick={() => setDeleteConfirmOpen(false)}>Cancel</Button>

@@ -20,6 +20,7 @@ require('./models/bookingModel');
 require('./models/pricingPlanModel');
 require('./models/couponModel');
 require('./models/faqModel');
+require('./models/newsModel');
 
 const {
   seedUsers,
