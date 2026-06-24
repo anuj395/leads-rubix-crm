@@ -124,6 +124,15 @@ exports.fetchById = async ({ id, authedUser }) => {
   return org;
 };
 
+function generateOrgId() {
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+  let result = '';
+  for (let i = 0; i < 20; i++) {
+    result += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return result;
+}
+
 exports.create = async ({ payload, authedUser }) => {
   const user = await resolveActor(authedUser);
   const isSuperAdmin = (user.role || authedUser.role) === 'superAdmin';
@@ -139,12 +148,36 @@ exports.create = async ({ payload, authedUser }) => {
   });
   const cleaned = pickAllowed(payload?.fields ?? payload ?? {}, allowedFields);
 
-  return organizationModel.create({
+  const orgId = generateOrgId();
+
+  const orgDoc = await organizationModel.create({
     ...cleaned,
+    organization_id: orgId,
     industry_id,
     is_active: payload.is_active !== false,
     created_by: user._id,
   });
+
+  // Automatically create an Admin user for this organization
+  const orgName = cleaned.name || payload.name || 'Organization';
+  const orgEmail = cleaned.email || payload.email;
+  let adminEmail = orgEmail || `admin@${(cleaned.code || payload.code || 'org').toLowerCase()}.com`;
+
+  // Ensure unique admin email
+  const existingUser = await userModel.User.findOne({ email: adminEmail.toLowerCase().trim() });
+  if (existingUser) {
+    adminEmail = `admin-${Date.now()}@${(cleaned.code || payload.code || 'org').toLowerCase()}.com`;
+  }
+
+  await userModel.create({
+    name: `${orgName} Admin`,
+    email: adminEmail.toLowerCase().trim(),
+    password: 'rubix1234',
+    role: 'admin',
+    industry_id: industry_id,
+  });
+
+  return orgDoc;
 };
 
 exports.update = async ({ id, payload, authedUser }) => {

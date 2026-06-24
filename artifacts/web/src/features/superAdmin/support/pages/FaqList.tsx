@@ -18,7 +18,9 @@ import Accordion from '@mui/material/Accordion'
 import AccordionSummary from '@mui/material/AccordionSummary'
 import AccordionDetails from '@mui/material/AccordionDetails'
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore'
-import { Add as AddIcon, Edit as EditIcon, Delete as DeleteIcon } from '@mui/icons-material'
+import Tabs from '@mui/material/Tabs'
+import Tab from '@mui/material/Tab'
+import { Add as AddIcon, Edit as EditIcon, Delete as DeleteIcon, Search as SearchIcon } from '@mui/icons-material'
 import type { GridColDef } from '@mui/x-data-grid'
 import { AppCard } from '@/components/ui/AppCard'
 import { AppDataGrid } from '@/components/ui/AppDataGrid'
@@ -31,7 +33,86 @@ export interface FaqItem {
   answer: string
   status: 'Active' | 'Draft'
   videoUrl?: string
+  created_by?: string
+  organization_id?: string | null
 }
+
+function getEmbedUrl(url: string): { type: 'iframe' | 'video' | 'link'; embedUrl: string } {
+  if (!url) return { type: 'link', embedUrl: '' };
+  
+  // YouTube
+  const ytMatch = url.match(/(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/i);
+  if (ytMatch && ytMatch[1]) {
+    return { type: 'iframe', embedUrl: `https://www.youtube.com/embed/${ytMatch[1]}` };
+  }
+
+  // Vimeo
+  const vimeoMatch = url.match(/(?:vimeo\.com\/)(?:video\/)?([0-9]+)/i);
+  if (vimeoMatch && vimeoMatch[1]) {
+    return { type: 'iframe', embedUrl: `https://player.vimeo.com/video/${vimeoMatch[1]}` };
+  }
+
+  // Direct HTML5 Video
+  if (url.match(/\.(mp4|webm|ogg)$/i)) {
+    return { type: 'video', embedUrl: url };
+  }
+
+  return { type: 'link', embedUrl: url };
+}
+
+const VideoPlayer = ({ url }: { url: string }) => {
+  const { type, embedUrl } = getEmbedUrl(url);
+
+  if (type === 'iframe') {
+    return (
+      <Box
+        sx={{
+          width: '100%',
+          aspectRatio: '16/9',
+          mt: 2,
+          borderRadius: 1,
+          overflow: 'hidden',
+          border: '1px solid',
+          borderColor: 'divider',
+        }}
+      >
+        <iframe
+          src={embedUrl}
+          style={{ width: '100%', height: '100%', border: 0 }}
+          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+          allowFullScreen
+          title="Video Player"
+        />
+      </Box>
+    );
+  }
+
+  if (type === 'video') {
+    return (
+      <Box sx={{ width: '100%', mt: 2, borderRadius: 1, overflow: 'hidden', border: '1px solid', borderColor: 'divider' }}>
+        <video src={embedUrl} controls style={{ width: '100%', display: 'block' }} />
+      </Box>
+    );
+  }
+
+  // Fallback to text link
+  return (
+    <Box sx={{ mt: 1.5 }}>
+      <Typography variant="caption" sx={{ fontWeight: 600, display: 'block' }}>
+        Tutorial Video:{' '}
+        <Box
+          component="a"
+          href={url}
+          target="_blank"
+          rel="noopener noreferrer"
+          sx={{ color: 'primary.main', textDecoration: 'underline', fontWeight: 500 }}
+        >
+          {url}
+        </Box>
+      </Typography>
+    </Box>
+  );
+};
 
 export default function FaqListPage() {
   const [items, setItems] = useState<FaqItem[]>([])
@@ -40,6 +121,8 @@ export default function FaqListPage() {
   const [editing, setEditing] = useState<FaqItem | null>(null)
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false)
   const [deletingId, setDeletingId] = useState<string | null>(null)
+  const [activeTab, setActiveTab] = useState(0)
+  const [searchQuery, setSearchQuery] = useState('')
   const [toast, setToast] = useState<{ open: boolean; msg: string; sev: 'success' | 'error' }>({
     open: false,
     msg: '',
@@ -64,6 +147,8 @@ export default function FaqListPage() {
         answer: f.answer,
         status: f.status,
         videoUrl: f.videoUrl || '',
+        created_by: f.created_by || '',
+        organization_id: f.organization_id || null,
       }))
       setItems(mapped)
     } catch (e: any) {
@@ -212,7 +297,14 @@ export default function FaqListPage() {
     [],
   )
 
-  const activeFaqs = useMemo(() => items.filter((f) => f.status === 'Active'), [items])
+  const activeFaqs = useMemo(() => {
+    return items.filter((f) => {
+      const isSearchMatch =
+        f.question.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        f.answer.toLowerCase().includes(searchQuery.toLowerCase())
+      return f.status === 'Active' && isSearchMatch
+    })
+  }, [items, searchQuery])
 
   return (
     <Box
@@ -223,59 +315,93 @@ export default function FaqListPage() {
         height: '100%',
         display: 'flex',
         flexDirection: 'column',
-        gap: 3,
-        overflowY: 'auto',
+        overflow: 'hidden',
       }}
     >
-      <AppCard title="Frequently Asked Questions (FAQ) Master" subtitle="Quick accordion viewer of the most commonly asked queries (Super Admin View).">
-        <Box sx={{ pt: 1, display: 'flex', flexDirection: 'column', gap: 1.5 }}>
-          {activeFaqs.map((faq) => (
-            <Accordion key={faq.id} sx={{ boxShadow: 'none', border: '1px solid', borderColor: 'divider', '&:before': { display: 'none' } }}>
-              <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-                <Typography variant="subtitle2" fontWeight={600}>
-                  {faq.question}
-                </Typography>
-              </AccordionSummary>
-              <AccordionDetails>
-                <Typography color="text.secondary" variant="body2" sx={{ lineHeight: 1.6, mb: faq.videoUrl ? 1 : 0 }}>
-                  {faq.answer}
-                </Typography>
-                {faq.videoUrl && (
-                  <Box sx={{ mt: 1 }}>
-                    <Typography variant="caption" sx={{ fontWeight: 600, display: 'block' }}>
-                      Tutorial Video:{' '}
-                      <Box
-                        component="a"
-                        href={faq.videoUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        sx={{ color: 'primary.main', textDecoration: 'underline', fontWeight: 500 }}
-                      >
-                        {faq.videoUrl}
-                      </Box>
-                    </Typography>
-                  </Box>
-                )}
-              </AccordionDetails>
-            </Accordion>
-          ))}
-        </Box>
-      </AppCard>
+      <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 2 }}>
+        <Tabs value={activeTab} onChange={(_, val) => setActiveTab(val)}>
+          <Tab label="FAQ Reader" id="faq-tab-0" />
+          <Tab label="FAQ Articles Manager" id="faq-tab-1" />
+        </Tabs>
+      </Box>
 
-      <AppCard
-        title="FAQ Articles Manager"
-        subtitle="Manage frequently asked questions and categorical descriptions (Super Admin View)."
-        action={
-          <Button variant="contained" startIcon={<AddIcon />} onClick={openAddDialog}>
-            Add FAQ
-          </Button>
-        }
-        fullHeight
-      >
-        <Box sx={{ height: 350, width: '100%' }}>
-          <AppDataGrid rows={items} columns={columns} getRowId={(r) => r.id} loading={loading} />
+      {activeTab === 0 && (
+        <Box
+          sx={{
+            flex: 1,
+            minHeight: 0,
+            overflowY: 'auto',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 3,
+            pb: 2,
+          }}
+        >
+          <Box sx={{ maxWidth: '850px', width: '100%', mx: 'auto', display: 'flex', flexDirection: 'column', gap: 3 }}>
+            <TextField
+              placeholder="Search FAQs..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              InputProps={{
+                startAdornment: (
+                  <SearchIcon sx={{ color: 'text.secondary', mr: 1 }} />
+                ),
+              }}
+              fullWidth
+              size="small"
+              sx={{ bgcolor: 'background.paper', borderRadius: 1 }}
+            />
+
+            <AppCard title="Frequently Asked Questions (FAQ)" subtitle="Quick accordion viewer of the most commonly asked queries.">
+              <Box sx={{ pt: 1, display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+                {activeFaqs.map((faq) => (
+                   <Accordion key={faq.id} TransitionProps={{ unmountOnExit: true }} sx={{ boxShadow: 'none', border: '1px solid', borderColor: 'divider', '&:before': { display: 'none' } }}>
+                    <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                      <Typography variant="subtitle2" fontWeight={600}>
+                        {faq.question}
+                      </Typography>
+                    </AccordionSummary>
+                    <AccordionDetails sx={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
+                      <Typography color="text.secondary" variant="body2" sx={{ lineHeight: 1.6, mb: faq.videoUrl ? 1 : 0 }}>
+                        {faq.answer}
+                      </Typography>
+                      {faq.videoUrl && (
+                        <Box sx={{ width: '100%', maxWidth: '600px', alignSelf: 'center' }}>
+                          <VideoPlayer url={faq.videoUrl} />
+                        </Box>
+                      )}
+                    </AccordionDetails>
+                  </Accordion>
+                ))}
+                {activeFaqs.length === 0 && (
+                  <Typography variant="body2" color="text.secondary" sx={{ textAlign: 'center', py: 4 }}>
+                    No FAQs found matching your search criteria.
+                  </Typography>
+                )}
+              </Box>
+            </AppCard>
+          </Box>
         </Box>
-      </AppCard>
+      )}
+
+      {activeTab === 1 && (
+        <Box sx={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
+          <AppCard
+            title="FAQ Articles Manager"
+            subtitle="Manage frequently asked questions and categorical descriptions."
+            action={
+              <Button variant="contained" startIcon={<AddIcon />} onClick={openAddDialog}>
+                Add FAQ
+              </Button>
+            }
+            fullHeight
+          >
+            <Box sx={{ flex: 1, minHeight: 0 }}>
+              <AppDataGrid rows={items} columns={columns} getRowId={(r) => r.id} loading={loading} />
+            </Box>
+          </AppCard>
+        </Box>
+      )}
 
       <Dialog
         open={dialogOpen}
