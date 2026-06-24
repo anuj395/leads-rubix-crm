@@ -75,6 +75,8 @@ export default function NewsListPage() {
   const [viewOpen, setViewOpen] = useState(false)
   const [editing, setEditing] = useState<NewsArticle | null>(null)
   const [selectedNews, setSelectedNews] = useState<NewsArticle | null>(null)
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false)
+  const [deletingId, setDeletingId] = useState<string | null>(null)
   const [toast, setToast] = useState<{ open: boolean; msg: string; sev: 'success' | 'error' }>({
     open: false,
     msg: '',
@@ -119,11 +121,14 @@ export default function NewsListPage() {
     setViewOpen(true)
   }
 
+  const handleDeleteClick = (id: string) => {
+    setDeletingId(id)
+    setDeleteConfirmOpen(true)
+  }
+
   const handleDelete = (id: string) => {
-    if (window.confirm('Are you sure you want to delete this announcement?')) {
-      setItems((prev) => prev.filter((n) => n.id !== id))
-      setToast({ open: true, msg: 'Article deleted successfully', sev: 'success' })
-    }
+    setItems((prev) => prev.filter((n) => n.id !== id))
+    setToast({ open: true, msg: 'Article deleted successfully', sev: 'success' })
   }
 
   const handleSave = () => {
@@ -198,7 +203,7 @@ export default function NewsListPage() {
               </IconButton>
             </Tooltip>
             <Tooltip title="Delete">
-              <IconButton size="small" color="error" onClick={() => handleDelete(p.row.id)}>
+              <IconButton size="small" color="error" onClick={() => handleDeleteClick(p.row.id)}>
                 <DeleteIcon fontSize="small" />
               </IconButton>
             </Tooltip>
@@ -234,7 +239,18 @@ export default function NewsListPage() {
         <AppDataGrid height="100%" rows={items} columns={columns} getRowId={(r) => r.id} />
       </AppCard>
 
-      <Dialog open={dialogOpen} onClose={() => setDialogOpen(false)} maxWidth="md" fullWidth>
+      <Dialog
+        open={dialogOpen}
+        onClose={() => setDialogOpen(false)}
+        maxWidth="lg"
+        fullWidth
+        PaperProps={{
+          sx: {
+            width: '100%',
+            maxWidth: '750px',
+          },
+        }}
+      >
         <DialogTitle>{editing ? 'Edit Announcement' : 'Publish New Announcement'}</DialogTitle>
         <DialogContent dividers>
           <Box
@@ -332,6 +348,28 @@ export default function NewsListPage() {
             </DialogActions>
           </>
         )}
+      </Dialog>
+
+      <Dialog open={deleteConfirmOpen} onClose={() => setDeleteConfirmOpen(false)} maxWidth="xs" fullWidth>
+        <DialogTitle sx={{ fontWeight: 600 }}>Confirm Deletion</DialogTitle>
+        <DialogContent>
+          Are you sure you want to delete this announcement? This action cannot be undone.
+        </DialogContent>
+        <DialogActions sx={{ p: 2 }}>
+          <Button onClick={() => setDeleteConfirmOpen(false)}>Cancel</Button>
+          <Button
+            onClick={() => {
+              if (deletingId) {
+                handleDelete(deletingId)
+              }
+              setDeleteConfirmOpen(false)
+            }}
+            color="error"
+            variant="contained"
+          >
+            Delete
+          </Button>
+        </DialogActions>
       </Dialog>
 
       <Snackbar

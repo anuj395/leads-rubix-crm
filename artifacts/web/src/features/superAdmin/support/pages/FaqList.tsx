@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import Dialog from '@mui/material/Dialog'
@@ -23,50 +23,23 @@ import type { GridColDef } from '@mui/x-data-grid'
 import { AppCard } from '@/components/ui/AppCard'
 import { AppDataGrid } from '@/components/ui/AppDataGrid'
 import { StatusBadge } from '@/components/ui/StatusBadge'
+import api from '@/services/axiosInstance'
 
 export interface FaqItem {
   id: string
   question: string
   answer: string
-  category: 'Lead Management' | 'Billing & Subscription' | 'WhatsApp Integration' | 'Security & Profile'
   status: 'Active' | 'Draft'
+  videoUrl?: string
 }
 
-const INITIAL_FAQS: FaqItem[] = [
-  {
-    id: 'f1',
-    question: 'How do I add a new lead contact to the CRM?',
-    answer: 'Navigate to the Leads -> Contacts List section and click on the "Add Contact" button. A dynamic form will appear requesting customer name, contact details, and project interest. These fields are managed dynamically by the Super Admin via the Screen Configuration system.',
-    category: 'Lead Management',
-    status: 'Active',
-  },
-  {
-    id: 'f2',
-    question: 'How does the WhatsApp Cloud API automation work?',
-    answer: 'Once you configure your permanent access token and phone number ID under WhatsApp API Settings, you can trigger automated template notifications. Every time a new lead is captured via webhooks, the system will auto-send a greeting or callback confirmation to the customer.',
-    category: 'WhatsApp Integration',
-    status: 'Active',
-  },
-  {
-    id: 'f3',
-    question: 'Where can I update my billing or view subscription details?',
-    answer: 'Administrators can navigate to Account -> Subscription Details to view active pricing plans, user seat counts, next billing dates, and features included. For custom upgrades, contact the system Super Admin.',
-    category: 'Billing & Subscription',
-    status: 'Active',
-  },
-  {
-    id: 'f4',
-    question: 'How can I change my login password?',
-    answer: 'Go to Account -> Update Password. You will need to enter your current password, type in your new secure password, and confirm it. We recommend using passwords at least 8 characters long with uppercase and numbers.',
-    category: 'Security & Profile',
-    status: 'Active',
-  },
-]
-
 export default function FaqListPage() {
-  const [items, setItems] = useState<FaqItem[]>(INITIAL_FAQS)
+  const [items, setItems] = useState<FaqItem[]>([])
+  const [loading, setLoading] = useState(false)
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editing, setEditing] = useState<FaqItem | null>(null)
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false)
+  const [deletingId, setDeletingId] = useState<string | null>(null)
   const [toast, setToast] = useState<{ open: boolean; msg: string; sev: 'success' | 'error' }>({
     open: false,
     msg: '',
@@ -77,17 +50,44 @@ export default function FaqListPage() {
   const [form, setForm] = useState({
     question: '',
     answer: '',
-    category: 'Lead Management' as FaqItem['category'],
     status: 'Active' as FaqItem['status'],
+    videoUrl: '',
   })
+
+  const refreshFaqs = async () => {
+    setLoading(true)
+    try {
+      const res = await api.get('/faqs')
+      const mapped = (res.data || []).map((f: any) => ({
+        id: f._id,
+        question: f.question,
+        answer: f.answer,
+        status: f.status,
+        videoUrl: f.videoUrl || '',
+      }))
+      setItems(mapped)
+    } catch (e: any) {
+      setToast({
+        open: true,
+        msg: e?.response?.data?.message ?? 'Failed to load FAQs',
+        sev: 'error',
+      })
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    void refreshFaqs()
+  }, [])
 
   const openAddDialog = () => {
     setEditing(null)
     setForm({
       question: '',
       answer: '',
-      category: 'Lead Management',
       status: 'Active',
+      videoUrl: '',
     })
     setDialogOpen(true)
   }
@@ -97,46 +97,54 @@ export default function FaqListPage() {
     setForm({
       question: faq.question,
       answer: faq.answer,
-      category: faq.category,
       status: faq.status,
+      videoUrl: faq.videoUrl || '',
     })
     setDialogOpen(true)
   }
 
-  const handleDelete = (id: string) => {
-    if (window.confirm('Are you sure you want to delete this FAQ?')) {
-      setItems((prev) => prev.filter((f) => f.id !== id))
+  const handleDeleteClick = (id: string) => {
+    setDeletingId(id)
+    setDeleteConfirmOpen(true)
+  }
+
+  const handleDelete = async (id: string) => {
+    try {
+      await api.delete(`/faqs/${id}`)
       setToast({ open: true, msg: 'FAQ deleted successfully', sev: 'success' })
+      void refreshFaqs()
+    } catch (e: any) {
+      setToast({
+        open: true,
+        msg: e?.response?.data?.message ?? 'Failed to delete FAQ',
+        sev: 'error',
+      })
     }
   }
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!form.question || !form.answer) {
       setToast({ open: true, msg: 'Question and Answer are required', sev: 'error' })
       return
     }
 
-    if (editing) {
-      setItems((prev) =>
-        prev.map((f) =>
-          f.id === editing.id
-            ? {
-                ...f,
-                ...form,
-              }
-            : f,
-        ),
-      )
-      setToast({ open: true, msg: 'FAQ updated successfully', sev: 'success' })
-    } else {
-      const newFaq: FaqItem = {
-        id: `faq_${Date.now()}`,
-        ...form,
+    try {
+      if (editing) {
+        await api.put(`/faqs/${editing.id}`, form)
+        setToast({ open: true, msg: 'FAQ updated successfully', sev: 'success' })
+      } else {
+        await api.post('/faqs', form)
+        setToast({ open: true, msg: 'FAQ published successfully', sev: 'success' })
       }
-      setItems((prev) => [newFaq, ...prev])
-      setToast({ open: true, msg: 'FAQ published successfully', sev: 'success' })
+      setDialogOpen(false)
+      void refreshFaqs()
+    } catch (e: any) {
+      setToast({
+        open: true,
+        msg: e?.response?.data?.message ?? 'Failed to save FAQ',
+        sev: 'error',
+      })
     }
-    setDialogOpen(false)
   }
 
   const columns = useMemo<GridColDef<FaqItem>[]>(
@@ -144,15 +152,34 @@ export default function FaqListPage() {
       {
         field: 'question',
         headerName: 'Question',
-        flex: 1.5,
-        minWidth: 220,
+        flex: 1.2,
+        minWidth: 200,
         renderCell: (p) => <Box sx={{ fontWeight: 600 }}>{p.value}</Box>,
       },
       {
-        field: 'category',
-        headerName: 'Category',
-        width: 180,
-        renderCell: (p) => <StatusBadge value={p.value} hideDot />,
+        field: 'videoUrl',
+        headerName: 'Video URL',
+        flex: 1.0,
+        minWidth: 180,
+        renderCell: (p) => p.value ? (
+          <Box
+            component="a"
+            href={p.value}
+            target="_blank"
+            rel="noopener noreferrer"
+            sx={{
+              color: 'primary.main',
+              textDecoration: 'underline',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap',
+              display: 'block',
+              width: '100%',
+            }}
+          >
+            {p.value}
+          </Box>
+        ) : '—',
       },
       {
         field: 'status',
@@ -174,7 +201,7 @@ export default function FaqListPage() {
               </IconButton>
             </Tooltip>
             <Tooltip title="Delete">
-              <IconButton size="small" color="error" onClick={() => handleDelete(p.row.id)}>
+              <IconButton size="small" color="error" onClick={() => handleDeleteClick(p.row.id)}>
                 <DeleteIcon fontSize="small" />
               </IconButton>
             </Tooltip>
@@ -206,13 +233,29 @@ export default function FaqListPage() {
             <Accordion key={faq.id} sx={{ boxShadow: 'none', border: '1px solid', borderColor: 'divider', '&:before': { display: 'none' } }}>
               <AccordionSummary expandIcon={<ExpandMoreIcon />}>
                 <Typography variant="subtitle2" fontWeight={600}>
-                  [{faq.category}] {faq.question}
+                  {faq.question}
                 </Typography>
               </AccordionSummary>
               <AccordionDetails>
-                <Typography color="text.secondary" variant="body2" sx={{ lineHeight: 1.6 }}>
+                <Typography color="text.secondary" variant="body2" sx={{ lineHeight: 1.6, mb: faq.videoUrl ? 1 : 0 }}>
                   {faq.answer}
                 </Typography>
+                {faq.videoUrl && (
+                  <Box sx={{ mt: 1 }}>
+                    <Typography variant="caption" sx={{ fontWeight: 600, display: 'block' }}>
+                      Tutorial Video:{' '}
+                      <Box
+                        component="a"
+                        href={faq.videoUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        sx={{ color: 'primary.main', textDecoration: 'underline', fontWeight: 500 }}
+                      >
+                        {faq.videoUrl}
+                      </Box>
+                    </Typography>
+                  </Box>
+                )}
               </AccordionDetails>
             </Accordion>
           ))}
@@ -230,11 +273,22 @@ export default function FaqListPage() {
         fullHeight
       >
         <Box sx={{ height: 350, width: '100%' }}>
-          <AppDataGrid rows={items} columns={columns} getRowId={(r) => r.id} />
+          <AppDataGrid rows={items} columns={columns} getRowId={(r) => r.id} loading={loading} />
         </Box>
       </AppCard>
 
-      <Dialog open={dialogOpen} onClose={() => setDialogOpen(false)} maxWidth="sm" fullWidth>
+      <Dialog
+        open={dialogOpen}
+        onClose={() => setDialogOpen(false)}
+        maxWidth="lg"
+        fullWidth
+        PaperProps={{
+          sx: {
+            width: '100%',
+            maxWidth: '750px',
+          },
+        }}
+      >
         <DialogTitle>{editing ? 'Edit FAQ Item' : 'Create New FAQ'}</DialogTitle>
         <DialogContent dividers>
           <Box
@@ -253,20 +307,7 @@ export default function FaqListPage() {
               required
             />
 
-            <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2 }}>
-              <TextField
-                select
-                fullWidth
-                label="Category"
-                value={form.category}
-                onChange={(e) => setForm({ ...form, category: e.target.value as FaqItem['category'] })}
-              >
-                <MenuItem value="Lead Management">Lead Management</MenuItem>
-                <MenuItem value="Billing & Subscription">Billing & Subscription</MenuItem>
-                <MenuItem value="WhatsApp Integration">WhatsApp Integration</MenuItem>
-                <MenuItem value="Security & Profile">Security & Profile</MenuItem>
-              </TextField>
-
+            <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: 2 }}>
               <TextField
                 select
                 fullWidth
@@ -277,12 +318,20 @@ export default function FaqListPage() {
                 <MenuItem value="Active">Active</MenuItem>
                 <MenuItem value="Draft">Draft</MenuItem>
               </TextField>
+
+              <TextField
+                fullWidth
+                label="Video URL"
+                value={form.videoUrl}
+                onChange={(e) => setForm({ ...form, videoUrl: e.target.value })}
+                placeholder="e.g. https://youtube.com/watch?v=..."
+              />
             </Box>
 
             <TextField
               fullWidth
               multiline
-              rows={4}
+              rows={6}
               label="Answer Details"
               value={form.answer}
               onChange={(e) => setForm({ ...form, answer: e.target.value })}
@@ -294,6 +343,28 @@ export default function FaqListPage() {
           <Button onClick={() => setDialogOpen(false)}>Cancel</Button>
           <Button onClick={handleSave} variant="contained">
             Save
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog open={deleteConfirmOpen} onClose={() => setDeleteConfirmOpen(false)} maxWidth="xs" fullWidth>
+        <DialogTitle sx={{ fontWeight: 600 }}>Confirm Deletion</DialogTitle>
+        <DialogContent>
+          Are you sure you want to delete this FAQ? This action cannot be undone.
+        </DialogContent>
+        <DialogActions sx={{ p: 2 }}>
+          <Button onClick={() => setDeleteConfirmOpen(false)}>Cancel</Button>
+          <Button
+            onClick={() => {
+              if (deletingId) {
+                handleDelete(deletingId);
+              }
+              setDeleteConfirmOpen(false);
+            }}
+            color="error"
+            variant="contained"
+          >
+            Delete
           </Button>
         </DialogActions>
       </Dialog>

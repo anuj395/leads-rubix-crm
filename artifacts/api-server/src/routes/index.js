@@ -23,6 +23,7 @@ const optionsRoutes = require('./optionsRoutes');
 const analyticsRoutes = require('./analyticsRoutes');
 const pricingPlanRoutes = require('./pricingPlanRoutes');
 const couponRoutes = require('./couponRoutes');
+const faqRoutes = require('./faqRoutes');
 const screenController = require('../controllers/screenController');
 const { authenticate } = require('../middlewares/auth');
 
@@ -32,6 +33,7 @@ router.use('/auth', authRoutes);
 router.use('/users', userRoutes);
 router.use('/pricing-plans', pricingPlanRoutes);
 router.use('/coupons', couponRoutes);
+router.use('/faqs', faqRoutes);
 router.use('/sidebar', sidebarRoutes);
 router.use('/industries', industryRoutes);
 router.use('/roles', roleRoutes);

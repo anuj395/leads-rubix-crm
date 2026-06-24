@@ -36,6 +36,8 @@ export default function LicensesPage() {
   const [loading, setLoading] = useState(false)
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editing, setEditing] = useState<PricingPlan | null>(null)
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false)
+  const [deletingId, setDeletingId] = useState<string | null>(null)
   const [toast, setToast] = useState<{ open: boolean; msg: string; sev: 'success' | 'error' }>({
     open: false,
     msg: '',
@@ -102,19 +104,22 @@ export default function LicensesPage() {
     setDialogOpen(true)
   }
 
+  const handleDeleteClick = (id: string) => {
+    setDeletingId(id)
+    setDeleteConfirmOpen(true)
+  }
+
   const handleDelete = async (id: string) => {
-    if (window.confirm('Are you sure you want to delete this pricing plan?')) {
-      try {
-        await api.delete(`/pricing-plans/${id}`)
-        setToast({ open: true, msg: 'Pricing plan deleted successfully', sev: 'success' })
-        void refreshPlans()
-      } catch (e: any) {
-        setToast({
-          open: true,
-          msg: e?.response?.data?.message ?? 'Failed to delete pricing plan',
-          sev: 'error',
-        })
-      }
+    try {
+      await api.delete(`/pricing-plans/${id}`)
+      setToast({ open: true, msg: 'Pricing plan deleted successfully', sev: 'success' })
+      void refreshPlans()
+    } catch (e: any) {
+      setToast({
+        open: true,
+        msg: e?.response?.data?.message ?? 'Failed to delete pricing plan',
+        sev: 'error',
+      })
     }
   }
 
@@ -215,7 +220,18 @@ export default function LicensesPage() {
         <AppDataGrid height="100%" rows={items} columns={columns} getRowId={(r) => r.id} loading={loading} />
       </AppCard>
 
-      <Dialog open={dialogOpen} onClose={() => setDialogOpen(false)} maxWidth="sm" fullWidth>
+      <Dialog
+        open={dialogOpen}
+        onClose={() => setDialogOpen(false)}
+        maxWidth="lg"
+        fullWidth
+        PaperProps={{
+          sx: {
+            width: '100%',
+            maxWidth: '750px',
+          },
+        }}
+      >
         <DialogTitle>{editing ? 'Edit Plan Config' : 'Add New Pricing Plan'}</DialogTitle>
         <DialogContent dividers>
           <Box
@@ -251,6 +267,28 @@ export default function LicensesPage() {
           <Button onClick={() => setDialogOpen(false)}>Cancel</Button>
           <Button onClick={handleSave} variant="contained">
             Save
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog open={deleteConfirmOpen} onClose={() => setDeleteConfirmOpen(false)} maxWidth="xs" fullWidth>
+        <DialogTitle sx={{ fontWeight: 600 }}>Confirm Deletion</DialogTitle>
+        <DialogContent>
+          Are you sure you want to delete this pricing plan? This action cannot be undone.
+        </DialogContent>
+        <DialogActions sx={{ p: 2 }}>
+          <Button onClick={() => setDeleteConfirmOpen(false)}>Cancel</Button>
+          <Button
+            onClick={() => {
+              if (deletingId) {
+                handleDelete(deletingId)
+              }
+              setDeleteConfirmOpen(false)
+            }}
+            color="error"
+            variant="contained"
+          >
+            Delete
           </Button>
         </DialogActions>
       </Dialog>

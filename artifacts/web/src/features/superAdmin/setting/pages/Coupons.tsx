@@ -78,6 +78,8 @@ export default function CouponsPage() {
   const [loading, setLoading] = useState(false)
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editing, setEditing] = useState<Coupon | null>(null)
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false)
+  const [deletingId, setDeletingId] = useState<string | null>(null)
   const [toast, setToast] = useState<{ open: boolean; msg: string; sev: 'success' | 'error' }>({
     open: false,
     msg: '',
@@ -153,19 +155,22 @@ export default function CouponsPage() {
     setDialogOpen(true)
   }
 
+  const handleDeleteClick = (id: string) => {
+    setDeletingId(id)
+    setDeleteConfirmOpen(true)
+  }
+
   const handleDelete = async (id: string) => {
-    if (window.confirm('Are you sure you want to delete this coupon?')) {
-      try {
-        await api.delete(`/coupons/${id}`)
-        setToast({ open: true, msg: 'Coupon deleted successfully', sev: 'success' })
-        void refreshCoupons()
-      } catch (e: any) {
-        setToast({
-          open: true,
-          msg: e?.response?.data?.message ?? 'Failed to delete coupon',
-          sev: 'error',
-        })
-      }
+    try {
+      await api.delete(`/coupons/${id}`)
+      setToast({ open: true, msg: 'Coupon deleted successfully', sev: 'success' })
+      void refreshCoupons()
+    } catch (e: any) {
+      setToast({
+        open: true,
+        msg: e?.response?.data?.message ?? 'Failed to delete coupon',
+        sev: 'error',
+      })
     }
   }
 
@@ -250,7 +255,7 @@ export default function CouponsPage() {
               </IconButton>
             </Tooltip>
             <Tooltip title="Delete">
-              <IconButton size="small" color="error" onClick={() => handleDelete(p.row.id)}>
+              <IconButton size="small" color="error" onClick={() => handleDeleteClick(p.row.id)}>
                 <DeleteIcon fontSize="small" />
               </IconButton>
             </Tooltip>
@@ -286,7 +291,18 @@ export default function CouponsPage() {
         <AppDataGrid height="100%" rows={items} columns={columns} getRowId={(r) => r.id} loading={loading} />
       </AppCard>
 
-      <Dialog open={dialogOpen} onClose={() => setDialogOpen(false)} maxWidth="sm" fullWidth>
+      <Dialog
+        open={dialogOpen}
+        onClose={() => setDialogOpen(false)}
+        maxWidth="lg"
+        fullWidth
+        PaperProps={{
+          sx: {
+            width: '100%',
+            maxWidth: '750px',
+          },
+        }}
+      >
         <DialogTitle>{editing ? 'Edit Coupon Config' : 'Add New Coupon Code'}</DialogTitle>
         <DialogContent dividers>
           <Box
@@ -365,6 +381,28 @@ export default function CouponsPage() {
           <Button onClick={() => setDialogOpen(false)}>Cancel</Button>
           <Button onClick={handleSave} variant="contained">
             Save
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog open={deleteConfirmOpen} onClose={() => setDeleteConfirmOpen(false)} maxWidth="xs" fullWidth>
+        <DialogTitle sx={{ fontWeight: 600 }}>Confirm Deletion</DialogTitle>
+        <DialogContent>
+          Are you sure you want to delete this coupon? This action cannot be undone.
+        </DialogContent>
+        <DialogActions sx={{ p: 2 }}>
+          <Button onClick={() => setDeleteConfirmOpen(false)}>Cancel</Button>
+          <Button
+            onClick={() => {
+              if (deletingId) {
+                handleDelete(deletingId)
+              }
+              setDeleteConfirmOpen(false)
+            }}
+            color="error"
+            variant="contained"
+          >
+            Delete
           </Button>
         </DialogActions>
       </Dialog>

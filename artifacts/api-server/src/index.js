@@ -19,6 +19,7 @@ require('./models/organizationModel');
 require('./models/bookingModel');
 require('./models/pricingPlanModel');
 require('./models/couponModel');
+require('./models/faqModel');
 
 const {
   seedUsers,
