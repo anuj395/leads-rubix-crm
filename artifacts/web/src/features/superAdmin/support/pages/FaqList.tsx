@@ -337,7 +337,7 @@ export default function FaqListPage() {
             pb: 2,
           }}
         >
-          <Box sx={{ maxWidth: '850px', width: '100%', mx: 'auto', display: 'flex', flexDirection: 'column', gap: 3 }}>
+          <Box sx={{ width: '100%', display: 'flex', flexDirection: 'column', gap: 3 }}>
             <TextField
               placeholder="Search FAQs..."
               value={searchQuery}
@@ -397,7 +397,7 @@ export default function FaqListPage() {
             fullHeight
           >
             <Box sx={{ flex: 1, minHeight: 0 }}>
-              <AppDataGrid rows={items} columns={columns} getRowId={(r) => r.id} loading={loading} />
+              <AppDataGrid height="100%" rows={items} columns={columns} getRowId={(r) => r.id} loading={loading} />
             </Box>
           </AppCard>
         </Box>

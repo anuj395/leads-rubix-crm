@@ -19,7 +19,7 @@ import Tabs from '@mui/material/Tabs'
 import Tab from '@mui/material/Tab'
 import Snackbar from '@mui/material/Snackbar'
 import Alert from '@mui/material/Alert'
-import { Add as AddIcon, Edit as EditIcon, Delete as DeleteIcon, Search as SearchIcon } from '@mui/icons-material'
+import { Add as AddIcon, Edit as EditIcon, Delete as DeleteIcon, Search as SearchIcon, ContentCopy as ContentCopyIcon } from '@mui/icons-material'
 import type { GridColDef } from '@mui/x-data-grid'
 import { AppCard } from '@/components/ui/AppCard'
 import { AppDataGrid } from '@/components/ui/AppDataGrid'
@@ -245,23 +245,36 @@ export default function NewsListPage() {
           flex: 1.5,
           minWidth: 250,
           renderCell: (p) => p.value ? (
-            <Box
-              component="a"
-              href={p.value}
-              target="_blank"
-              rel="noopener noreferrer"
-              sx={{
-                color: 'primary.main',
-                textDecoration: 'underline',
-                overflow: 'hidden',
-                textOverflow: 'ellipsis',
-                whiteSpace: 'nowrap',
-                display: 'block',
-                width: '100%',
-              }}
-            >
-              {p.value}
-            </Box>
+            <Stack direction="row" spacing={1} alignItems="center" sx={{ width: '100%', overflow: 'hidden' }}>
+              <Box
+                component="a"
+                href={p.value}
+                target="_blank"
+                rel="noopener noreferrer"
+                sx={{
+                  color: 'primary.main',
+                  textDecoration: 'underline',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  whiteSpace: 'nowrap',
+                  flex: 1,
+                }}
+              >
+                {p.value}
+              </Box>
+              <Tooltip title="Copy Link">
+                <IconButton
+                  size="small"
+                  onClick={() => {
+                    navigator.clipboard.writeText(p.value);
+                    setToast({ open: true, msg: 'Link copied successfully', sev: 'success' });
+                  }}
+                  sx={{ p: 0.5 }}
+                >
+                  <ContentCopyIcon fontSize="inherit" sx={{ fontSize: '0.9rem' }} />
+                </IconButton>
+              </Tooltip>
+            </Stack>
           ) : '—',
         },
         {
@@ -343,7 +356,7 @@ export default function NewsListPage() {
           fullHeight
         >
           <Box sx={{ flex: 1, minHeight: 0 }}>
-            <AppDataGrid rows={items} columns={columns} getRowId={(r) => r.id} loading={loading} />
+            <AppDataGrid height="100%" rows={items} columns={columns} getRowId={(r) => r.id} loading={loading} />
           </Box>
         </AppCard>
       </Box>

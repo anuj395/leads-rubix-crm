@@ -21,6 +21,7 @@ require('./models/pricingPlanModel');
 require('./models/couponModel');
 require('./models/faqModel');
 require('./models/newsModel');
+require('./models/whatsappConfigModel');
 
 const {
   seedUsers,
