@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useState, useEffect } from 'react'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import Dialog from '@mui/material/Dialog'
@@ -13,99 +13,47 @@ import MenuItem from '@mui/material/MenuItem'
 import Stack from '@mui/material/Stack'
 import Tooltip from '@mui/material/Tooltip'
 import IconButton from '@mui/material/IconButton'
+import LinearProgress from '@mui/material/LinearProgress'
 import { Add as AddIcon, Edit as EditIcon, Delete as DeleteIcon } from '@mui/icons-material'
 import type { GridColDef } from '@mui/x-data-grid'
 import { AppCard } from '@/components/ui/AppCard'
 import { AppDataGrid } from '@/components/ui/AppDataGrid'
 import { StatusBadge } from '@/components/ui/StatusBadge'
+import { api } from '@/services/api'
+import { getResources } from '@/services/resourcesService'
+import { resolveScreen, type ResolvedScreen, type ResolvedFormField } from '@/services/screenAdminService'
 
 export interface Project {
   id: string
-  name: string
-  location: string
-  type: string
-  status: 'Planning' | 'Launching' | 'Under Construction' | 'Completed'
-  units: number
-  available: number
-  priceRange: string
-  completionDate: string
+  project_id?: string
+  project_name: string
+  developer_name: string
+  address: string
+  rera_link: string
+  walkthrough_link: string
+  property_type: string
+  property_stage: string
+  project_status: 'Launched' | 'Pre Launch' | 'Intermediate Occupation'
+  status: 'ACTIVE' | 'INACTIVE'
+  createdAt?: string
 }
 
-const INITIAL_PROJECTS: Project[] = [
-  {
-    id: 'p1',
-    name: 'Gateway Towers',
-    location: 'Downtown Chicago, IL',
-    type: 'Commercial',
-    status: 'Under Construction',
-    units: 120,
-    available: 45,
-    priceRange: '$300k - $750k',
-    completionDate: 'Dec 2026',
-  },
-  {
-    id: 'p2',
-    name: 'Horizon Heights',
-    location: 'Austin, TX',
-    type: 'Residential',
-    status: 'Launching',
-    units: 80,
-    available: 72,
-    priceRange: '$250k - $550k',
-    completionDate: 'Jun 2027',
-  },
-  {
-    id: 'p3',
-    name: 'Meadow Greens',
-    location: 'Denver, CO',
-    type: 'Residential',
-    status: 'Completed',
-    units: 250,
-    available: 12,
-    priceRange: '$180k - $400k',
-    completionDate: 'Completed',
-  },
-  {
-    id: 'p4',
-    name: 'Bayview Estates',
-    location: 'San Francisco, CA',
-    type: 'Residential',
-    status: 'Under Construction',
-    units: 150,
-    available: 55,
-    priceRange: '$450k - $1.2M',
-    completionDate: 'Oct 2026',
-  },
-  {
-    id: 'p5',
-    name: 'Downtown Plaza',
-    location: 'New York, NY',
-    type: 'Commercial',
-    status: 'Completed',
-    units: 95,
-    available: 0,
-    priceRange: '$600k - $2.5M',
-    completionDate: 'Completed',
-  },
-  {
-    id: 'p6',
-    name: 'Lakeview Homes',
-    location: 'Seattle, WA',
-    type: 'Residential',
-    status: 'Planning',
-    units: 60,
-    available: 60,
-    priceRange: '$350k - $800k',
-    completionDate: 'Mar 2028',
-  },
+const PROPERTY_STATUS_OPTIONS = [
+  { label: 'Launched', value: 'Launched' },
+  { label: 'Pre Launch', value: 'Pre Launch' },
+  { label: 'Intermediate Occupation', value: 'Intermediate Occupation' }
 ]
 
 export default function ProjectsListPage() {
-  const [items, setItems] = useState<Project[]>(INITIAL_PROJECTS)
+  const [items, setItems] = useState<Project[]>([])
+  const [propertyTypes, setPropertyTypes] = useState<any[]>([])
+  const [propertyStages, setPropertyStages] = useState<any[]>([])
+  const [loading, setLoading] = useState(false)
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editing, setEditing] = useState<Project | null>(null)
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false)
   const [deletingId, setDeletingId] = useState<string | null>(null)
+  const [resolvedScreen, setResolvedScreen] = useState<ResolvedScreen | null>(null)
   const [toast, setToast] = useState<{ open: boolean; msg: string; sev: 'success' | 'error' }>({
     open: false,
     msg: '',
@@ -114,27 +62,57 @@ export default function ProjectsListPage() {
 
   // Form state
   const [form, setForm] = useState({
-    name: '',
-    location: '',
-    type: 'Residential',
-    status: 'Planning' as Project['status'],
-    units: 100,
-    available: 100,
-    priceRange: '',
-    completionDate: '',
+    project_name: '',
+    developer_name: '',
+    address: '',
+    rera_link: '',
+    walkthrough_link: '',
+    property_type: '',
+    property_stage: '',
+    project_status: 'Launched' as Project['project_status'],
+    status: 'ACTIVE' as Project['status'],
   })
+
+  const loadData = async () => {
+    setLoading(true)
+    try {
+      const [resProjects, types, stages, resolved] = await Promise.all([
+        api.get('/resources/resource_projects'),
+        getResources('resource_property_types'),
+        getResources('resource_property_stages'),
+        resolveScreen({ screen_key: 'config_projects' })
+      ])
+      setItems(resProjects.data || [])
+      setPropertyTypes(types)
+      setPropertyStages(stages)
+      setResolvedScreen(resolved)
+    } catch (e: any) {
+      setToast({
+        open: true,
+        msg: e?.response?.data?.message || 'Failed to load projects catalog',
+        sev: 'error',
+      })
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    loadData()
+  }, [])
 
   const openAddDialog = () => {
     setEditing(null)
     setForm({
-      name: '',
-      location: '',
-      type: 'Residential',
-      status: 'Planning',
-      units: 100,
-      available: 100,
-      priceRange: '',
-      completionDate: '',
+      project_name: '',
+      developer_name: '',
+      address: '',
+      rera_link: '',
+      walkthrough_link: '',
+      property_type: '',
+      property_stage: '',
+      project_status: 'Launched',
+      status: 'ACTIVE',
     })
     setDialogOpen(true)
   }
@@ -142,14 +120,15 @@ export default function ProjectsListPage() {
   const openEditDialog = (proj: Project) => {
     setEditing(proj)
     setForm({
-      name: proj.name,
-      location: proj.location,
-      type: proj.type,
-      status: proj.status,
-      units: proj.units,
-      available: proj.available,
-      priceRange: proj.priceRange,
-      completionDate: proj.completionDate,
+      project_name: proj.project_name || '',
+      developer_name: proj.developer_name || '',
+      address: proj.address || '',
+      rera_link: proj.rera_link || '',
+      walkthrough_link: proj.walkthrough_link || '',
+      property_type: proj.property_type || '',
+      property_stage: proj.property_stage || '',
+      project_status: proj.project_status || 'Launched',
+      status: proj.status || 'ACTIVE',
     })
     setDialogOpen(true)
   }
@@ -159,85 +138,275 @@ export default function ProjectsListPage() {
     setDeleteConfirmOpen(true)
   }
 
-  const handleDelete = (id: string) => {
-    setItems((prev) => prev.filter((p) => p.id !== id))
-    setToast({ open: true, msg: 'Project deleted successfully', sev: 'success' })
+  const handleDelete = async (id: string) => {
+    try {
+      await api.delete(`/resources/resource_projects/${id}`)
+      setToast({ open: true, msg: 'Project deleted successfully', sev: 'success' })
+      loadData()
+    } catch (e: any) {
+      setToast({ open: true, msg: e?.response?.data?.message || 'Failed to delete project', sev: 'error' })
+    }
   }
 
-  const handleSave = () => {
-    if (!form.name || !form.location) {
-      setToast({ open: true, msg: 'Name and Location are required', sev: 'error' })
+  const handleSave = async () => {
+    if (!form.project_name || !form.developer_name) {
+      setToast({ open: true, msg: 'Developer Name and Project Name are required', sev: 'error' })
       return
     }
 
-    if (editing) {
-      setItems((prev) =>
-        prev.map((p) =>
-          p.id === editing.id
-            ? {
-                ...p,
-                ...form,
-              }
-            : p,
-        ),
-      )
-      setToast({ open: true, msg: 'Project updated successfully', sev: 'success' })
-    } else {
-      const newProj: Project = {
-        id: `p_${Date.now()}`,
-        ...form,
+    try {
+      if (editing) {
+        await api.put(`/resources/resource_projects/${editing.id}`, form)
+        setToast({ open: true, msg: 'Project updated successfully', sev: 'success' })
+      } else {
+        await api.post('/resources/resource_projects', form)
+        setToast({ open: true, msg: 'Project created successfully', sev: 'success' })
       }
-      setItems((prev) => [newProj, ...prev])
-      setToast({ open: true, msg: 'Project added successfully', sev: 'success' })
+      setDialogOpen(false)
+      loadData()
+    } catch (e: any) {
+      setToast({ open: true, msg: e?.response?.data?.message || 'Failed to save project', sev: 'error' })
     }
-    setDialogOpen(false)
   }
 
-  const columns = useMemo<GridColDef<Project>[]>(
-    () => [
-      {
-        field: 'name',
-        headerName: 'Project Name',
-        flex: 1.2,
-        minWidth: 160,
-        renderCell: (p) => <Box sx={{ fontWeight: 600 }}>{p.value}</Box>,
-      },
-      { field: 'location', headerName: 'Location', flex: 1.2, minWidth: 150 },
-      { field: 'type', headerName: 'Type', width: 120 },
-      {
-        field: 'status',
-        headerName: 'Status',
-        width: 210,
-        renderCell: (p) => <StatusBadge value={p.value} />,
-      },
-      { field: 'units', headerName: 'Total Units', type: 'number', width: 130 },
-      { field: 'available', headerName: 'Available Units', type: 'number', width: 160 },
-      { field: 'priceRange', headerName: 'Price Range', width: 130 },
-      { field: 'completionDate', headerName: 'Est. Completion', width: 130 },
-      {
-        field: '__actions',
-        headerName: 'Actions',
-        width: 100,
-        sortable: false,
-        filterable: false,
-        renderCell: (p) => (
-          <Stack direction="row" spacing={0.5} sx={{ height: '100%', alignItems: 'center' }}>
-            <Tooltip title="Edit">
-              <IconButton size="small" onClick={() => openEditDialog(p.row)}>
-                <EditIcon fontSize="small" />
-              </IconButton>
-            </Tooltip>
-            <Tooltip title="Delete">
-              <IconButton size="small" color="error" onClick={() => handleDeleteClick(p.row.id)}>
-                <DeleteIcon fontSize="small" />
-              </IconButton>
-            </Tooltip>
-          </Stack>
-        ),
-      },
-    ],
-    [],
-  )
+  const columns = useMemo<GridColDef<Project>[]>(() => {
+    if (!resolvedScreen) return []
+
+    const cols: GridColDef<Project>[] = resolvedScreen.table_headers.map((header) => {
+      // Admin doesn't need to see organization name/id column
+      if (header.key === 'organization_id') return null
+
+      const col: GridColDef<Project> = {
+        field: header.key as keyof Project,
+        headerName: header.label,
+        flex: 1,
+        minWidth: 120,
+        sortable: header.sortable,
+      }
+
+      if (header.key === 'project_name') {
+        col.flex = 1.2
+        col.minWidth = 160
+        col.renderCell = (p) => <Box sx={{ fontWeight: 600 }}>{p.value}</Box>
+      } else if (header.key === 'developer_name') {
+        col.flex = 1.2
+        col.minWidth = 150
+      } else if (header.key === 'property_type') {
+        col.width = 140
+      } else if (header.key === 'property_stage') {
+        col.width = 140
+      } else if (header.key === 'project_status') {
+        col.width = 160
+        col.renderCell = (p) => <StatusBadge value={p.value} />
+      } else if (header.key === 'address') {
+        col.flex = 1.2
+        col.minWidth = 160
+      } else if (header.key === 'rera_link') {
+        col.width = 140
+        col.renderCell = (p) => p.value ? <a href={p.value} target="_blank" rel="noreferrer" style={{ color: '#1976d2', textDecoration: 'none' }}>View Link</a> : <em>N/A</em>
+      } else if (header.key === 'walkthrough_link') {
+        col.width = 150
+        col.renderCell = (p) => p.value ? <a href={p.value} target="_blank" rel="noreferrer" style={{ color: '#1976d2', textDecoration: 'none' }}>View Link</a> : <em>N/A</em>
+      } else if (header.key === 'status') {
+        col.width = 100
+        col.renderCell = (p) => (
+          <Chip
+            label={p.value}
+            size="small"
+            color={p.value === 'ACTIVE' ? 'success' : 'default'}
+            sx={{ fontWeight: 600, fontSize: '0.75rem' }}
+          />
+        )
+      } else if (header.key === 'createdAt') {
+        col.width = 130
+        col.renderCell = (p) => p.value ? new Date(p.value).toLocaleDateString() : ''
+      }
+
+      return col
+    }).filter(Boolean) as GridColDef<Project>[]
+
+    cols.push({
+      field: '__actions' as any,
+      headerName: 'Actions',
+      width: 100,
+      sortable: false,
+      filterable: false,
+      renderCell: (p) => (
+        <Stack direction="row" spacing={0.5} sx={{ height: '100%', alignItems: 'center' }}>
+          <Tooltip title="Edit">
+            <IconButton size="small" onClick={() => openEditDialog(p.row)}>
+              <EditIcon fontSize="small" />
+            </IconButton>
+          </Tooltip>
+          <Tooltip title="Delete">
+            <IconButton size="small" color="error" onClick={() => handleDeleteClick(p.row.id)}>
+              <DeleteIcon fontSize="small" />
+            </IconButton>
+          </Tooltip>
+        </Stack>
+      ),
+    })
+
+    return cols
+  }, [resolvedScreen, items])
+
+  const renderField = (field: ResolvedFormField) => {
+    // Admin does not render organization_id input field
+    if (field.key === 'organization_id') return null
+
+    if (field.key === 'developer_name') {
+      return (
+        <TextField
+          key={field.key}
+          fullWidth
+          label={field.label}
+          value={form.developer_name}
+          onChange={(e) => setForm(prev => ({ ...prev, developer_name: e.target.value }))}
+          required={field.required}
+        />
+      )
+    }
+
+    if (field.key === 'project_name') {
+      return (
+        <TextField
+          key={field.key}
+          fullWidth
+          label={field.label}
+          value={form.project_name}
+          onChange={(e) => setForm(prev => ({ ...prev, project_name: e.target.value }))}
+          required={field.required}
+        />
+      )
+    }
+
+    if (field.key === 'property_type') {
+      return (
+        <TextField
+          key={field.key}
+          select
+          fullWidth
+          label={field.label}
+          value={form.property_type}
+          onChange={(e) => setForm(prev => ({ ...prev, property_type: e.target.value }))}
+          required={field.required}
+        >
+          {propertyTypes.map((t) => (
+            <MenuItem key={t.id || t.name} value={t.name || t.value}>
+              {t.name || t.value}
+            </MenuItem>
+          ))}
+        </TextField>
+      )
+    }
+
+    if (field.key === 'property_stage') {
+      return (
+        <TextField
+          key={field.key}
+          select
+          fullWidth
+          label={field.label}
+          value={form.property_stage}
+          onChange={(e) => setForm(prev => ({ ...prev, property_stage: e.target.value }))}
+          required={field.required}
+        >
+          {propertyStages.map((s) => (
+            <MenuItem key={s.id || s.name} value={s.name || s.value}>
+              {s.name || s.value}
+            </MenuItem>
+          ))}
+        </TextField>
+      )
+    }
+
+    if (field.key === 'project_status') {
+      return (
+        <TextField
+          key={field.key}
+          select
+          fullWidth
+          label={field.label}
+          value={form.project_status}
+          onChange={(e) => setForm(prev => ({ ...prev, project_status: e.target.value as any }))}
+          required={field.required}
+        >
+          {PROPERTY_STATUS_OPTIONS.map((opt) => (
+            <MenuItem key={opt.value} value={opt.value}>
+              {opt.label}
+            </MenuItem>
+          ))}
+        </TextField>
+      )
+    }
+
+    if (field.key === 'status') {
+      return (
+        <TextField
+          key={field.key}
+          select
+          fullWidth
+          label={field.label}
+          value={form.status}
+          onChange={(e) => setForm(prev => ({ ...prev, status: e.target.value as any }))}
+          required={field.required}
+        >
+          <MenuItem value="ACTIVE">ACTIVE</MenuItem>
+          <MenuItem value="INACTIVE">INACTIVE</MenuItem>
+        </TextField>
+      )
+    }
+
+    if (field.key === 'address') {
+      return (
+        <TextField
+          key={field.key}
+          fullWidth
+          label={field.label}
+          value={form.address}
+          onChange={(e) => setForm(prev => ({ ...prev, address: e.target.value }))}
+          required={field.required}
+        />
+      )
+    }
+
+    if (field.key === 'rera_link') {
+      return (
+        <TextField
+          key={field.key}
+          fullWidth
+          label={field.label}
+          value={form.rera_link}
+          onChange={(e) => setForm(prev => ({ ...prev, rera_link: e.target.value }))}
+          required={field.required}
+        />
+      )
+    }
+
+    if (field.key === 'walkthrough_link') {
+      return (
+        <TextField
+          key={field.key}
+          fullWidth
+          label={field.label}
+          value={form.walkthrough_link}
+          onChange={(e) => setForm(prev => ({ ...prev, walkthrough_link: e.target.value }))}
+          required={field.required}
+        />
+      )
+    }
+
+    return (
+      <TextField
+        key={field.key}
+        fullWidth
+        label={field.label}
+        value={form[field.key as keyof typeof form] || ''}
+        onChange={(e) => setForm(prev => ({ ...prev, [field.key]: e.target.value }))}
+        required={field.required}
+      />
+    )
+  }
 
   return (
     <Box
@@ -261,98 +430,100 @@ export default function ProjectsListPage() {
         }
         fullHeight
       >
-        <AppDataGrid height="100%" rows={items} columns={columns} getRowId={(r) => r.id} />
+        <Box sx={{ flexGrow: 1, minHeight: 0, position: 'relative' }}>
+          {loading && (
+            <Box sx={{ position: 'absolute', top: 0, left: 0, right: 0, zIndex: 10 }}>
+              <LinearProgress />
+            </Box>
+          )}
+          <AppDataGrid height="100%" rows={items} columns={columns} getRowId={(r) => r.id} />
+        </Box>
       </AppCard>
 
-      <Dialog open={dialogOpen} onClose={() => setDialogOpen(false)} maxWidth="sm" fullWidth>
+      <Dialog 
+        open={dialogOpen} 
+        onClose={() => setDialogOpen(false)} 
+        maxWidth="lg" 
+        fullWidth
+        PaperProps={{
+          sx: {
+            width: '100%',
+            maxWidth: '750px'
+          }
+        }}
+      >
         <DialogTitle>{editing ? 'Edit Project' : 'Add New Project'}</DialogTitle>
         <DialogContent dividers>
           <Box
             sx={{
-              display: 'grid',
-              gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' },
-              gap: 2,
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 2.5,
+              pt: 1,
             }}
           >
-            <Box sx={{ gridColumn: 'span 2' }}>
-              <TextField
-                fullWidth
-                label="Project Name"
-                value={form.name}
-                onChange={(e) => setForm({ ...form, name: e.target.value })}
-                required
-              />
-            </Box>
-            <Box sx={{ gridColumn: 'span 2' }}>
-              <TextField
-                fullWidth
-                label="Location"
-                value={form.location}
-                onChange={(e) => setForm({ ...form, location: e.target.value })}
-                required
-              />
-            </Box>
-            <Box>
-              <TextField
-                select
-                fullWidth
-                label="Type"
-                value={form.type}
-                onChange={(e) => setForm({ ...form, type: e.target.value })}
-              >
-                <MenuItem value="Residential">Residential</MenuItem>
-                <MenuItem value="Commercial">Commercial</MenuItem>
-                <MenuItem value="Mixed Use">Mixed Use</MenuItem>
-              </TextField>
-            </Box>
-            <Box>
-              <TextField
-                select
-                fullWidth
-                label="Status"
-                value={form.status}
-                onChange={(e) => setForm({ ...form, status: e.target.value as Project['status'] })}
-              >
-                <MenuItem value="Planning">Planning</MenuItem>
-                <MenuItem value="Launching">Launching</MenuItem>
-                <MenuItem value="Under Construction">Under Construction</MenuItem>
-                <MenuItem value="Completed">Completed</MenuItem>
-              </TextField>
-            </Box>
-            <Box>
-              <TextField
-                fullWidth
-                type="number"
-                label="Total Units"
-                value={form.units}
-                onChange={(e) => setForm({ ...form, units: parseInt(e.target.value) || 0 })}
-              />
-            </Box>
-            <Box>
-              <TextField
-                fullWidth
-                type="number"
-                label="Available Units"
-                value={form.available}
-                onChange={(e) => setForm({ ...form, available: parseInt(e.target.value) || 0 })}
-              />
-            </Box>
-            <Box>
-              <TextField
-                fullWidth
-                label="Price Range (e.g. $250k - $500k)"
-                value={form.priceRange}
-                onChange={(e) => setForm({ ...form, priceRange: e.target.value })}
-              />
-            </Box>
-            <Box>
-              <TextField
-                fullWidth
-                label="Est. Completion Date"
-                value={form.completionDate}
-                onChange={(e) => setForm({ ...form, completionDate: e.target.value })}
-              />
-            </Box>
+            {(() => {
+              const fields = resolvedScreen?.form_fields || []
+              const renderedKeys = new Set<string>()
+
+              return fields.map((field) => {
+                if (renderedKeys.has(field.key)) return null
+
+                if (field.key === 'developer_name') {
+                  const sibling = fields.find(f => f.key === 'project_name')
+                  if (sibling) {
+                    renderedKeys.add('project_name')
+                    return (
+                      <Box key={field.key} sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2 }}>
+                        {renderField(field)}
+                        {renderField(sibling)}
+                      </Box>
+                    )
+                  }
+                }
+
+                if (field.key === 'property_type') {
+                  const sibling = fields.find(f => f.key === 'property_stage')
+                  if (sibling) {
+                    renderedKeys.add('property_stage')
+                    return (
+                      <Box key={field.key} sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2 }}>
+                        {renderField(field)}
+                        {renderField(sibling)}
+                      </Box>
+                    )
+                  }
+                }
+
+                if (field.key === 'project_status') {
+                  const sibling = fields.find(f => f.key === 'status')
+                  if (sibling) {
+                    renderedKeys.add('status')
+                    return (
+                      <Box key={field.key} sx={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 2 }}>
+                        {renderField(field)}
+                        {renderField(sibling)}
+                      </Box>
+                    )
+                  }
+                }
+
+                if (field.key === 'rera_link') {
+                  const sibling = fields.find(f => f.key === 'walkthrough_link')
+                  if (sibling) {
+                    renderedKeys.add('walkthrough_link')
+                    return (
+                      <Box key={field.key} sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2 }}>
+                        {renderField(field)}
+                        {renderField(sibling)}
+                      </Box>
+                    )
+                  }
+                }
+
+                return renderField(field)
+              })
+            })()}
           </Box>
         </DialogContent>
         <DialogActions sx={{ p: 2 }}>

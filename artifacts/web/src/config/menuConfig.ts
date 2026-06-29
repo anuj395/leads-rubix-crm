@@ -87,7 +87,7 @@ export const superAdminMenuConfig: SuperAdminMenuItem[] = [
     module: "Analytics"
   },
   {
-    key: "organization.list",
+    key: "organization",
     name: "Organizations",
     route: "/organization/list",
     icon: "organization",

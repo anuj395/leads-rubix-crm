@@ -9,6 +9,7 @@ const KEY_MAP = {
   resource_transfer_reasons: 'TransferReasons',
   resource_property_stages: 'PropertyStages',
   resource_carousel: 'carousel',
+  resource_projects: 'projects',
 };
 
 function getFieldName(resourceKey) {
@@ -26,6 +27,7 @@ const organizationResourcesSchema = new mongoose.Schema(
     carousel: { type: Array, default: [] },
     leadSources: { type: Array, default: [] },
     locations: { type: Array, default: [] },
+    projects: { type: Array, default: [] },
   },
   { timestamps: true, strict: false }
 );
@@ -34,7 +36,38 @@ const OrganizationResources = mongoose.model('OrganizationResources', organizati
 
 exports.ResourceItem = OrganizationResources;
 
-exports.list = async ({ organization_id, resource_key } = {}) => {
+exports.list = async ({ organization_id, resource_key, all = false } = {}) => {
+  if (resource_key === 'resource_projects' && all) {
+    const docs = await OrganizationResources.find({}).lean().exec();
+    const allProjects = [];
+    const Organization = mongoose.model('Organization');
+    const orgs = await Organization.find({}).lean().exec();
+    const orgMap = {};
+    orgs.forEach(o => {
+      orgMap[o.organization_id || o._id.toString()] = o.name || o.organization_name || '';
+    });
+
+    docs.forEach(doc => {
+      const orgId = doc.organization_id;
+      const orgName = orgMap[orgId] || '';
+      if (Array.isArray(doc.projects)) {
+        doc.projects.forEach(p => {
+          allProjects.push({
+            organization_id: orgId,
+            organization_name: orgName,
+            ...p,
+          });
+        });
+      }
+    });
+
+    return allProjects.sort((a, b) => {
+      const da = a.createdAt ? new Date(a.createdAt) : new Date(0);
+      const db = b.createdAt ? new Date(b.createdAt) : new Date(0);
+      return db - da;
+    });
+  }
+
   let doc = await OrganizationResources.findOne({ organization_id }).lean().exec();
   // Fallback to global defaults if no custom organization resources document exists yet
   if (!doc && organization_id !== null && organization_id !== 'null' && organization_id !== '') {
@@ -55,7 +88,7 @@ exports.findById = async (id) => {
   const doc = await OrganizationResources.findOne({
     $or: Object.values(KEY_MAP).map(field => ({ [`${field}.id`]: id }))
   }).lean().exec();
-  
+
   if (!doc) return null;
   for (const field of Object.values(KEY_MAP)) {
     if (doc[field]) {

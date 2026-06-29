@@ -38,6 +38,7 @@ router.get('/:resource_key', authenticate, async (req, res, next) => {
     const items = await resourceItemModel.list({
       resource_key,
       organization_id: orgId,
+      all: req.query.all === 'true',
     });
 
     const formatted = items.map(item => ({
