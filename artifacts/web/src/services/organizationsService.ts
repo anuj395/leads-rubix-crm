@@ -2,6 +2,7 @@ import { api } from './api'
 
 export interface Organization {
   _id: string
+  organization_id?: string
   industry_id?: string | null
   is_active: boolean
   created_by?: string | null

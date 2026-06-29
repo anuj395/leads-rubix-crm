@@ -22,6 +22,7 @@ require('./models/couponModel');
 require('./models/faqModel');
 require('./models/newsModel');
 require('./models/whatsappConfigModel');
+require('./models/resourceItemModel');
 
 const {
   seedUsers,

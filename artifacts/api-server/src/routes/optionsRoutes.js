@@ -2,6 +2,7 @@ const express = require('express');
 const mongoose = require('mongoose');
 const { authenticate } = require('../middlewares/auth');
 const { countryNames } = require('../utils/countries');
+const resourceItemModel = require('../models/resourceItemModel');
 
 const router = express.Router();
 
@@ -89,6 +90,37 @@ router.get('/:key', authenticate, async (req, res) => {
       return res.json({ items: options });
     } catch (err) {
       return res.status(500).json({ message: 'Failed to fetch industries' });
+    }
+  }
+
+  if (key.startsWith('resource_')) {
+    try {
+      let orgId = null;
+      if (req.user.role === 'superAdmin') {
+        orgId = req.query.organization_id || null;
+      } else {
+        const Organization = mongoose.model('Organization');
+        const org = await Organization.findOne({ industry_id: req.user.industry_id }).exec();
+        orgId = org ? org.organization_id : null;
+      }
+
+      const list = await resourceItemModel.list({
+        organization_id: orgId,
+        resource_key: key,
+      });
+
+      const displayField = req.query.display || 'name';
+
+      const options = list.map(item => {
+        // Items are stored flattened in the array (e.g. { id, name, ... })
+        const val = item[displayField] || Object.values(item).filter(v => typeof v !== 'object')[0] || item.id;
+        return { value: String(val || ''), label: String(val || '') };
+      });
+
+      return res.json({ items: options });
+    } catch (err) {
+      console.error(err);
+      return res.status(500).json({ message: 'Failed to fetch resource options' });
     }
   }
 

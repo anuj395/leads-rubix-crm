@@ -6,6 +6,7 @@ export interface Screen {
   key: string
   name: string
   description?: string
+  order?: number
   is_active: boolean
   createdAt?: string
   updatedAt?: string
@@ -15,6 +16,7 @@ export interface ScreenInput {
   key: string
   name: string
   description?: string
+  order?: number
   is_active?: boolean
 }
 

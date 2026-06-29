@@ -34,7 +34,7 @@ const DEFAULT_CONFIGS: Record<string, WhatsAppConfig> = {
     },
   },
   wapi: {
-    type: 'WAPI',
+    type: 'WHAPI',
     url: 'https://gate.whapi.cloud',
     isActive: false,
     fields: {
@@ -149,7 +149,7 @@ export default function WhatsappApiPage() {
               }
             },
             wapi: {
-              type: 'WAPI',
+              type: 'WHAPI',
               url: data.wapi?.wapi_url || 'https://gate.whapi.cloud',
               isActive: data.wapi?.active || false,
               incomingJson: data.wapi?.incoming_json,
@@ -194,7 +194,7 @@ export default function WhatsappApiPage() {
         }
       },
       wapi: {
-        type: 'WAPI',
+        type: 'WHAPI',
         url: data.wapi?.wapi_url || 'https://gate.whapi.cloud',
         isActive: data.wapi?.active || false,
         incomingJson: data.wapi?.incoming_json,
@@ -491,7 +491,7 @@ export default function WhatsappApiPage() {
               <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' }, gap: 2.5 }}>
                 <TextField
                   fullWidth
-                  label="WAPI URL"
+                  label="WHAPI URL"
                   required
                   value={editFields.wapiUrl || ''}
                   onChange={(e) => handleFieldChange('wapiUrl', e.target.value)}
@@ -499,7 +499,7 @@ export default function WhatsappApiPage() {
                 />
                 <TextField
                   fullWidth
-                  label="WAPI Token"
+                  label="WHAPI Token"
                   required
                   value={editFields.wapiToken || ''}
                   onChange={(e) => handleFieldChange('wapiToken', e.target.value)}
