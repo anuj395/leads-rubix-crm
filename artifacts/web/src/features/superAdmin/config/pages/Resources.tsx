@@ -340,7 +340,7 @@ export default function ResourcesPage() {
   }, [resolvedScreen, rows])
 
   return (
-    <Box sx={{ p: { xs: 2, sm: 3 }, width: '100%', minWidth: 0, height: '100%', display: 'flex', flexDirection: 'column', gap: 3, overflowY: 'auto' }}>
+    <Box sx={{ p: { xs: 2, sm: 3 }, width: '100%', minWidth: 0, height: '100%', display: 'flex', flexDirection: 'column', gap: 3, overflow: 'hidden' }}>
       
       {/* Industry Selector & Header */}
       <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" alignItems={{ xs: 'stretch', sm: 'center' }} gap={2}>
@@ -376,7 +376,7 @@ export default function ResourcesPage() {
             </Tabs>
           </Box>
 
-          <Box sx={{ flexGrow: 1, minHeight: 0 }}>
+          <Box sx={{ flexGrow: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
             {activeScreen && resolvedScreen && (
               <AppCard 
                 title={resolvedScreen.screen.name} 
@@ -388,14 +388,15 @@ export default function ResourcesPage() {
                     <Button variant="outlined" size="small" startIcon={<DownloadIcon />} onClick={handleExport}>Export</Button>
                   </Stack>
                 }
+                fullHeight
               >
-                <Box sx={{ height: 480, width: '100%', position: 'relative' }}>
+                <Box sx={{ flexGrow: 1, minHeight: 0, width: '100%', position: 'relative' }}>
                   {loading && (
                     <Box sx={{ position: 'absolute', top: 0, left: 0, right: 0, zIndex: 10 }}>
                       <LinearProgress />
                     </Box>
                   )}
-                  <AppDataGrid rows={rows} columns={gridColumns} getRowId={(r) => r.id} />
+                  <AppDataGrid height="100%" rows={rows} columns={gridColumns} getRowId={(r) => r.id} />
                 </Box>
               </AppCard>
             )}
@@ -408,22 +409,19 @@ export default function ResourcesPage() {
         open={dialogOpen} 
         onClose={() => setDialogOpen(false)} 
         fullWidth 
-        maxWidth="md"
+        maxWidth="lg"
         PaperProps={{
           sx: {
-            borderRadius: 3,
-            boxShadow: '0 12px 40px rgba(0,0,0,0.12)',
-            p: 1,
             width: '100%',
-            maxWidth: 650
+            maxWidth: '750px'
           }
         }}
       >
-        <DialogTitle sx={{ fontWeight: 700, px: 3, pt: 3, pb: 1, fontSize: '1.25rem' }}>
+        <DialogTitle>
           {editingItem ? 'Edit' : 'Add'} {resolvedScreen?.screen.name}
         </DialogTitle>
-        <DialogContent sx={{ px: 3, py: 1 }}>
-          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3, pt: 1 }}>
+        <DialogContent dividers>
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5, pt: 1 }}>
             {resolvedScreen?.form_fields.map((field) => {
               if (field.key === 'url' || field.key === 'image' || field.type === 'avatar') {
                 return (
@@ -558,9 +556,9 @@ export default function ResourcesPage() {
             })}
           </Box>
         </DialogContent>
-        <DialogActions sx={{ px: 3, pb: 3, pt: 1, gap: 1 }}>
-          <Button onClick={() => setDialogOpen(false)} sx={{ textTransform: 'none', fontWeight: 600 }}>Cancel</Button>
-          <Button variant="contained" onClick={handleSave} sx={{ textTransform: 'none', fontWeight: 600, px: 3 }}>Save</Button>
+        <DialogActions sx={{ p: 2 }}>
+          <Button onClick={() => setDialogOpen(false)}>Cancel</Button>
+          <Button onClick={handleSave} variant="contained">Save</Button>
         </DialogActions>
       </Dialog>
 

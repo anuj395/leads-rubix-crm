@@ -35,7 +35,11 @@ const OrganizationResources = mongoose.model('OrganizationResources', organizati
 exports.ResourceItem = OrganizationResources;
 
 exports.list = async ({ organization_id, resource_key } = {}) => {
-  const doc = await OrganizationResources.findOne({ organization_id }).lean().exec();
+  let doc = await OrganizationResources.findOne({ organization_id }).lean().exec();
+  // Fallback to global defaults if no custom organization resources document exists yet
+  if (!doc && organization_id !== null && organization_id !== 'null' && organization_id !== '') {
+    doc = await OrganizationResources.findOne({ organization_id: null }).lean().exec();
+  }
   if (!doc) return [];
   const fieldName = getFieldName(resource_key);
   const items = doc[fieldName] || [];
@@ -83,6 +87,10 @@ exports.create = async ({ organization_id, resource_key, data }) => {
     updatedAt: new Date(),
   };
 
+  if (resource_key === 'resource_lead_sources') {
+    newItem.leadSource_id = itemId;
+  }
+
   if (!doc[fieldName]) {
     doc[fieldName] = [];
   }
@@ -104,9 +112,13 @@ exports.update = async (id, data) => {
     if (doc[field]) {
       const idx = doc[field].findIndex(i => String(i.id) === String(id));
       if (idx !== -1) {
+        const updatePayload = { ...data };
+        if (field === 'leadSources') {
+          updatePayload.leadSource_id = id;
+        }
         doc[field][idx] = {
           ...doc[field][idx],
-          ...data,
+          ...updatePayload,
           updatedAt: new Date(),
         };
         doc.markModified(field);

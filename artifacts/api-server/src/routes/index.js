@@ -27,6 +27,7 @@ const faqRoutes = require('./faqRoutes');
 const newsRoutes = require('./newsRoutes');
 const whatsappRoutes = require('./whatsappRoutes');
 const resourceItemRoutes = require('./resourceItemRoutes');
+const apiTokenRoutes = require('./apiTokenRoutes');
 const screenController = require('../controllers/screenController');
 const { authenticate } = require('../middlewares/auth');
 
@@ -59,6 +60,7 @@ router.use('/options', optionsRoutes);
 router.use('/analytics', analyticsRoutes);
 router.use('/whatsapp-config', whatsappRoutes);
 router.use('/resources', resourceItemRoutes);
+router.use('/api-tokens', apiTokenRoutes);
 
 // Compat alias: GET /api/form-config?screen=contacts → flat form_fields[]
 // (matches the legacy contract some clients still use; internally calls the

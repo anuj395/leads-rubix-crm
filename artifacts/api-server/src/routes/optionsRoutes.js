@@ -93,6 +93,35 @@ router.get('/:key', authenticate, async (req, res) => {
     }
   }
 
+  if (key === 'organizations') {
+    try {
+      const Organization = mongoose.model('Organization');
+      const list = await Organization.find({}).sort({ name: 1 }).lean().exec();
+      const options = list.map(org => ({ value: String(org.organization_id || org._id), label: org.name }));
+      return res.json({ items: options });
+    } catch (err) {
+      return res.status(500).json({ message: 'Failed to fetch organizations' });
+    }
+  }
+
+  if (key === 'country_codes') {
+    const COUNTRY_CODES = [
+      { value: '+91', label: '🇮🇳 India (+91)' },
+      { value: '+1', label: '🇺🇸 United States (+1)' },
+      { value: '+44', label: '🇬🇧 United Kingdom (+44)' },
+      { value: '+971', label: '🇦🇪 UAE (+971)' },
+      { value: '+65', label: '🇸🇬 Singapore (+65)' },
+      { value: '+61', label: '🇦🇺 Australia (+61)' },
+      { value: '+1', label: '🇨🇦 Canada (+1)' },
+      { value: '+966', label: '🇸🇦 Saudi Arabia (+966)' },
+      { value: '+974', label: '🇶🇦 Qatar (+974)' },
+      { value: '+965', label: '🇰🇼 Kuwait (+965)' },
+      { value: '+968', label: '🇴🇲 Oman (+968)' },
+      { value: '+973', label: '🇧🇭 Bahrain (+973)' },
+    ];
+    return res.json({ items: COUNTRY_CODES });
+  }
+
   if (key.startsWith('resource_')) {
     try {
       let orgId = null;

@@ -23,6 +23,7 @@ require('./models/faqModel');
 require('./models/newsModel');
 require('./models/whatsappConfigModel');
 require('./models/resourceItemModel');
+require('./models/apiTokenModel');
 
 const {
   seedUsers,

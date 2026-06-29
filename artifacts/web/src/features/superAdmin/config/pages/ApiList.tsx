@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useState, useEffect } from 'react'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import Dialog from '@mui/material/Dialog'
@@ -6,72 +6,48 @@ import DialogTitle from '@mui/material/DialogTitle'
 import DialogContent from '@mui/material/DialogContent'
 import DialogActions from '@mui/material/DialogActions'
 import TextField from '@mui/material/TextField'
-import Chip from '@mui/material/Chip'
-import Snackbar from '@mui/material/Snackbar'
-import Alert from '@mui/material/Alert'
 import MenuItem from '@mui/material/MenuItem'
 import Stack from '@mui/material/Stack'
 import Tooltip from '@mui/material/Tooltip'
 import IconButton from '@mui/material/IconButton'
+import Snackbar from '@mui/material/Snackbar'
+import Alert from '@mui/material/Alert'
+import Typography from '@mui/material/Typography'
+import LinearProgress from '@mui/material/LinearProgress'
+import ContentCopyIcon from '@mui/icons-material/ContentCopy'
 import { Add as AddIcon, Edit as EditIcon, Delete as DeleteIcon } from '@mui/icons-material'
 import type { GridColDef } from '@mui/x-data-grid'
 import { AppCard } from '@/components/ui/AppCard'
 import { AppDataGrid } from '@/components/ui/AppDataGrid'
 import { StatusBadge } from '@/components/ui/StatusBadge'
+import { getApiTokens, createApiToken, updateApiToken, deleteApiToken, type ApiTokenConfig } from '@/services/apiTokensService'
+import { listOrganizationsPaged, type Organization } from '@/services/organizationsService'
+import { getResources } from '@/services/resourcesService'
+import { resolveScreen, type ResolvedScreen, type ResolvedFormField } from '@/services/screenAdminService'
 
-export interface ApiEndpoint {
-  id: string
-  name: string
-  url: string
-  method: 'GET' | 'POST' | 'PUT' | 'DELETE'
-  status: 'Active' | 'Inactive'
-  type: 'Incoming Webhook' | 'Outgoing Webhook' | 'Rest API'
-  description: string
-}
-
-const INITIAL_APIS: ApiEndpoint[] = [
-  {
-    id: 'a1',
-    name: 'Facebook Lead Ads Webhook',
-    url: 'https://api.leadsrubix.com/api/v1/webhooks/facebook',
-    method: 'POST',
-    status: 'Active',
-    type: 'Incoming Webhook',
-    description: 'Receives real-time lead submissions from Facebook Ad campaigns.',
-  },
-  {
-    id: 'a2',
-    name: 'Google Sheets Exporter',
-    url: 'https://script.google.com/macros/s/AKfycbz.../exec',
-    method: 'POST',
-    status: 'Active',
-    type: 'Outgoing Webhook',
-    description: 'Pushes qualified lead records to external spreadsheet catalog.',
-  },
-  {
-    id: 'a3',
-    name: 'SendGrid Email Status Webhook',
-    url: 'https://api.leadsrubix.com/api/v1/webhooks/sendgrid',
-    method: 'POST',
-    status: 'Active',
-    type: 'Incoming Webhook',
-    description: 'Tracks delivery, bounce, and open status of outbound emails.',
-  },
-  {
-    id: 'a4',
-    name: 'Internal ERP Sync API',
-    url: 'https://erp.internal.company.com/api/leads',
-    method: 'PUT',
-    status: 'Inactive',
-    type: 'Rest API',
-    description: 'Synchronizes completed sales and booking records with internal ERP systems.',
-  },
+const COUNTRY_CODES = [
+  { code: '+91', label: '🇮🇳 India (+91)' },
+  { code: '+1', label: '🇺🇸 United States (+1)' },
+  { code: '+44', label: '🇬🇧 United Kingdom (+44)' },
+  { code: '+971', label: '🇦🇪 UAE (+971)' },
+  { code: '+65', label: '🇸🇬 Singapore (+65)' },
+  { code: '+61', label: '🇦🇺 Australia (+61)' },
 ]
 
+// Stale-while-revalidate frontend caches for instant loading
+const tokensCache = { data: [] as ApiTokenConfig[], initialized: false }
+const leadSourcesCache = new Map<string, any[]>()
+const organizationsCache = { data: [] as Organization[], initialized: false }
+
 export default function ApiListPage() {
-  const [items, setItems] = useState<ApiEndpoint[]>(INITIAL_APIS)
+  const [items, setItems] = useState<ApiTokenConfig[]>(tokensCache.data)
+  const [organizations, setOrganizations] = useState<Organization[]>(organizationsCache.data)
+  const [leadSources, setLeadSources] = useState<any[]>([])
+  const [loading, setLoading] = useState(false)
   const [dialogOpen, setDialogOpen] = useState(false)
-  const [editing, setEditing] = useState<ApiEndpoint | null>(null)
+  const [editing, setEditing] = useState<ApiTokenConfig | null>(null)
+  const [resolvedScreen, setResolvedScreen] = useState<ResolvedScreen | null>(null)
+  
   const [toast, setToast] = useState<{ open: boolean; msg: string; sev: 'success' | 'error' }>({
     open: false,
     msg: '',
@@ -80,128 +56,317 @@ export default function ApiListPage() {
 
   // Form state
   const [form, setForm] = useState({
-    name: '',
-    url: '',
-    method: 'POST' as ApiEndpoint['method'],
-    status: 'Active' as ApiEndpoint['status'],
-    type: 'Incoming Webhook' as ApiEndpoint['type'],
-    description: '',
+    organization_id: '',
+    leadSource_id: '',
+    source: '',
+    country_code: '+91',
+    status: 'ACTIVE' as ApiTokenConfig['status'],
   })
+
+  const loadData = async () => {
+    try {
+      if (!tokensCache.initialized || !organizationsCache.initialized) {
+        setLoading(true)
+      }
+      
+      const [tokens, orgsData, resolved] = await Promise.all([
+        getApiTokens(),
+        listOrganizationsPaged({ page: 0, pageSize: 100 }),
+        resolveScreen({ screen_key: 'config_api' })
+      ])
+
+      // Update cache
+      tokensCache.data = tokens
+      tokensCache.initialized = true
+      organizationsCache.data = orgsData.items
+      organizationsCache.initialized = true
+
+      setItems(tokens)
+      setOrganizations(orgsData.items)
+      setResolvedScreen(resolved)
+    } catch (e: any) {
+      setToast({ open: true, msg: e?.response?.data?.message || 'Failed to load configurations', sev: 'error' })
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    loadData()
+  }, [])
+
+  // Resolve dynamic Lead Sources with caching when organization changes in form
+  useEffect(() => {
+    if (!form.organization_id) {
+      setLeadSources([])
+      setForm(prev => ({ ...prev, leadSource_id: '', source: '' }))
+      return
+    }
+
+    const orgId = form.organization_id
+    if (leadSourcesCache.has(orgId)) {
+      setLeadSources(leadSourcesCache.get(orgId)!)
+    }
+
+    void (async () => {
+      try {
+        const sources = await getResources('resource_lead_sources', orgId)
+        leadSourcesCache.set(orgId, sources)
+        setLeadSources(sources)
+      } catch (e) {
+        console.error('Failed to load lead sources', e)
+      }
+    })()
+  }, [form.organization_id])
 
   const openAddDialog = () => {
     setEditing(null)
     setForm({
-      name: '',
-      url: 'https://',
-      method: 'POST',
-      status: 'Active',
-      type: 'Incoming Webhook',
-      description: '',
+      organization_id: '',
+      leadSource_id: '',
+      source: '',
+      country_code: '+91',
+      status: 'ACTIVE',
     })
     setDialogOpen(true)
   }
 
-  const openEditDialog = (apiE: ApiEndpoint) => {
+  const openEditDialog = (apiE: ApiTokenConfig) => {
     setEditing(apiE)
     setForm({
-      name: apiE.name,
-      url: apiE.url,
-      method: apiE.method,
-      status: apiE.status,
-      type: apiE.type,
-      description: apiE.description,
+      organization_id: apiE.organization_id || '',
+      leadSource_id: apiE.leadSource_id || '',
+      source: apiE.source || '',
+      country_code: apiE.country_code || '+91',
+      status: apiE.status || 'ACTIVE',
     })
     setDialogOpen(true)
   }
 
-  const handleDelete = (id: string) => {
-    if (window.confirm('Are you sure you want to delete this API endpoint?')) {
-      setItems((prev) => prev.filter((a) => a.id !== id))
-      setToast({ open: true, msg: 'API endpoint deleted successfully', sev: 'success' })
+  const handleDelete = async (id: string) => {
+    if (window.confirm('Are you sure you want to delete this API credentials?')) {
+      try {
+        setLoading(true)
+        await deleteApiToken(id)
+        setToast({ open: true, msg: 'API integration deleted successfully', sev: 'success' })
+        loadData()
+      } catch (e: any) {
+        setToast({ open: true, msg: e?.response?.data?.message || 'Failed to delete config', sev: 'error' })
+      } finally {
+        setLoading(false)
+      }
     }
   }
 
-  const handleSave = () => {
-    if (!form.name || !form.url) {
-      setToast({ open: true, msg: 'Name and URL are required', sev: 'error' })
+  const handleSave = async () => {
+    if (!form.organization_id || !form.source) {
+      setToast({ open: true, msg: 'Organization and Source are required', sev: 'error' })
       return
     }
 
-    if (editing) {
-      setItems((prev) =>
-        prev.map((a) =>
-          a.id === editing.id
-            ? {
-                ...a,
-                ...form,
-              }
-            : a,
-        ),
-      )
-      setToast({ open: true, msg: 'API Endpoint updated successfully', sev: 'success' })
-    } else {
-      const newApi: ApiEndpoint = {
-        id: `a_${Date.now()}`,
+    try {
+      setLoading(true)
+      const payload = {
         ...form,
       }
-      setItems((prev) => [newApi, ...prev])
-      setToast({ open: true, msg: 'API Endpoint added successfully', sev: 'success' })
+
+      if (editing) {
+        await updateApiToken(editing.id, payload)
+        setToast({ open: true, msg: 'API integration updated successfully', sev: 'success' })
+      } else {
+        await createApiToken(payload)
+        setToast({ open: true, msg: 'API integration added successfully', sev: 'success' })
+      }
+      setDialogOpen(false)
+      loadData()
+    } catch (e: any) {
+      setToast({ open: true, msg: e?.response?.data?.message || 'Failed to save configuration', sev: 'error' })
+    } finally {
+      setLoading(false)
     }
-    setDialogOpen(false)
   }
 
-  const columns = useMemo<GridColDef<ApiEndpoint>[]>(
-    () => [
-      {
-        field: 'name',
-        headerName: 'API Endpoint Name',
-        flex: 1.2,
-        minWidth: 180,
-        renderCell: (p) => <Box sx={{ fontWeight: 600 }}>{p.value}</Box>,
-      },
-      {
-        field: 'method',
-        headerName: 'Method',
-        width: 100,
-        renderCell: (p) => <StatusBadge value={p.value} hideDot />,
-      },
-      { field: 'url', headerName: 'Endpoint URL', flex: 1.5, minWidth: 250 },
-      {
-        field: 'type',
-        headerName: 'Integration Type',
-        width: 160,
-        renderCell: (p) => <StatusBadge value={p.value} hideDot />,
-      },
-      {
-        field: 'status',
-        headerName: 'Status',
-        width: 110,
-        renderCell: (p) => <StatusBadge value={p.value} />,
-      },
-      {
-        field: '__actions',
-        headerName: 'Actions',
-        width: 100,
-        sortable: false,
-        filterable: false,
-        renderCell: (p) => (
-          <Stack direction="row" spacing={0.5} sx={{ height: '100%', alignItems: 'center' }}>
-            <Tooltip title="Edit">
-              <IconButton size="small" onClick={() => openEditDialog(p.row)}>
-                <EditIcon fontSize="small" />
-              </IconButton>
-            </Tooltip>
-            <Tooltip title="Delete">
-              <IconButton size="small" color="error" onClick={() => handleDelete(p.row.id)}>
-                <DeleteIcon fontSize="small" />
-              </IconButton>
-            </Tooltip>
+  const handleCopy = (txt: string) => {
+    navigator.clipboard.writeText(txt)
+    setToast({ open: true, msg: 'API Key copied to clipboard!', sev: 'success' })
+  }
+
+  const handleSourceChange = (val: string) => {
+    const matched = leadSources.find(s => s.id === val || String(s.name || s.value || s.leadSource || '') === val)
+    const sourceName = matched ? String(matched.name || matched.value || matched.leadSource || '') : val
+    const sourceId = matched ? String(matched.id || '') : ''
+    setForm(prev => ({
+      ...prev,
+      leadSource_id: sourceId,
+      source: sourceName
+    }))
+  }
+
+  const columns = useMemo<GridColDef<ApiTokenConfig>[]>(() => {
+    if (!resolvedScreen) return []
+
+    const cols: GridColDef<ApiTokenConfig>[] = resolvedScreen.table_headers.map((header) => {
+      const col: GridColDef<ApiTokenConfig> = {
+        field: header.key as keyof ApiTokenConfig,
+        headerName: header.label,
+        flex: 1,
+        minWidth: 120,
+        sortable: header.sortable,
+      }
+
+      if (header.key === 'organization_id') {
+        col.field = 'organization_name' as any
+        col.flex = 1.2
+        col.minWidth = 180
+        col.renderCell = (p) => <Box sx={{ fontWeight: 600 }}>{p.value || <em>Global Default</em>}</Box>
+      } else if (header.key === 'source') {
+        col.width = 160
+        col.renderCell = (p) => p.value || <em>Not Mapped</em>
+      } else if (header.key === 'status') {
+        col.width = 110
+        col.renderCell = (p) => <StatusBadge value={p.value === 'ACTIVE' ? 'Active' : 'Inactive'} />
+      } else if (header.key === 'country_code') {
+        col.width = 100
+        col.renderCell = (p) => p.value || '+91'
+      } else if (header.key === 'createdAt') {
+        col.field = 'created_at' as any
+        col.width = 180
+        col.renderCell = (p) => p.value ? new Date(p.value as string).toLocaleString() : ''
+      } else if (header.key === 'api_key') {
+        col.flex = 1.2
+        col.minWidth = 200
+        col.renderCell = (p) => (
+          <Stack direction="row" alignItems="center" spacing={1}>
+            <code style={{ fontSize: '0.85rem' }}>{p.value as string}</code>
+            <IconButton size="small" onClick={() => handleCopy(p.value as string)}>
+              <ContentCopyIcon fontSize="inherit" />
+            </IconButton>
           </Stack>
-        ),
-      },
-    ],
-    [],
-  )
+        )
+      }
+
+      return col
+    })
+
+    cols.push({
+      field: '__actions' as any,
+      headerName: 'Actions',
+      width: 100,
+      sortable: false,
+      filterable: false,
+      renderCell: (p) => (
+        <Stack direction="row" spacing={0.5} sx={{ height: '100%', alignItems: 'center' }}>
+          <Tooltip title="Edit">
+            <IconButton size="small" onClick={() => openEditDialog(p.row)}>
+              <EditIcon fontSize="small" />
+            </IconButton>
+          </Tooltip>
+          <Tooltip title="Delete">
+            <IconButton size="small" color="error" onClick={() => handleDelete(p.row.id)}>
+              <DeleteIcon fontSize="small" />
+            </IconButton>
+          </Tooltip>
+        </Stack>
+      ),
+    })
+
+    return cols
+  }, [resolvedScreen, items, leadSources])
+
+  const renderField = (field: ResolvedFormField) => {
+    if (field.key === 'organization_id') {
+      return (
+        <TextField
+          key={field.key}
+          select
+          fullWidth
+          label={field.label}
+          value={form.organization_id}
+          onChange={(e) => setForm(prev => ({ ...prev, organization_id: e.target.value }))}
+          required={field.required}
+        >
+          {organizations.map((org) => (
+            <MenuItem key={org._id || String(org.organization_id || '')} value={String(org.organization_id || '')}>
+              {String(org.name || org.organization_id || '')}
+            </MenuItem>
+          ))}
+        </TextField>
+      )
+    }
+
+    if (field.key === 'source') {
+      return (
+        <TextField
+          key={field.key}
+          select
+          fullWidth
+          label={field.label}
+          value={form.leadSource_id || form.source}
+          onChange={(e) => handleSourceChange(e.target.value)}
+          disabled={!form.organization_id}
+          required={field.required}
+        >
+          {leadSources.map((src) => (
+            <MenuItem key={src.id} value={src.id}>
+              {String(src.name || src.value || src.leadSource || '')}
+            </MenuItem>
+          ))}
+        </TextField>
+      )
+    }
+
+    if (field.key === 'country_code') {
+      return (
+        <TextField
+          key={field.key}
+          select
+          fullWidth
+          label={field.label}
+          value={form.country_code}
+          onChange={(e) => setForm(prev => ({ ...prev, country_code: e.target.value }))}
+          required={field.required}
+        >
+          {COUNTRY_CODES.map((item) => (
+            <MenuItem key={item.code} value={item.code}>
+              {item.label}
+            </MenuItem>
+          ))}
+        </TextField>
+      )
+    }
+
+    if (field.key === 'status') {
+      if (!editing) return null
+      return (
+        <TextField
+          key={field.key}
+          select
+          fullWidth
+          label={field.label}
+          value={form.status}
+          onChange={(e) => setForm(prev => ({ ...prev, status: e.target.value as ApiTokenConfig['status'] }))}
+          required={field.required}
+        >
+          {(field.options || ['ACTIVE', 'INACTIVE']).map((opt) => (
+            <MenuItem key={opt} value={opt}>
+              {opt}
+            </MenuItem>
+          ))}
+        </TextField>
+      )
+    }
+
+    return (
+      <TextField
+        key={field.key}
+        fullWidth
+        label={field.label}
+        value={form[field.key as keyof typeof form] || ''}
+        onChange={(e) => setForm(prev => ({ ...prev, [field.key]: e.target.value }))}
+        required={field.required}
+      />
+    )
+  }
 
   return (
     <Box
@@ -216,101 +381,78 @@ export default function ApiListPage() {
       }}
     >
       <AppCard
-        title="API Endpoints Catalog"
-        subtitle="Manage incoming webhook connectors and outgoing API sync catalogs (Super Admin View)."
+        title="API Integration Credentials"
+        subtitle="Manage incoming webhooks, country codes, and source triggers (Super Admin View)."
         action={
-          <Button variant="contained" startIcon={<AddIcon />} onClick={openAddDialog}>
+          <Button variant="contained" startIcon={<AddIcon />} onClick={openAddDialog} sx={{ textTransform: 'none', fontWeight: 600 }}>
             Add API
           </Button>
         }
         fullHeight
       >
-        <AppDataGrid height="100%" rows={items} columns={columns} getRowId={(r) => r.id} />
+        <Box sx={{ flexGrow: 1, minHeight: 0, position: 'relative' }}>
+          {loading && (
+            <Box sx={{ position: 'absolute', top: 0, left: 0, right: 0, zIndex: 10 }}>
+              <LinearProgress />
+            </Box>
+          )}
+          <AppDataGrid height="100%" rows={items} columns={columns} getRowId={(r) => r.id} />
+        </Box>
       </AppCard>
 
-      <Dialog open={dialogOpen} onClose={() => setDialogOpen(false)} maxWidth="sm" fullWidth>
-        <DialogTitle>{editing ? 'Edit API Integration' : 'Add API Integration'}</DialogTitle>
+      <Dialog 
+        open={dialogOpen} 
+        onClose={() => setDialogOpen(false)} 
+        maxWidth="lg"
+        fullWidth
+        PaperProps={{
+          sx: {
+            width: '100%',
+            maxWidth: '750px'
+          }
+        }}
+      >
+        <DialogTitle>
+          {editing ? 'Edit API Connection' : 'Create API'}
+        </DialogTitle>
         <DialogContent dividers>
           <Box
             sx={{
-              display: 'grid',
-              gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' },
-              gap: 2,
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 2.5,
+              pt: 1
             }}
           >
-            <Box sx={{ gridColumn: 'span 2' }}>
-              <TextField
-                fullWidth
-                label="API Endpoint Name"
-                value={form.name}
-                onChange={(e) => setForm({ ...form, name: e.target.value })}
-                required
-              />
-            </Box>
-            <Box>
-              <TextField
-                select
-                fullWidth
-                label="HTTP Method"
-                value={form.method}
-                onChange={(e) => setForm({ ...form, method: e.target.value as ApiEndpoint['method'] })}
-              >
-                <MenuItem value="GET">GET</MenuItem>
-                <MenuItem value="POST">POST</MenuItem>
-                <MenuItem value="PUT">PUT</MenuItem>
-                <MenuItem value="DELETE">DELETE</MenuItem>
-              </TextField>
-            </Box>
-            <Box>
-              <TextField
-                select
-                fullWidth
-                label="Integration Type"
-                value={form.type}
-                onChange={(e) => setForm({ ...form, type: e.target.value as ApiEndpoint['type'] })}
-              >
-                <MenuItem value="Incoming Webhook">Incoming Webhook</MenuItem>
-                <MenuItem value="Outgoing Webhook">Outgoing Webhook</MenuItem>
-                <MenuItem value="Rest API">Rest API</MenuItem>
-              </TextField>
-            </Box>
-            <Box sx={{ gridColumn: 'span 2' }}>
-              <TextField
-                fullWidth
-                label="Endpoint URL"
-                value={form.url}
-                onChange={(e) => setForm({ ...form, url: e.target.value })}
-                required
-              />
-            </Box>
-            <Box>
-              <TextField
-                select
-                fullWidth
-                label="Status"
-                value={form.status}
-                onChange={(e) => setForm({ ...form, status: e.target.value as ApiEndpoint['status'] })}
-              >
-                <MenuItem value="Active">Active</MenuItem>
-                <MenuItem value="Inactive">Inactive</MenuItem>
-              </TextField>
-            </Box>
-            <Box sx={{ gridColumn: 'span 2' }}>
-              <TextField
-                fullWidth
-                multiline
-                rows={2}
-                label="Description"
-                value={form.description}
-                onChange={(e) => setForm({ ...form, description: e.target.value })}
-              />
-            </Box>
+            {(() => {
+              const fields = resolvedScreen?.form_fields || []
+              const renderedKeys = new Set<string>()
+
+              return fields.map((field) => {
+                if (renderedKeys.has(field.key)) return null
+
+                if (field.key === 'source') {
+                  const countryField = fields.find(f => f.key === 'country_code')
+                  if (countryField) {
+                    renderedKeys.add('country_code')
+                    return (
+                      <Box key={field.key} sx={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 2 }}>
+                        {renderField(field)}
+                        {renderField(countryField)}
+                      </Box>
+                    )
+                  }
+                }
+
+                return renderField(field)
+              })
+            })()}
           </Box>
         </DialogContent>
         <DialogActions sx={{ p: 2 }}>
           <Button onClick={() => setDialogOpen(false)}>Cancel</Button>
           <Button onClick={handleSave} variant="contained">
-            Save
+            Submit
           </Button>
         </DialogActions>
       </Dialog>
