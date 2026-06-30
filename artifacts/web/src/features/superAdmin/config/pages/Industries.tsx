@@ -18,6 +18,7 @@ import { Edit as EditIcon, Delete as DeleteIcon, Add as AddIcon } from '@mui/ico
 import type { GridColDef } from '@mui/x-data-grid'
 import { AppCard } from '@/components/ui/AppCard'
 import { AppDataGrid } from '@/components/ui/AppDataGrid'
+import { useConfirm } from '@/components/common/ConfirmContext'
 import { StatusBadge } from '@/components/ui/StatusBadge'
 import {
   getIndustries,
@@ -85,15 +86,22 @@ export default function IndustriesPage() {
     } finally { setSaving(false) }
   }
 
+  const { confirmDelete } = useConfirm()
+
   const remove = async (row: Industry) => {
-    if (!window.confirm(`Delete industry "${row.name}"?`)) return
-    try {
-      await deleteIndustryRecord(row._id)
-      setToast({ open: true, msg: 'Deleted', sev: 'success' })
-      await refresh()
-    } catch (e: any) {
-      setToast({ open: true, msg: e?.response?.data?.message ?? 'Delete failed', sev: 'error' })
-    }
+    confirmDelete({
+      title: 'Confirm Deletion',
+      message: `Delete industry "${row.name}"? This action cannot be undone.`,
+      onConfirm: async () => {
+        try {
+          await deleteIndustryRecord(row._id)
+          setToast({ open: true, msg: 'Deleted', sev: 'success' })
+          await refresh()
+        } catch (e: any) {
+          setToast({ open: true, msg: e?.response?.data?.message ?? 'Delete failed', sev: 'error' })
+        }
+      }
+    })
   }
 
   const gridColumns = useMemo<GridColDef<Industry>[]>(() => [

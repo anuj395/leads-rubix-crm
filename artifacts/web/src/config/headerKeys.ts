@@ -30,7 +30,7 @@ export const HEADER_KEYS = [
     "last_name",
     "contact_no",
     "alternate_no",
-    "property_type",
+    "propertyType",
     "property_stage",
     "property_sub_type",
     "contact_owner_email",

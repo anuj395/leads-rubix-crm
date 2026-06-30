@@ -49,6 +49,8 @@ export function useThemeMode() {
   return context
 }
 
+import { ConfirmProvider } from '@/components/common/ConfirmContext'
+
 export function AppProviders({ children, mode: initialMode }: AppProvidersProps) {
   const [mode, setMode] = useState<ThemeMode>(() => getInitialThemeMode(initialMode))
   const theme = useMemo(() => createAppTheme(mode), [mode])
@@ -74,9 +76,11 @@ export function AppProviders({ children, mode: initialMode }: AppProvidersProps)
       <ThemeModeContext.Provider value={contextValue}>
         <ThemeProvider theme={theme}>
           <CssBaseline />
-          <BrowserRouter basename={import.meta.env.BASE_URL.replace(/\/$/, '') || '/'}>
-            {children}
-          </BrowserRouter>
+          <ConfirmProvider>
+            <BrowserRouter basename={import.meta.env.BASE_URL.replace(/\/$/, '') || '/'}>
+              {children}
+            </BrowserRouter>
+          </ConfirmProvider>
         </ThemeProvider>
       </ThemeModeContext.Provider>
     </Provider>

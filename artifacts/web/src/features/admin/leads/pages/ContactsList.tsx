@@ -18,6 +18,7 @@ import { StatusBadge } from '@/components/ui/StatusBadge'
 import { listContacts, createContact, updateContact, deleteContact, type Contact } from '@/services/contactsService'
 import { useTableConfig } from '@/hooks/useTableConfig'
 import { useAppSelector } from '@/store/hooks'
+import { useConfirm } from '@/components/common/ConfirmContext'
 import { selectAuth } from '@/features/auth'
 
 function toFormValues(row: Record<string, any>): Record<string, any> {
@@ -64,17 +65,23 @@ export default function ContactsListPage() {
     void refresh()
   }, [])
 
+  const { confirmDelete } = useConfirm()
+
   const handleDelete = async (row: Contact) => {
-    if (window.confirm(`Delete contact: ${String(row.customer_name ?? row.name ?? row._id)}?`)) {
-      try {
-        await deleteContact(row._id)
-        setToast({ open: true, msg: 'Contact deleted successfully', sev: 'success' })
-        await refresh()
-      } catch (e: unknown) {
-        const err = e as { response?: { data?: { message?: string } } }
-        setToast({ open: true, msg: err?.response?.data?.message ?? 'Failed to delete contact', sev: 'error' })
+    confirmDelete({
+      title: 'Confirm Deletion',
+      message: `Are you sure you want to delete contact: ${String(row.customer_name ?? row.name ?? row._id)}? This action cannot be undone.`,
+      onConfirm: async () => {
+        try {
+          await deleteContact(row._id)
+          setToast({ open: true, msg: 'Contact deleted successfully', sev: 'success' })
+          await refresh()
+        } catch (e: unknown) {
+          const err = e as { response?: { data?: { message?: string } } }
+          setToast({ open: true, msg: err?.response?.data?.message ?? 'Failed to delete contact', sev: 'error' })
+        }
       }
-    }
+    })
   }
 
   const gridColumns = useMemo<GridColDef<Contact>[]>(() => {

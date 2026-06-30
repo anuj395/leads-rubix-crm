@@ -21,6 +21,7 @@ import Alert from '@mui/material/Alert'
 import Typography from '@mui/material/Typography'
 import { Edit as EditIcon, Delete as DeleteIcon, Add as AddIcon } from '@mui/icons-material'
 import { AppCard } from '@/components/ui/AppCard'
+import { useConfirm } from '@/components/common/ConfirmContext'
 import {
   getScreens,
   getScreenFields,
@@ -191,15 +192,22 @@ export default function ScreenFieldsPage() {
     }
   }
 
+  const { confirmDelete } = useConfirm()
+
   const remove = async (row: ScreenField) => {
-    if (!window.confirm(`Delete field "${row.label}"?\n\nThis also removes any per-(role × industry) permissions for it.`)) return
-    try {
-      await deleteScreenField(row._id)
-      setToast({ open: true, msg: 'Deleted', sev: 'success' })
-      await refresh()
-    } catch (e: any) {
-      setToast({ open: true, msg: e?.response?.data?.message ?? 'Delete failed', sev: 'error' })
-    }
+    confirmDelete({
+      title: 'Confirm Deletion',
+      message: `Delete field "${row.label}"?\n\nThis also removes any per-(role × industry) permissions for it. This action cannot be undone.`,
+      onConfirm: async () => {
+        try {
+          await deleteScreenField(row._id)
+          setToast({ open: true, msg: 'Deleted', sev: 'success' })
+          await refresh()
+        } catch (e: any) {
+          setToast({ open: true, msg: e?.response?.data?.message ?? 'Delete failed', sev: 'error' })
+        }
+      }
+    })
   }
 
   const gridColumns = useMemo<GridColDef<ScreenField>[]>(

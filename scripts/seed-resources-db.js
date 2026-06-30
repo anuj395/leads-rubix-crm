@@ -78,11 +78,11 @@ const RESOURCE_SCREENS = [
     name: 'Locations',
     description: 'Corporate and site branch locations',
     fields: [
-      { field_key: 'location_name', label: 'Location Name', type: 'text', is_required: true, order: 1 },
+      { field_key: 'locationName', label: 'Location Name', type: 'text', is_required: true, order: 1 },
     ],
     items: [
-      { location_name: 'Noida' },
-      { location_name: 'Delhi' },
+      { locationName: 'Noida' },
+      { locationName: 'Delhi' },
     ]
   },
   {
@@ -140,11 +140,11 @@ const RESOURCE_SCREENS = [
     name: 'Property Types',
     description: 'Property categories',
     fields: [
-      { field_key: 'property_type', label: 'Property Type', type: 'text', is_required: true, order: 1 },
+      { field_key: 'propertyType', label: 'Property Type', type: 'text', is_required: true, order: 1 },
     ],
     items: [
-      { property_type: 'Residential Properties' },
-      { property_type: 'Commercial Properties' },
+      { propertyType: 'Residential Properties' },
+      { propertyType: 'Commercial Properties' },
     ]
   },
   {
@@ -152,12 +152,12 @@ const RESOURCE_SCREENS = [
     name: 'Property Sub Types',
     description: 'Property subcategories',
     fields: [
-      { field_key: 'property_type', label: 'Property Type', type: 'select', dropdown_source: 'api', dropdown_api: '/api/options/resource_property_types?display=property_type', is_required: true, order: 1 },
+      { field_key: 'propertyType', label: 'Property Type', type: 'select', dropdown_source: 'api', dropdown_api: '/api/options/resource_property_types?display=propertyType', is_required: true, order: 1 },
       { field_key: 'property_sub_type', label: 'Property Sub Type', type: 'text', is_required: true, order: 2 },
     ],
     items: [
-      { property_type: 'Residential Properties', property_sub_type: 'Apartments/Condos' },
-      { property_type: 'Commercial Properties', property_sub_type: 'Office Spaces' },
+      { propertyType: 'Residential Properties', property_sub_type: 'Apartments/Condos' },
+      { propertyType: 'Commercial Properties', property_sub_type: 'Office Spaces' },
     ]
   }
 ];

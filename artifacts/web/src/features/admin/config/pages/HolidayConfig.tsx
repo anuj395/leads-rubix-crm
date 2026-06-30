@@ -18,6 +18,7 @@ import type { GridColDef } from '@mui/x-data-grid'
 import { AppCard } from '@/components/ui/AppCard'
 import { AppDataGrid } from '@/components/ui/AppDataGrid'
 import { StatusBadge } from '@/components/ui/StatusBadge'
+import { useConfirm } from '@/components/common/ConfirmContext'
 
 export interface Holiday {
   id: string
@@ -130,11 +131,17 @@ export default function HolidayConfigPage() {
     setDialogOpen(true)
   }
 
+  const { confirmDelete } = useConfirm()
+
   const handleDelete = (id: string) => {
-    if (window.confirm('Are you sure you want to delete this holiday?')) {
-      setItems((prev) => prev.filter((h) => h.id !== id))
-      setToast({ open: true, msg: 'Holiday deleted successfully', sev: 'success' })
-    }
+    confirmDelete({
+      title: 'Confirm Deletion',
+      message: 'Are you sure you want to delete this holiday? This action cannot be undone.',
+      onConfirm: () => {
+        setItems((prev) => prev.filter((h) => h.id !== id))
+        setToast({ open: true, msg: 'Holiday deleted successfully', sev: 'success' })
+      }
+    })
   }
 
   const handleSave = () => {

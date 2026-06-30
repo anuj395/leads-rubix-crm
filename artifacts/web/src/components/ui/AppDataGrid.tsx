@@ -181,6 +181,7 @@ export function AppDataGrid({
         }
         pageSizeOptions={computedPageSizeOptions}
         initialState={{
+          density: 'compact',
           pagination: { paginationModel: { page: 0, pageSize: 25 } },
           ...(initialState ?? {}),
         }}
@@ -194,9 +195,6 @@ export function AppDataGrid({
             JSON.stringify(row))
         }
         disableRowSelectionOnClick
-        density="compact"
-        rowHeight={46}
-        columnHeaderHeight={46}
         sx={{
           border: 'none',
           backgroundColor: theme.palette.mode === 'dark' ? 'rgba(11, 14, 32, 0.45)' : 'rgba(255, 255, 255, 0.45)',

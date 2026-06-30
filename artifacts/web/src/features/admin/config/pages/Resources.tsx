@@ -42,6 +42,7 @@ import { useAppSelector } from '@/store/hooks'
 import { getScreens, resolveScreen, type Screen, type ResolvedScreen, type ResolvedFormField } from '@/services/screenAdminService'
 import { getResources, createResource, updateResource, deleteResource } from '@/services/resourcesService'
 import { api } from '@/services/api'
+import { useConfirm } from '@/components/common/ConfirmContext'
 
 export default function ResourcesPage() {
   const user = useAppSelector((s) => s.auth.user)
@@ -64,6 +65,16 @@ export default function ResourcesPage() {
   const [editingItem, setEditingItem] = useState<any | null>(null)
   const [formValues, setFormValues] = useState<Record<string, any>>({})
   const [apiDropdownOptions, setApiDropdownOptions] = useState<Record<string, Array<{ value: string; label: string }>>>({})
+
+  // Import Summary State
+  const [importSummaryOpen, setImportSummaryOpen] = useState(false)
+  const [importSummary, setImportSummary] = useState<{
+    total: number
+    success: number
+    failed: number
+    fileName: string
+    failedRecords: Array<{ record: any; reason: string }>
+  } | null>(null)
 
   const [toast, setToast] = useState<{ open: boolean; msg: string; sev: 'success' | 'error' }>({
     open: false,
@@ -213,22 +224,174 @@ export default function ResourcesPage() {
   }
 
   const handleImport = () => {
-    setToast({ open: true, msg: `Import template ready!`, sev: 'success' })
+    document.getElementById('resource-csv-importer')?.click()
   }
+
+  const handleFileImport = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file || !activeScreen || !resolvedScreen) return
+
+    const fileName = file.name
+    const reader = new FileReader()
+    reader.onload = async (evt) => {
+      const text = evt.target?.result as string
+      if (!text) return
+
+      const lines = text.split(/\r?\n/).filter(line => line.trim() !== '')
+      if (lines.length < 2) {
+        setToast({ open: true, msg: 'CSV file is empty or missing data rows.', sev: 'error' })
+        return
+      }
+
+      const headers = lines[0].split(',').map(h => h.replace(/^["']|["']$/g, '').trim())
+      const headerToKey: Record<string, string> = {}
+      resolvedScreen.form_fields.forEach(f => {
+        headerToKey[f.label.toLowerCase()] = f.key
+        headerToKey[f.key.toLowerCase()] = f.key
+      })
+
+      const parsedPayloads: any[] = []
+      for (let i = 1; i < lines.length; i++) {
+        const currentLine = lines[i]
+        const values: string[] = []
+        let insideQuote = false
+        let currentValue = ''
+        for (let charIdx = 0; charIdx < currentLine.length; charIdx++) {
+          const char = currentLine[charIdx]
+          if (char === '"' || char === "'") {
+            insideQuote = !insideQuote
+          } else if (char === ',' && !insideQuote) {
+            values.push(currentValue.trim())
+            currentValue = ''
+          } else {
+            currentValue += char
+          }
+        }
+        values.push(currentValue.trim())
+
+        const payload: Record<string, any> = {}
+        headers.forEach((header, index) => {
+          const key = headerToKey[header.toLowerCase()]
+          if (key && index < values.length) {
+            let val = values[index].replace(/^["']|["']$/g, '').trim()
+            const fieldDef = resolvedScreen.form_fields.find(f => f.key === key)
+            if (fieldDef?.type === 'checkbox') {
+              payload[key] = val.toLowerCase() === 'true' || val === '1' || val.toLowerCase() === 'yes'
+            } else {
+              payload[key] = val
+            }
+          }
+        })
+
+        if (Object.keys(payload).length > 0) {
+          parsedPayloads.push(payload)
+        }
+      }
+
+      if (parsedPayloads.length === 0) {
+        setToast({ open: true, msg: 'No importable rows found in CSV.', sev: 'error' })
+        return
+      }
+
+      const createdItems: any[] = []
+      const failedRecords: Array<{ record: any; reason: string }> = []
+
+      setLoading(true)
+      for (const payload of parsedPayloads) {
+        let missingFields: string[] = []
+        for (const field of resolvedScreen.form_fields) {
+          if (field.required && !payload[field.key]) {
+            missingFields.push(field.label)
+          }
+        }
+
+        if (missingFields.length > 0) {
+          failedRecords.push({
+            record: payload,
+            reason: `Missing required field(s): ${missingFields.join(', ')}`
+          })
+          continue
+        }
+
+        try {
+          const created = await createResource(activeScreen.key, payload)
+          createdItems.push(created)
+        } catch (err: any) {
+          failedRecords.push({
+            record: payload,
+            reason: err?.response?.data?.message ?? err?.message ?? 'Failed to save record'
+          })
+        }
+      }
+
+      if (createdItems.length > 0) {
+        const nextRows = [...createdItems, ...rows]
+        setRows(nextRows)
+        setResourceDataCache((prev) => ({ ...prev, [activeScreen.key]: nextRows }))
+      }
+
+      setImportSummary({
+        total: parsedPayloads.length,
+        success: createdItems.length,
+        failed: failedRecords.length,
+        fileName,
+        failedRecords
+      })
+      setImportSummaryOpen(true)
+      setLoading(false)
+      e.target.value = ''
+    }
+    reader.readAsText(file)
+  }
+
+  const downloadFailedRecords = () => {
+    if (!resolvedScreen || !importSummary || importSummary.failedRecords.length === 0) return
+
+    const headers = resolvedScreen.form_fields.map(f => f.label)
+    const keys = resolvedScreen.form_fields.map(f => f.key)
+    headers.push('Failure Reason')
+
+    const csvRows = [
+      headers.join(','),
+      ...importSummary.failedRecords.map(item => {
+        const rowValues = keys.map(k => {
+          const val = item.record[k] !== undefined ? String(item.record[k]) : ''
+          return `"${val.replace(/"/g, '""')}"`
+        })
+        rowValues.push(`"${item.reason.replace(/"/g, '""')}"`)
+        return rowValues.join(',')
+      })
+    ]
+
+    const csvContent = "data:text/csv;charset=utf-8," + csvRows.join("\n")
+    const encodedUri = encodeURI(csvContent)
+    const link = document.createElement("a")
+    link.setAttribute("href", encodedUri)
+    link.setAttribute("download", `failed_import_${importSummary.fileName}`)
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+  }
+
+  const { confirmDelete } = useConfirm()
 
   const handleDeleteItem = async (id: string) => {
     if (!activeScreen) return
-    if (window.confirm('Are you sure you want to delete this item?')) {
-      try {
-        await deleteResource(activeScreen.key, id)
-        const nextRows = rows.filter((r) => r.id !== id)
-        setRows(nextRows)
-        setResourceDataCache((prev) => ({ ...prev, [activeScreen.key]: nextRows }))
-        setToast({ open: true, msg: 'Deleted successfully!', sev: 'success' })
-      } catch (e: any) {
-        setToast({ open: true, msg: e?.response?.data?.message ?? 'Failed to delete item', sev: 'error' })
+    confirmDelete({
+      title: 'Confirm Deletion',
+      message: 'Are you sure you want to delete this item? This action cannot be undone.',
+      onConfirm: async () => {
+        try {
+          await deleteResource(activeScreen.key, id)
+          const nextRows = rows.filter((r) => r.id !== id)
+          setRows(nextRows)
+          setResourceDataCache((prev) => ({ ...prev, [activeScreen.key]: nextRows }))
+          setToast({ open: true, msg: 'Deleted successfully!', sev: 'success' })
+        } catch (e: any) {
+          setToast({ open: true, msg: e?.response?.data?.message ?? 'Failed to delete item', sev: 'error' })
+        }
       }
-    }
+    })
   }
 
   const openAdd = () => {
@@ -320,13 +483,32 @@ export default function ResourcesPage() {
       return col
     })
 
+    // Prepend No. column
+    cols.unshift({
+      field: 'serialNumber',
+      headerName: 'Sr. No.',
+      width: 70,
+      sortable: false,
+      valueGetter: (params: any) => {
+        if (!params || !params.row) return ''
+        const idx = rows.indexOf(params.row)
+        return idx !== -1 ? idx + 1 : ''
+      },
+      renderCell: (params: any) => {
+        if (!params || !params.row) return ''
+        const idx = rows.indexOf(params.row)
+        return idx !== -1 ? idx + 1 : ''
+      }
+    })
+
     // Action column placed at the end
     cols.push({
       field: 'actions',
       headerName: 'Actions',
       width: 100,
       sortable: false,
-      renderCell: (p) => (
+      disableExport: true,
+      renderCell: (p: any) => (
         <Stack direction="row" spacing={0.5}>
           <Tooltip title="Edit">
             <IconButton size="small" onClick={() => openEdit(p.row)}>
@@ -521,22 +703,24 @@ export default function ResourcesPage() {
                     <GridToolbarColumnsButton />
                     <GridToolbarFilterButton />
                     <GridToolbarDensitySelector />
-                    <GridToolbarExport />
-                    <Button
-                      color="primary"
-                      size="small"
-                      startIcon={<UploadIcon />}
-                      onClick={handleImport}
-                      sx={{
-                        textTransform: 'none',
-                        fontWeight: 500,
-                        minHeight: 0,
-                        minWidth: 0,
-                        padding: '4px 5px',
-                      }}
-                    >
-                      Import
-                    </Button>
+                    {activeScreen?.key !== 'resource_carousel' && <GridToolbarExport />}
+                    {activeScreen?.key !== 'resource_carousel' && (
+                      <Button
+                        color="primary"
+                        size="small"
+                        startIcon={<UploadIcon />}
+                        onClick={handleImport}
+                        sx={{
+                          textTransform: 'none',
+                          fontWeight: 500,
+                          minHeight: 0,
+                          minWidth: 0,
+                          padding: '4px 5px',
+                        }}
+                      >
+                        Import
+                      </Button>
+                    )}
                   </Box>
                   <GridToolbarQuickFilter />
                 </GridToolbarContainer>
@@ -644,6 +828,88 @@ export default function ResourcesPage() {
           {toast.msg}
         </Alert>
       </Snackbar>
+
+      {/* Import Summary Dialog */}
+      <Dialog
+        open={importSummaryOpen}
+        onClose={() => setImportSummaryOpen(false)}
+        fullWidth
+        maxWidth="xs"
+        PaperProps={{
+          sx: {
+            borderRadius: '16px',
+            p: 1
+          }
+        }}
+      >
+        <DialogTitle sx={{ fontWeight: 700, pb: 1 }}>Import Summary</DialogTitle>
+        <DialogContent>
+          {importSummary && (
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, pt: 1 }}>
+              <Box>
+                <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600, textTransform: 'uppercase' }}>
+                  File Name
+                </Typography>
+                <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                  {importSummary.fileName}
+                </Typography>
+              </Box>
+              <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 1.5 }}>
+                <Box sx={{ bgcolor: 'action.hover', p: 1.5, borderRadius: '8px', textAlign: 'center' }}>
+                  <Typography variant="h6" color="text.secondary" sx={{ fontWeight: 700 }}>
+                    {importSummary.total}
+                  </Typography>
+                  <Typography variant="caption" color="text.secondary" sx={{ display: 'block', fontSize: '0.7rem', fontWeight: 600 }}>
+                    Total
+                  </Typography>
+                </Box>
+                <Box sx={{ bgcolor: 'success.light', color: 'success.contrastText', p: 1.5, borderRadius: '8px', textAlign: 'center' }}>
+                  <Typography variant="h6" sx={{ fontWeight: 700 }}>
+                    {importSummary.success}
+                  </Typography>
+                  <Typography variant="caption" sx={{ display: 'block', fontSize: '0.7rem', fontWeight: 600 }}>
+                    Success
+                  </Typography>
+                </Box>
+                <Box sx={{ bgcolor: importSummary.failed > 0 ? 'error.light' : 'action.hover', color: importSummary.failed > 0 ? 'error.contrastText' : 'text.secondary', p: 1.5, borderRadius: '8px', textAlign: 'center' }}>
+                  <Typography variant="h6" sx={{ fontWeight: 700 }}>
+                    {importSummary.failed}
+                  </Typography>
+                  <Typography variant="caption" sx={{ display: 'block', fontSize: '0.7rem', fontWeight: 600 }}>
+                    Failed
+                  </Typography>
+                </Box>
+              </Box>
+
+              {importSummary.failed > 0 && (
+                <Button
+                  variant="outlined"
+                  color="error"
+                  fullWidth
+                  startIcon={<DownloadIcon />}
+                  onClick={downloadFailedRecords}
+                  sx={{ mt: 1, textTransform: 'none', fontWeight: 600 }}
+                >
+                  Download Failed Records
+                </Button>
+              )}
+            </Box>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setImportSummaryOpen(false)} variant="contained" sx={{ textTransform: 'none', fontWeight: 600 }}>
+            Close
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <input
+        type="file"
+        id="resource-csv-importer"
+        accept=".csv"
+        style={{ display: 'none' }}
+        onChange={handleFileImport}
+      />
     </Box>
   )
 }

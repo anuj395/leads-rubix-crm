@@ -18,6 +18,7 @@ import { Edit as EditIcon, Delete as DeleteIcon, Add as AddIcon } from '@mui/ico
 import type { GridColDef } from '@mui/x-data-grid'
 import { AppCard } from '@/components/ui/AppCard'
 import { AppDataGrid } from '@/components/ui/AppDataGrid'
+import { useConfirm } from '@/components/common/ConfirmContext'
 import { StatusBadge } from '@/components/ui/StatusBadge'
 import {
   getScreens,
@@ -86,15 +87,22 @@ export default function ScreensPage() {
     } finally { setSaving(false) }
   }
 
+  const { confirmDelete } = useConfirm()
+
   const remove = async (row: Screen) => {
-    if (!window.confirm(`Delete screen "${row.name}"?\n\nThis also removes all of its fields and permissions.`)) return
-    try {
-      await deleteScreen(row._id)
-      setToast({ open: true, msg: 'Deleted', sev: 'success' })
-      await refresh()
-    } catch (e: any) {
-      setToast({ open: true, msg: e?.response?.data?.message ?? 'Delete failed', sev: 'error' })
-    }
+    confirmDelete({
+      title: 'Confirm Deletion',
+      message: `Delete screen "${row.name}"?\n\nThis also removes all of its fields and permissions. This action cannot be undone.`,
+      onConfirm: async () => {
+        try {
+          await deleteScreen(row._id)
+          setToast({ open: true, msg: 'Deleted', sev: 'success' })
+          await refresh()
+        } catch (e: any) {
+          setToast({ open: true, msg: e?.response?.data?.message ?? 'Delete failed', sev: 'error' })
+        }
+      }
+    })
   }
 
   const gridColumns = useMemo<GridColDef<Screen>[]>(() => [

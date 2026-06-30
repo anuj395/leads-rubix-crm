@@ -21,6 +21,7 @@ import Alert from '@mui/material/Alert'
 import Typography from '@mui/material/Typography'
 import { Edit as EditIcon, Delete as DeleteIcon, Add as AddIcon } from '@mui/icons-material'
 import { AppCard } from '@/components/ui/AppCard'
+import { useConfirm } from '@/components/common/ConfirmContext'
 import {
   getMenus,
   createMenuRecord,
@@ -152,15 +153,22 @@ export default function MenusPage() {
     }
   }
 
+  const { confirmDelete } = useConfirm()
+
   const remove = async (row: SidebarMenuRecord) => {
-    if (!window.confirm(`Delete menu "${row.name}"?`)) return
-    try {
-      await deleteMenuRecord(row._id)
-      setToast({ open: true, msg: 'Deleted', sev: 'success' })
-      await refresh()
-    } catch (e: any) {
-      setToast({ open: true, msg: e?.response?.data?.message ?? 'Delete failed', sev: 'error' })
-    }
+    confirmDelete({
+      title: 'Confirm Deletion',
+      message: `Delete menu "${row.name}"? This action cannot be undone.`,
+      onConfirm: async () => {
+        try {
+          await deleteMenuRecord(row._id)
+          setToast({ open: true, msg: 'Deleted', sev: 'success' })
+          await refresh()
+        } catch (e: any) {
+          setToast({ open: true, msg: e?.response?.data?.message ?? 'Delete failed', sev: 'error' })
+        }
+      }
+    })
   }
 
   const gridColumns = useMemo<GridColDef<SidebarMenuRecord>[]>(

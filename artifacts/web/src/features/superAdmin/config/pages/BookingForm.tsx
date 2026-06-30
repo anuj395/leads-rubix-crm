@@ -21,6 +21,7 @@ import { AppCard } from '@/components/ui/AppCard'
 import { AppDataGrid } from '@/components/ui/AppDataGrid'
 import type { GridColDef } from '@mui/x-data-grid'
 import { StatusBadge } from '@/components/ui/StatusBadge'
+import { useConfirm } from '@/components/common/ConfirmContext'
 import {
   getScreens,
   getScreenFields,
@@ -190,15 +191,22 @@ export default function BookingFormPage() {
     }
   }
 
+  const { confirmDelete } = useConfirm()
+
   const remove = async (row: ScreenField) => {
-    if (!window.confirm(`Delete field "${row.label}"?\n\nThis also removes any per-(role × industry) permissions for it.`)) return
-    try {
-      await deleteScreenField(row._id)
-      setToast({ open: true, msg: 'Deleted successfully', sev: 'success' })
-      await refresh()
-    } catch (e: any) {
-      setToast({ open: true, msg: e?.response?.data?.message ?? 'Delete failed', sev: 'error' })
-    }
+    confirmDelete({
+      title: 'Confirm Deletion',
+      message: `Delete field "${row.label}"?\n\nThis also removes any per-(role × industry) permissions for it. This action cannot be undone.`,
+      onConfirm: async () => {
+        try {
+          await deleteScreenField(row._id)
+          setToast({ open: true, msg: 'Deleted successfully', sev: 'success' })
+          await refresh()
+        } catch (e: any) {
+          setToast({ open: true, msg: e?.response?.data?.message ?? 'Delete failed', sev: 'error' })
+        }
+      }
+    })
   }
 
   const gridColumns = useMemo<GridColDef<ScreenField>[]>(

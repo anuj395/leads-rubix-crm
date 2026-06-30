@@ -121,7 +121,7 @@ exports.create = async ({ organization_id, resource_key, data }) => {
   };
 
   if (resource_key === 'resource_lead_sources') {
-    newItem.leadSource_id = itemId;
+    newItem.leadSourceId = itemId;
   }
 
   if (!doc[fieldName]) {
@@ -147,7 +147,7 @@ exports.update = async (id, data) => {
       if (idx !== -1) {
         const updatePayload = { ...data };
         if (field === 'leadSources') {
-          updatePayload.leadSource_id = id;
+          updatePayload.leadSourceId = id;
         }
         doc[field][idx] = {
           ...doc[field][idx],

@@ -23,6 +23,7 @@ import type { GridColDef } from '@mui/x-data-grid'
 import { AppCard } from '@/components/ui/AppCard'
 import { AppDataGrid } from '@/components/ui/AppDataGrid'
 import { StatusBadge } from '@/components/ui/StatusBadge'
+import { useConfirm } from '@/components/common/ConfirmContext'
 
 export interface ApiLog {
   id: string
@@ -177,11 +178,17 @@ export default function IntegrationsApiDataPage() {
     sev: 'success',
   })
 
+  const { confirmDelete } = useConfirm()
+
   const handleClearLogs = () => {
-    if (window.confirm('Are you sure you want to purge all API synced logs?')) {
-      setLogs([])
-      setToast({ open: true, msg: 'API logs cleared successfully', sev: 'success' })
-    }
+    confirmDelete({
+      title: 'Confirm Deletion',
+      message: 'Are you sure you want to purge all API synced logs? This action cannot be undone.',
+      onConfirm: () => {
+        setLogs([])
+        setToast({ open: true, msg: 'API logs cleared successfully', sev: 'success' })
+      }
+    })
   }
 
   const handleOpenDetail = (log: ApiLog) => {

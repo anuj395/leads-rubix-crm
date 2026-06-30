@@ -76,7 +76,7 @@ router.post('/', authenticate, async (req, res, next) => {
     const payload = {
       organization_id: orgId,
       source: req.body.source,
-      leadSource_id: req.body.leadSource_id,
+      leadSourceId: req.body.leadSourceId || req.body.leadSource_id,
       country_code: req.body.country_code || '+91',
       status: req.body.status || 'ACTIVE',
       api_key: req.body.api_key || generateApiKey(),

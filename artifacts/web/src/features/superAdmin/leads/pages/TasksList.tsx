@@ -17,6 +17,7 @@ import { DynamicForm } from '@/components/DynamicForm/DynamicForm'
 import { api } from '@/services/api'
 import { resolveScreen, type ResolvedTableHeader } from '@/services/screenAdminService'
 import { useAppSelector } from '@/store/hooks'
+import { useConfirm } from '@/components/common/ConfirmContext'
 import { StatusBadge } from '@/components/ui/StatusBadge'
 
 export interface Task {
@@ -46,6 +47,7 @@ export default function TasksListPage() {
   const [loading, setLoading] = useState(false)
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editingTask, setEditingTask] = useState<Task | null>(null)
+  const { confirmDelete } = useConfirm()
   const [toast, setToast] = useState<{ open: boolean; msg: string; sev: 'success' | 'error' }>({
     open: false, msg: '', sev: 'success',
   })
@@ -123,16 +125,21 @@ export default function TasksListPage() {
             <IconButton
               size="small"
               color="error"
-              onClick={async () => {
-                if (!window.confirm('Delete this task?')) return
-                try {
-                  await api.delete(`tasks/${params.row._id || params.row.id}`)
-                  setToast({ open: true, msg: 'Task deleted successfully', sev: 'success' })
-                  await refresh()
-                } catch (e: unknown) {
-                  const err = e as { response?: { data?: { message?: string } } }
-                  setToast({ open: true, msg: err?.response?.data?.message ?? 'Failed to delete task', sev: 'error' })
-                }
+              onClick={() => {
+                confirmDelete({
+                  title: 'Confirm Deletion',
+                  message: 'Are you sure you want to delete this task? This action cannot be undone.',
+                  onConfirm: async () => {
+                    try {
+                      await api.delete(`tasks/${params.row._id || params.row.id}`)
+                      setToast({ open: true, msg: 'Task deleted successfully', sev: 'success' })
+                      await refresh()
+                    } catch (e: unknown) {
+                      const err = e as { response?: { data?: { message?: string } } }
+                      setToast({ open: true, msg: err?.response?.data?.message ?? 'Failed to delete task', sev: 'error' })
+                    }
+                  }
+                })
               }}
             >
               <DeleteIcon fontSize="small" />

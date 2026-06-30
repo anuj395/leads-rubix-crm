@@ -30,6 +30,7 @@ import { AppDataGrid } from '@/components/ui/AppDataGrid'
 import { DynamicForm } from '@/components/DynamicForm/DynamicForm'
 import { InputField } from '@/components/forms/InputField'
 import { useAppSelector } from '@/store/hooks'
+import { useConfirm } from '@/components/common/ConfirmContext'
 import { StatusBadge } from '@/components/ui/StatusBadge'
 import {
   listUsersPaged,
@@ -123,6 +124,7 @@ export default function UserListPage() {
   const [managers, setManagers] = useState<ManagerCandidate[]>([])
   const [loadingManagers, setLoadingManagers] = useState(false)
 
+  const { confirmDelete } = useConfirm()
   const [toast, setToast] = useState<{ open: boolean; msg: string; sev: 'success' | 'error' }>({
     open: false, msg: '', sev: 'success',
   })
@@ -430,15 +432,20 @@ export default function UserListPage() {
   }
 
   const remove = async (row: AdminUser) => {
-    if (!window.confirm(`Delete user "${row.email}"?`)) return
-    try {
-      await deleteUser(row._id)
-      showToast('User deleted')
-      await refresh()
-    } catch (e) {
-      const err = e as { response?: { data?: { message?: string } } }
-      showToast(err?.response?.data?.message ?? 'Delete failed', 'error')
-    }
+    confirmDelete({
+      title: 'Confirm Deletion',
+      message: `Delete user "${row.email}"? This action cannot be undone.`,
+      onConfirm: async () => {
+        try {
+          await deleteUser(row._id)
+          showToast('User deleted')
+          await refresh()
+        } catch (e) {
+          const err = e as { response?: { data?: { message?: string } } }
+          showToast(err?.response?.data?.message ?? 'Delete failed', 'error')
+        }
+      }
+    })
   }
 
   // Quick-filter from the toolbar drives the server-side `q=` param.

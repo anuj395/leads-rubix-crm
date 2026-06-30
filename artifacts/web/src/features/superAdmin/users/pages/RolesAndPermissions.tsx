@@ -67,6 +67,7 @@ import {
   type RoleActionPermission,
 } from '@/services/roleActionPermissionsService'
 import Checkbox from '@mui/material/Checkbox'
+import { useConfirm } from '@/components/common/ConfirmContext'
 
 const ROLE_KEYS = ['superAdmin', 'admin', 'leadManager', 'teamLead', 'sales']
 
@@ -118,6 +119,7 @@ const emptyFieldForm: FieldFormState = {
 
 export default function RolesAndPermissionsPage() {
   const [tab, setTab] = useState<0 | 1 | 2>(0)
+  const { confirmDelete } = useConfirm()
   const [toast, setToast] = useState<{ open: boolean; msg: string; sev: ToastSev }>({
     open: false, msg: '', sev: 'success',
   })
@@ -297,17 +299,22 @@ export default function RolesAndPermissionsPage() {
     }
   }
   const removeRole = async (r: AdminRole) => {
-    if (!window.confirm(`Delete role "${r.name}" (${r.key})? This cascades to its sidebar and screen permissions.`)) return
-    try {
-      await deleteRoleRecord(r._id)
-      showToast('Deleted')
-      const list = await getRoles(filterIndustry)
-      setRoles(list)
-      if (selectedRoleId === r._id) setSelectedRoleId(list[0]?._id ?? '')
-    } catch (e) {
-      const err = e as { response?: { data?: { message?: string } } }
-      showToast(err?.response?.data?.message ?? 'Delete failed', 'error')
-    }
+    confirmDelete({
+      title: 'Confirm Deletion',
+      message: `Delete role "${r.name}" (${r.key})? This cascades to its sidebar and screen permissions. This action cannot be undone.`,
+      onConfirm: async () => {
+        try {
+          await deleteRoleRecord(r._id)
+          showToast('Deleted')
+          const list = await getRoles(filterIndustry)
+          setRoles(list)
+          if (selectedRoleId === r._id) setSelectedRoleId(list[0]?._id ?? '')
+        } catch (e) {
+          const err = e as { response?: { data?: { message?: string } } }
+          showToast(err?.response?.data?.message ?? 'Delete failed', 'error')
+        }
+      }
+    })
   }
 
   // ── Field permission handlers ─────────────────────────────────────────────
@@ -398,15 +405,20 @@ export default function RolesAndPermissionsPage() {
     }
   }
   const removeField = async (f: ScreenField) => {
-    if (!window.confirm(`Delete field "${f.label}" (${f.field_key})? This removes it from every role's user form.`)) return
-    try {
-      await deleteScreenField(f._id)
-      showToast('Deleted')
-      await refreshFields()
-    } catch (e) {
-      const err = e as { response?: { data?: { message?: string } } }
-      showToast(err?.response?.data?.message ?? 'Delete failed', 'error')
-    }
+    confirmDelete({
+      title: 'Confirm Deletion',
+      message: `Delete field "${f.label}" (${f.field_key})? This removes it from every role's user form. This action cannot be undone.`,
+      onConfirm: async () => {
+        try {
+          await deleteScreenField(f._id)
+          showToast('Deleted')
+          await refreshFields()
+        } catch (e) {
+          const err = e as { response?: { data?: { message?: string } } }
+          showToast(err?.response?.data?.message ?? 'Delete failed', 'error')
+        }
+      }
+    })
   }
 
   // ── Action permissions: load rows whenever role/industry change ──────────

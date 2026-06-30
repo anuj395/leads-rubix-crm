@@ -17,6 +17,7 @@ import type { GridColDef } from '@mui/x-data-grid'
 import { AppCard } from '@/components/ui/AppCard'
 import { AppDataGrid } from '@/components/ui/AppDataGrid'
 import { StatusBadge } from '@/components/ui/StatusBadge'
+import { useConfirm } from '@/components/common/ConfirmContext'
 
 export interface ApiEndpoint {
   id: string
@@ -113,11 +114,17 @@ export default function IntegrationsApiPage() {
     setDialogOpen(true)
   }
 
+  const { confirmDelete } = useConfirm()
+
   const handleDelete = (id: string) => {
-    if (window.confirm('Are you sure you want to delete this API endpoint?')) {
-      setItems((prev) => prev.filter((a) => a.id !== id))
-      setToast({ open: true, msg: 'API endpoint deleted successfully', sev: 'success' })
-    }
+    confirmDelete({
+      title: 'Confirm Deletion',
+      message: 'Are you sure you want to delete this API endpoint? This action cannot be undone.',
+      onConfirm: () => {
+        setItems((prev) => prev.filter((a) => a.id !== id))
+        setToast({ open: true, msg: 'API endpoint deleted successfully', sev: 'success' })
+      }
+    })
   }
 
   const handleCopy = (url: string) => {

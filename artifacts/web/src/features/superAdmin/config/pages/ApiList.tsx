@@ -24,6 +24,7 @@ import { getApiTokens, createApiToken, updateApiToken, deleteApiToken, type ApiT
 import { listOrganizationsPaged, type Organization } from '@/services/organizationsService'
 import { getResources } from '@/services/resourcesService'
 import { resolveScreen, type ResolvedScreen, type ResolvedFormField } from '@/services/screenAdminService'
+import { useConfirm } from '@/components/common/ConfirmContext'
 
 const COUNTRY_CODES = [
   { code: '+91', label: '🇮🇳 India (+91)' },
@@ -57,7 +58,7 @@ export default function ApiListPage() {
   // Form state
   const [form, setForm] = useState({
     organization_id: '',
-    leadSource_id: '',
+    leadSourceId: '',
     source: '',
     country_code: '+91',
     status: 'ACTIVE' as ApiTokenConfig['status'],
@@ -99,7 +100,7 @@ export default function ApiListPage() {
   useEffect(() => {
     if (!form.organization_id) {
       setLeadSources([])
-      setForm(prev => ({ ...prev, leadSource_id: '', source: '' }))
+      setForm(prev => ({ ...prev, leadSourceId: '', source: '' }))
       return
     }
 
@@ -123,7 +124,7 @@ export default function ApiListPage() {
     setEditing(null)
     setForm({
       organization_id: '',
-      leadSource_id: '',
+      leadSourceId: '',
       source: '',
       country_code: '+91',
       status: 'ACTIVE',
@@ -135,7 +136,7 @@ export default function ApiListPage() {
     setEditing(apiE)
     setForm({
       organization_id: apiE.organization_id || '',
-      leadSource_id: apiE.leadSource_id || '',
+      leadSourceId: apiE.leadSourceId || '',
       source: apiE.source || '',
       country_code: apiE.country_code || '+91',
       status: apiE.status || 'ACTIVE',
@@ -143,19 +144,25 @@ export default function ApiListPage() {
     setDialogOpen(true)
   }
 
+  const { confirmDelete } = useConfirm()
+
   const handleDelete = async (id: string) => {
-    if (window.confirm('Are you sure you want to delete this API credentials?')) {
-      try {
-        setLoading(true)
-        await deleteApiToken(id)
-        setToast({ open: true, msg: 'API integration deleted successfully', sev: 'success' })
-        loadData()
-      } catch (e: any) {
-        setToast({ open: true, msg: e?.response?.data?.message || 'Failed to delete config', sev: 'error' })
-      } finally {
-        setLoading(false)
+    confirmDelete({
+      title: 'Confirm Deletion',
+      message: 'Are you sure you want to delete this API credentials? This action cannot be undone.',
+      onConfirm: async () => {
+        try {
+          setLoading(true)
+          await deleteApiToken(id)
+          setToast({ open: true, msg: 'API integration deleted successfully', sev: 'success' })
+          loadData()
+        } catch (e: any) {
+          setToast({ open: true, msg: e?.response?.data?.message || 'Failed to delete config', sev: 'error' })
+        } finally {
+          setLoading(false)
+        }
       }
-    }
+    })
   }
 
   const handleSave = async () => {
@@ -197,7 +204,7 @@ export default function ApiListPage() {
     const sourceId = matched ? String(matched.id || '') : ''
     setForm(prev => ({
       ...prev,
-      leadSource_id: sourceId,
+      leadSourceId: sourceId,
       source: sourceName
     }))
   }
@@ -301,7 +308,7 @@ export default function ApiListPage() {
           select
           fullWidth
           label={field.label}
-          value={form.leadSource_id || form.source}
+          value={form.leadSourceId || form.source}
           onChange={(e) => handleSourceChange(e.target.value)}
           disabled={!form.organization_id}
           required={field.required}

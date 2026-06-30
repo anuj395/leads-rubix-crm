@@ -7,7 +7,7 @@ export interface ApiTokenConfig {
   organization_id: string
   organization_name?: string
   source: string
-  leadSource_id?: string
+  leadSourceId?: string
   country_code: string
   status: 'ACTIVE' | 'INACTIVE'
   created_at?: string

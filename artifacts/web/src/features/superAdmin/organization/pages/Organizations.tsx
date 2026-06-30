@@ -24,6 +24,7 @@ import {
 import { resolveScreen, type ResolvedTableHeader } from '@/services/screenAdminService'
 import { useAppSelector } from '@/store/hooks'
 import { StatusBadge } from '@/components/ui/StatusBadge'
+import { useConfirm } from '@/components/common/ConfirmContext'
 
 const SERVER_SORTABLE = new Set(['createdAt', 'updatedAt', 'is_active'])
 
@@ -53,6 +54,7 @@ export default function OrganizationsListPage() {
   const [search, setSearch] = useState('')
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editing, setEditing] = useState<Organization | null>(null)
+  const { confirmDelete } = useConfirm()
   const [toast, setToast] = useState<{ open: boolean; msg: string; sev: 'success' | 'error' }>({
     open: false, msg: '', sev: 'success',
   })
@@ -129,16 +131,21 @@ export default function OrganizationsListPage() {
               <IconButton
                 size="small"
                 color="error"
-                onClick={async () => {
-                  if (!window.confirm('Delete this organization?')) return
-                  try {
-                    await deleteOrganization(p.row._id)
-                    setToast({ open: true, msg: 'Organization deleted', sev: 'success' })
-                    await refresh()
-                  } catch (e: unknown) {
-                    const err = e as { response?: { data?: { message?: string } } }
-                    setToast({ open: true, msg: err?.response?.data?.message ?? 'Delete failed', sev: 'error' })
-                  }
+                onClick={() => {
+                  confirmDelete({
+                    title: 'Confirm Deletion',
+                    message: 'Are you sure you want to delete this organization? This action cannot be undone.',
+                    onConfirm: async () => {
+                      try {
+                        await deleteOrganization(p.row._id)
+                        setToast({ open: true, msg: 'Organization deleted', sev: 'success' })
+                        await refresh()
+                      } catch (e: unknown) {
+                        const err = e as { response?: { data?: { message?: string } } }
+                        setToast({ open: true, msg: err?.response?.data?.message ?? 'Delete failed', sev: 'error' })
+                      }
+                    }
+                  })
                 }}
               >
                 <DeleteIcon fontSize="small" />

@@ -17,6 +17,7 @@ import { api } from '@/services/api'
 import { DynamicForm } from '@/components/DynamicForm/DynamicForm'
 import { useTableConfig } from '@/hooks/useTableConfig'
 import { useAppSelector } from '@/store/hooks'
+import { useConfirm } from '@/components/common/ConfirmContext'
 import { selectAuth } from '@/features/auth'
 import { StatusBadge } from '@/components/ui/StatusBadge'
 
@@ -77,21 +78,27 @@ export default function BookingsListPage() {
     void refresh()
   }, [])
 
+  const { confirmDelete } = useConfirm()
+
   const handleDelete = async (row: Booking) => {
-    if (window.confirm(`Are you sure you want to delete this booking record?`)) {
-      try {
-        await api.delete(`bookings/${row._id || row.id}`)
-        setToast({ open: true, msg: 'Booking deleted successfully', sev: 'success' })
-        await refresh()
-      } catch (e: unknown) {
-        const err = e as { response?: { data?: { message?: string } } }
-        setToast({
-          open: true,
-          msg: err?.response?.data?.message ?? 'Failed to delete booking',
-          sev: 'error',
-        })
+    confirmDelete({
+      title: 'Confirm Deletion',
+      message: 'Are you sure you want to delete this booking record? This action cannot be undone.',
+      onConfirm: async () => {
+        try {
+          await api.delete(`bookings/${row._id || row.id}`)
+          setToast({ open: true, msg: 'Booking deleted successfully', sev: 'success' })
+          await refresh()
+        } catch (e: unknown) {
+          const err = e as { response?: { data?: { message?: string } } }
+          setToast({
+            open: true,
+            msg: err?.response?.data?.message ?? 'Failed to delete booking',
+            sev: 'error',
+          })
+        }
       }
-    }
+    })
   }
 
   const gridColumns = useMemo<GridColDef<Booking>[]>(() => {

@@ -28,6 +28,7 @@ import { AppCard } from '@/components/ui/AppCard'
 import { AppDataGrid } from '@/components/ui/AppDataGrid'
 import { InputField } from '@/components/forms/InputField'
 import { useAppSelector } from '@/store/hooks'
+import { useConfirm } from '@/components/common/ConfirmContext'
 import { StatusBadge } from '@/components/ui/StatusBadge'
 import {
   listUsers,
@@ -230,16 +231,23 @@ export default function AdminRolesPage() {
     } finally { setSaving(false) }
   }
 
+  const { confirmDelete } = useConfirm()
+
   const remove = async (row: AdminUser) => {
-    if (!window.confirm(`Delete admin "${row.email}"?`)) return
-    try {
-      await deleteUser(row._id)
-      showToast('Admin deleted')
-      await refreshUsers()
-    } catch (e) {
-      const err = e as { response?: { data?: { message?: string } } }
-      showToast(err?.response?.data?.message ?? 'Delete failed', 'error')
-    }
+    confirmDelete({
+      title: 'Confirm Deletion',
+      message: `Delete admin "${row.email}"? This action cannot be undone.`,
+      onConfirm: async () => {
+        try {
+          await deleteUser(row._id)
+          showToast('Admin deleted')
+          await refreshUsers()
+        } catch (e) {
+          const err = e as { response?: { data?: { message?: string } } }
+          showToast(err?.response?.data?.message ?? 'Delete failed', 'error')
+        }
+      }
+    })
   }
 
   // Intentionally NOT memoized: action handlers (`openEdit`/`remove`) close

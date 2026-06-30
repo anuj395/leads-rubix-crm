@@ -40,7 +40,7 @@ export interface Project {
   address: string
   rera_link: string
   walkthrough_link: string
-  property_type: string
+  propertyType: string
   property_stage: string
   project_status: 'Launched' | 'Pre Launch' | 'Intermediate Occupation'
   status: 'ACTIVE' | 'INACTIVE'
@@ -80,7 +80,7 @@ export default function ProjectsListPage() {
     address: '',
     rera_link: '',
     walkthrough_link: '',
-    property_type: '',
+    propertyType: '',
     property_stage: '',
     project_status: 'Launched' as Project['project_status'],
     status: 'ACTIVE' as Project['status'],
@@ -143,7 +143,7 @@ export default function ProjectsListPage() {
       address: '',
       rera_link: '',
       walkthrough_link: '',
-      property_type: '',
+      propertyType: '',
       property_stage: '',
       project_status: 'Launched',
       status: 'ACTIVE',
@@ -160,7 +160,7 @@ export default function ProjectsListPage() {
       address: proj.address || '',
       rera_link: proj.rera_link || '',
       walkthrough_link: proj.walkthrough_link || '',
-      property_type: proj.property_type || '',
+      propertyType: proj.propertyType || '',
       property_stage: proj.property_stage || '',
       project_status: proj.project_status || 'Launched',
       status: proj.status || 'ACTIVE',
@@ -251,7 +251,7 @@ export default function ProjectsListPage() {
       } else if (header.key === 'developer_name') {
         col.flex = 1.2
         col.minWidth = 150
-      } else if (header.key === 'property_type') {
+      } else if (header.key === 'propertyType') {
         col.width = 140
       } else if (header.key === 'property_stage') {
         col.width = 140
@@ -357,15 +357,15 @@ export default function ProjectsListPage() {
       )
     }
 
-    if (field.key === 'property_type') {
+    if (field.key === 'propertyType') {
       return (
         <TextField
           key={field.key}
           select
           fullWidth
           label={field.label}
-          value={form.property_type}
-          onChange={(e) => setForm(prev => ({ ...prev, property_type: e.target.value }))}
+          value={form.propertyType}
+          onChange={(e) => setForm(prev => ({ ...prev, propertyType: e.target.value }))}
           disabled={!form.organization_id}
           required={field.required}
         >
@@ -596,7 +596,7 @@ export default function ProjectsListPage() {
                   }
                 }
 
-                if (field.key === 'property_type') {
+                if (field.key === 'propertyType') {
                   const sibling = fields.find(f => f.key === 'property_stage')
                   if (sibling) {
                     renderedKeys.add('property_stage')
