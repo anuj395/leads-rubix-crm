@@ -84,7 +84,18 @@ export default function ResourcesPage() {
         
         // Filter screens starting with resource_
         const filtered = scrs.filter((s) => s.key.startsWith('resource_') && s.is_active)
-        setResourceScreens(filtered)
+        const orderMap: Record<string, number> = {
+          'resource_carousel': 10,
+          'resource_locations': 20,
+          'resource_budgets': 30,
+          'resource_lead_sources': 40,
+          'resource_transfer_reasons': 50,
+          'resource_property_stages': 60,
+          'resource_property_types': 70,
+          'resource_property_sub_types': 80,
+        }
+        const sorted = [...filtered].sort((a, b) => (orderMap[a.key] || 999) - (orderMap[b.key] || 999))
+        setResourceScreens(sorted)
 
         setSelectedOrgId('null')
       } catch (e: any) {
@@ -347,6 +358,139 @@ export default function ResourcesPage() {
     return cols
   }, [resolvedScreen, rows])
 
+  const renderField = (field: ResolvedFormField) => {
+    if (field.key === 'url' || field.key === 'image' || field.type === 'avatar') {
+      return (
+        <Box key={field.key} sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+          <Typography variant="body2" sx={{ fontWeight: 600, color: 'text.secondary' }}>
+            {field.label} {field.required && <span style={{ color: 'red' }}>*</span>}
+          </Typography>
+          <Box
+            sx={{
+              border: '2px dashed',
+              borderColor: 'divider',
+              borderRadius: 2,
+              p: 3,
+              textAlign: 'center',
+              cursor: 'pointer',
+              bgcolor: 'action.hover',
+              transition: 'all 0.2s',
+              '&:hover': {
+                borderColor: 'primary.main',
+                bgcolor: 'action.selected',
+              },
+            }}
+            onClick={() => document.getElementById(`file-input-${field.key}`)?.click()}
+          >
+            <input
+              type="file"
+              id={`file-input-${field.key}`}
+              accept="image/*"
+              style={{ display: 'none' }}
+              onChange={(e) => {
+                const file = e.target.files?.[0]
+                if (file) {
+                  const reader = new FileReader()
+                  reader.onload = (event) => {
+                    const base64 = event.target?.result as string
+                    setFormValues((prev) => {
+                      const next = { ...prev, [field.key]: base64 }
+                      if (prev.hasOwnProperty('image_name')) {
+                        next['image_name'] = file.name
+                      }
+                      return next
+                    })
+                  }
+                  reader.readAsDataURL(file)
+                }
+              }}
+            />
+            {formValues[field.key] ? (
+              <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1.5 }}>
+                <Box
+                  component="img"
+                  src={formValues[field.key]}
+                  sx={{
+                    maxWidth: '100%',
+                    maxHeight: 120,
+                    borderRadius: 1.5,
+                    objectFit: 'contain',
+                    boxShadow: 2,
+                  }}
+                />
+                <Button size="small" variant="outlined" color="primary" sx={{ textTransform: 'none', fontWeight: 600 }}>
+                  Change Image
+                </Button>
+              </Box>
+            ) : (
+              <Box sx={{ py: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1 }}>
+                <UploadIcon sx={{ fontSize: 32, color: 'text.secondary' }} />
+                <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 500 }}>
+                  Click to upload image
+                </Typography>
+              </Box>
+            )}
+          </Box>
+        </Box>
+      )
+    }
+
+    if (field.type === 'checkbox') {
+      return (
+        <FormControlLabel
+          key={field.key}
+          control={
+            <Checkbox
+              checked={!!formValues[field.key]}
+              onChange={(e) => setFormValues((prev) => ({ ...prev, [field.key]: e.target.checked }))}
+            />
+          }
+          label={field.label}
+        />
+      )
+    }
+
+    if (field.type === 'select') {
+      const options = field.dropdown_source === 'static'
+        ? (field.options || []).map(o => ({ value: o, label: o }))
+        : (apiDropdownOptions[field.key] || [])
+
+      return (
+        <TextField
+          key={field.key}
+          fullWidth
+          select
+          label={field.label}
+          value={formValues[field.key] || ''}
+          onChange={(e) => setFormValues((prev) => ({ ...prev, [field.key]: e.target.value }))}
+          required={field.required}
+        >
+          {options.map((opt) => (
+            <MenuItem key={opt.value} value={opt.value}>
+              {opt.label}
+            </MenuItem>
+          ))}
+        </TextField>
+      )
+    }
+
+    return (
+      <TextField
+        key={field.key}
+        fullWidth
+        label={field.label}
+        type={field.type === 'number' ? 'number' : field.type === 'date' ? 'date' : 'text'}
+        InputLabelProps={field.type === 'date' ? { shrink: true } : undefined}
+        multiline={field.type === 'textarea'}
+        rows={field.type === 'textarea' ? 3 : 1}
+        value={formValues[field.key] || ''}
+        onChange={(e) => setFormValues((prev) => ({ ...prev, [field.key]: e.target.value }))}
+        placeholder={`Enter ${field.label.toLowerCase()}`}
+        required={field.required}
+      />
+    )
+  }
+
   return (
     <Box sx={{ p: { xs: 2, sm: 3 }, width: '100%', minWidth: 0, height: '100%', display: 'flex', flexDirection: 'column', gap: 3, overflow: 'hidden' }}>
       
@@ -461,138 +605,42 @@ export default function ResourcesPage() {
         </DialogTitle>
         <DialogContent dividers>
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5, pt: 1 }}>
-            {resolvedScreen?.form_fields.map((field) => {
-              if (field.key === 'url' || field.key === 'image' || field.type === 'avatar') {
-                return (
-                  <Box key={field.key} sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-                    <Typography variant="body2" sx={{ fontWeight: 600, color: 'text.secondary' }}>
-                      {field.label} {field.required && <span style={{ color: 'red' }}>*</span>}
-                    </Typography>
-                    <Box
-                      sx={{
-                        border: '2px dashed',
-                        borderColor: 'divider',
-                        borderRadius: 2,
-                        p: 3,
-                        textAlign: 'center',
-                        cursor: 'pointer',
-                        bgcolor: 'action.hover',
-                        transition: 'all 0.2s',
-                        '&:hover': {
-                          borderColor: 'primary.main',
-                          bgcolor: 'action.selected',
-                        },
-                      }}
-                      onClick={() => document.getElementById(`file-input-${field.key}`)?.click()}
-                    >
-                      <input
-                        type="file"
-                        id={`file-input-${field.key}`}
-                        accept="image/*"
-                        style={{ display: 'none' }}
-                        onChange={(e) => {
-                          const file = e.target.files?.[0]
-                          if (file) {
-                            const reader = new FileReader()
-                            reader.onload = (event) => {
-                              const base64 = event.target?.result as string
-                              setFormValues((prev) => {
-                                const next = { ...prev, [field.key]: base64 }
-                                if (prev.hasOwnProperty('image_name')) {
-                                  next['image_name'] = file.name
-                                }
-                                return next
-                              })
-                            }
-                            reader.readAsDataURL(file)
-                          }
-                        }}
-                      />
-                      {formValues[field.key] ? (
-                        <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1.5 }}>
-                          <Box
-                            component="img"
-                            src={formValues[field.key]}
-                            sx={{
-                              maxWidth: '100%',
-                              maxHeight: 120,
-                              borderRadius: 1.5,
-                              objectFit: 'contain',
-                              boxShadow: 2,
-                            }}
-                          />
-                          <Button size="small" variant="outlined" color="primary" sx={{ textTransform: 'none', fontWeight: 600 }}>
-                            Change Image
-                          </Button>
-                        </Box>
-                      ) : (
-                        <Box sx={{ py: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1 }}>
-                          <UploadIcon sx={{ fontSize: 32, color: 'text.secondary' }} />
-                          <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 500 }}>
-                            Click to upload image
-                          </Typography>
-                        </Box>
-                      )}
-                    </Box>
-                  </Box>
-                )
-              }
+            {(() => {
+              const fields = resolvedScreen?.form_fields || []
+              const renderedKeys = new Set<string>()
 
-              if (field.type === 'checkbox') {
-                return (
-                  <FormControlLabel
-                    key={field.key}
-                    control={
-                      <Checkbox
-                        checked={!!formValues[field.key]}
-                        onChange={(e) => setFormValues((prev) => ({ ...prev, [field.key]: e.target.checked }))}
-                      />
-                    }
-                    label={field.label}
-                  />
-                )
-              }
+              return fields.map((field) => {
+                if (renderedKeys.has(field.key)) return null
 
-              if (field.type === 'select') {
-                const options = field.dropdown_source === 'static'
-                  ? (field.options || []).map(o => ({ value: o, label: o }))
-                  : (apiDropdownOptions[field.key] || [])
+                // Group value and country_code side-by-side (2fr 1fr)
+                if (field.key === 'value') {
+                  const countryCodeField = fields.find(f => f.key === 'country_code')
+                  if (countryCodeField) {
+                    renderedKeys.add('country_code')
+                    return (
+                      <Box key={field.key} sx={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 2 }}>
+                        {renderField(field)}
+                        {renderField(countryCodeField)}
+                      </Box>
+                    )
+                  }
 
-                return (
-                  <TextField
-                    key={field.key}
-                    fullWidth
-                    select
-                    label={field.label}
-                    value={formValues[field.key] || ''}
-                    onChange={(e) => setFormValues((prev) => ({ ...prev, [field.key]: e.target.value }))}
-                    required={field.required}
-                  >
-                    {options.map((opt) => (
-                      <MenuItem key={opt.value} value={opt.value}>
-                        {opt.label}
-                      </MenuItem>
-                    ))}
-                  </TextField>
-                )
-              }
+                  // Group value and color side-by-side (2fr 1fr)
+                  const colorField = fields.find(f => f.key === 'color')
+                  if (colorField) {
+                    renderedKeys.add('color')
+                    return (
+                      <Box key={field.key} sx={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 2 }}>
+                        {renderField(field)}
+                        {renderField(colorField)}
+                      </Box>
+                    )
+                  }
+                }
 
-              return (
-                <TextField
-                  key={field.key}
-                  fullWidth
-                  label={field.label}
-                  type={field.type === 'number' ? 'number' : field.type === 'date' ? 'date' : 'text'}
-                  InputLabelProps={field.type === 'date' ? { shrink: true } : undefined}
-                  multiline={field.type === 'textarea'}
-                  rows={field.type === 'textarea' ? 3 : 1}
-                  value={formValues[field.key] || ''}
-                  onChange={(e) => setFormValues((prev) => ({ ...prev, [field.key]: e.target.value }))}
-                  placeholder={`Enter ${field.label.toLowerCase()}`}
-                  required={field.required}
-                />
-              )
-            })}
+                return renderField(field)
+              })
+            })()}
           </Box>
         </DialogContent>
         <DialogActions sx={{ p: 2 }}>
