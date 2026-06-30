@@ -12,7 +12,7 @@ const bookingSchema = new mongoose.Schema(
     // Optional reference to the contact this booking originated from.
     contactId:      { type: mongoose.Schema.Types.ObjectId, ref: 'Contact', default: null, index: true, alias: 'contact_id' },
     customerName:   { type: String, default: '', alias: 'customer_name' },
-    contactNo:      { type: String, default: '', alias: 'contact_no' },
+    contactNumber:   { type: String, default: '', alias: 'contact_no' },
     project:        { type: String, default: '' },
     location:       { type: String, default: '' },
     branch:         { type: String, default: '' },

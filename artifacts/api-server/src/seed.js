@@ -138,21 +138,28 @@ async function ensureDevAdmin() {
   
   // Hash password using bcrypt if updating directly, or save new user
   if (existing) {
-    existing.name = 'Dev Super Admin';
+    existing.name = 'Gourav Chopra';
     existing.password = 'lead@1221';
     existing.role = 'superAdmin';
-    existing.industry_id = 'temp0001';
+    existing.industryId = undefined;
+    existing.industry_id = undefined;
+    existing.isActive = undefined;
+    existing.is_active = undefined;
+    existing.reportingTo = undefined;
+    existing.reporting_to = undefined;
+    existing.needsPasswordChange = undefined;
+    existing.needs_password_change = undefined;
+    existing.fields = undefined;
     await existing.save();
     console.log(`[seed] updated single superAdmin: ${email}`);
     return;
   }
 
   const dev = new User({
-    name: 'Dev Super Admin',
+    name: 'Gourav Chopra',
     email,
     password: 'lead@1221',
     role: 'superAdmin',
-    industry_id: 'temp0001',
   });
   await dev.save();
   console.log(`[seed] created single superAdmin: ${email} / lead@1221`);
@@ -373,10 +380,10 @@ const SCREEN_DEFAULTS = [
     name: 'Organization',
     description: 'Organization records — fully dynamic table & form',
     fields: [
-      { field_key: 'organization_name', label: 'Organization Name', type: 'text', is_required: true, order: 1 },
+      { field_key: 'organizationName', label: 'Organization Name', type: 'text', is_required: true, order: 1 },
       { field_key: 'firstName',    label: 'First Name',    type: 'text',     is_required: false, order: 2 },
       { field_key: 'lastName',     label: 'Last Name',     type: 'text',     is_required: false, order: 3 },
-      { field_key: 'contact_no',    label: 'Contact Number', type: 'phone',    is_required: true,  order: 4 },
+      { field_key: 'contactNumber',    label: 'Contact Number', type: 'phone',    is_required: true,  order: 4 },
       { field_key: 'emailId',      label: 'Email ID',      type: 'email',    is_required: false, order: 5 },
       { field_key: 'country',       label: 'Country',       type: 'select',   is_required: true,  order: 6,
         dropdown_source: 'api', dropdown_api: '/api/options/countries' },
@@ -403,7 +410,7 @@ const SCREEN_DEFAULTS = [
     description: 'Customer booking records — fully dynamic table & form',
     fields: [
       { field_key: 'customer_name', label: 'Customer Name', type: 'text',     is_required: true,  order: 1 },
-      { field_key: 'contact_no',    label: 'Phone Number',  type: 'text',     is_required: false, order: 2 },
+      { field_key: 'contactNumber',    label: 'Phone Number',  type: 'text',     is_required: false, order: 2 },
       { field_key: 'project',       label: 'Project Name',  type: 'text',     is_required: false, order: 3 },
       { field_key: 'location',      label: 'Location',      type: 'text',     is_required: false, order: 4 },
       { field_key: 'branch',        label: 'Branch',        type: 'text',     is_required: false, order: 5 },
@@ -415,7 +422,7 @@ const SCREEN_DEFAULTS = [
     name: 'API Integration',
     description: 'Manage incoming webhooks, country codes, and source triggers.',
     fields: [
-      { field_key: 'organization_id', label: 'Organization', type: 'select', dropdown_source: 'api', dropdown_api: 'options/organizations', is_required: true, order: 1 },
+      { field_key: 'organizationId', label: 'Organization', type: 'select', dropdown_source: 'api', dropdown_api: 'options/organizations', is_required: true, order: 1 },
       { field_key: 'source', label: 'Source', type: 'select', dropdown_source: 'api', dropdown_api: 'options/resource_lead_sources?display=leadSource', is_required: true, order: 2 },
       { field_key: 'country_code', label: 'Country Code', type: 'select', dropdown_source: 'api', dropdown_api: 'options/country_codes', is_required: true, order: 3 },
       { field_key: 'status', label: 'Status', type: 'select', dropdown_source: 'static', options: ['ACTIVE', 'INACTIVE'], is_required: true, order: 4 },

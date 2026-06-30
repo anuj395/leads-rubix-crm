@@ -13,19 +13,31 @@ exports.ROLES = ['sales', 'teamLead', 'leadManager', 'admin', 'superAdmin'];
 
 const userSchema = new mongoose.Schema(
   {
-    name: { type: String },
+    organizationName: { type: String, alias: 'name' },
+    firstName: { type: String, default: '' },
+    lastName: { type: String, default: '' },
     email: { type: String, required: true, unique: true, lowercase: true, trim: true },
     password: { type: String, required: true },
     role: { type: String, enum: exports.ROLES, default: 'sales' },
+    organizationId: { type: mongoose.Schema.Types.ObjectId, ref: 'Organization', default: null, alias: 'organization_id' },
     industryId: { type: String, alias: 'industry_id' },
+    contactNumber: { type: String, default: '', alias: 'contact_no' },
+    userImage: { type: String, default: '', alias: 'user_image' },
+    designation: { type: String, default: '' },
+    team: { type: String, default: '' },
+    branch: { type: String, default: '' },
+    branchPermission: { type: [String], default: [] },
+    status: { type: String, default: 'active' },
     isActive: { type: Boolean, default: true, alias: 'is_active' },
-    // UID of the direct manager. Walked downward by getVisibleUserIds to
-    // enforce the lead-visibility hierarchy (sales → teamLead → leadManager
-    // → admin → superAdmin). Stored as the manager's User _id (string).
     reportingTo: { type: String, default: '', alias: 'reporting_to' },
-    // Per-role custom attributes resolved through the `users` screen config.
     fields: { type: mongoose.Schema.Types.Mixed, default: {} },
     needsPasswordChange: { type: Boolean, default: false, alias: 'needs_password_change' },
+    deviceId: { type: String, default: '', alias: 'device_id' },
+    uid: { type: String, default: '' },
+    latestUpdateProfile: { type: Date, default: null },
+    activatedAt: { type: Date, default: null, alias: 'activated_at' },
+    deactivatedAt: { type: Date, default: null, alias: 'deactivated_at' },
+    createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null, alias: 'created_by' },
   },
   { 
     timestamps: true, 

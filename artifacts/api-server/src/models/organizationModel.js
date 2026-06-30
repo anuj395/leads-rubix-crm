@@ -8,9 +8,12 @@ const mongoose = require('mongoose');
  */
 const organizationSchema = new mongoose.Schema(
   {
+    organizationId: { type: String, alias: 'organization_id' },
+    organizationName: { type: String, alias: 'organization_name' },
+    contactNumber: { type: String, default: '', alias: 'contact_no' },
     industryId: { type: String, default: null, alias: 'industry_id' }, // industry code, mirrors user.industry_id
     isActive: { type: Boolean, default: true, alias: 'is_active' },
-    createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null, alias: 'created_by' },
+    createdBy: { type: String, default: null, alias: 'created_by' },
   },
   { 
     timestamps: true, 
@@ -20,11 +23,6 @@ const organizationSchema = new mongoose.Schema(
     toJSON: { virtuals: true, getters: true }
   },
 );
-
-// Handle any sub-document properties that might be accessed in camelCase
-organizationSchema.virtual('organizationId')
-  .get(function() { return this.organization_id; })
-  .set(function(val) { this.organization_id = val; });
 
 const Organization = mongoose.model('Organization', organizationSchema, 'organizations');
 
@@ -76,6 +74,18 @@ exports.create = async (payload) => {
 
 exports.update = async (id, patch) => {
   const $set = { ...patch };
+  if (patch.organization_id !== undefined) {
+    $set.organizationId = patch.organization_id;
+    delete $set.organization_id;
+  }
+  if (patch.organization_name !== undefined) {
+    $set.organizationName = patch.organization_name;
+    delete $set.organization_name;
+  }
+  if (patch.contact_no !== undefined) {
+    $set.contactNumber = patch.contact_no;
+    delete $set.contact_no;
+  }
   if (patch.industry_id !== undefined) {
     $set.industryId = patch.industry_id;
     delete $set.industry_id;

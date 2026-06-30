@@ -82,46 +82,87 @@ exports.listPaged = async ({
   authedUser,
   industry_id,
   q,
-  page,
-  pageSize,
+  page = 0,
+  pageSize = 25,
   sortField,
   sortDir,
-}) => {
+} = {}) => {
   const user = await resolveActor(authedUser);
+  if (!user) {
+    const err = new Error('Authentication required'); err.status = 401; throw err;
+  }
   const isSuperAdmin = (user.role || authedUser.role) === 'superAdmin';
 
-  // Tenant isolation: only SuperAdmin may target a different industry.
-  let scope_industry = isSuperAdmin ? industry_id || undefined : user.industry_id || undefined;
+  const { fields: allowedFields } = await resolveAllowedFormFields({
+    industry_code: industry_id || user.industry_id,
+    role_key: user.role || authedUser.role,
+    isSuperAdmin,
+  });
 
-  // Build a search-key list from the active form fields so quick filter
-  // works against whatever the SuperAdmin has actually configured.
-  const screen = await screenModel.findByKey(ORG_SCREEN_KEY);
-  let searchKeys = [];
-  if (screen?.is_active) {
-    const fields = await fieldModel.list({ screen_id: screen._id, activeOnly: true });
-    searchKeys = fields
-      .filter((f) => f.is_table_visible && ['text', 'email', 'textarea'].includes(f.type))
-      .map((f) => f.field_key);
-  }
+  const queryIndustry = isSuperAdmin
+    ? industry_id
+    : user.industry_id;
 
-  return organizationModel.listPaged({
-    industry_id: scope_industry,
+  const { items, total } = await organizationModel.listPaged({
+    industry_id: queryIndustry,
     q,
     page,
     pageSize,
     sortField,
     sortDir,
-    searchKeys,
+    searchKeys: allowedFields.map(f => f.field_key),
   });
+
+  // Enrich createdBy with human-readable name or role
+  const userIds = items
+    .map(org => org.createdBy || org.created_by)
+    .filter(id => id && mongoose.Types.ObjectId.isValid(id));
+  const users = await userModel.User.find({ _id: { $in: userIds } }).lean().exec();
+  const userMap = users.reduce((acc, u) => {
+    acc[u._id.toString()] = u;
+    return acc;
+  }, {});
+
+  const enrichedItems = items.map(org => {
+    const creatorId = (org.createdBy || org.created_by)?.toString();
+    const creator = userMap[creatorId];
+    let createdByVal = creatorId || '';
+    if (creator) {
+      createdByVal = creator.role === 'superAdmin' ? 'Super Admin' : (creator.organizationName || creator.name || creator.email);
+    } else if (creatorId === 'SIGNUP') {
+      createdByVal = 'SIGNUP';
+    }
+    return {
+      ...org,
+      createdBy: createdByVal,
+      created_by: createdByVal,
+    };
+  });
+
+  return { items: enrichedItems, total };
 };
 
 exports.fetchById = async ({ id, authedUser }) => {
   const user = await resolveActor(authedUser);
+  if (!user) {
+    const err = new Error('Authentication required'); err.status = 401; throw err;
+  }
   const isSuperAdmin = (user.role || authedUser.role) === 'superAdmin';
   const org = await organizationModel.findById(id);
-  if (!org) return null;
-  if (!isSuperAdmin && org.industry_id && org.industry_id !== user.industry_id) {
-    const err = new Error('Organization not found'); err.status = 404; throw err;
+  if (org && !isSuperAdmin && org.industry_id && org.industry_id !== user.industry_id) {
+    return null;
+  }
+  if (org) {
+    const creatorId = (org.createdBy || org.created_by)?.toString();
+    if (creatorId && mongoose.Types.ObjectId.isValid(creatorId)) {
+      const creator = await userModel.User.findById(creatorId).lean().exec();
+      let createdByVal = creatorId;
+      if (creator) {
+        createdByVal = creator.role === 'superAdmin' ? 'Super Admin' : (creator.organizationName || creator.name || creator.email);
+      }
+      org.createdBy = createdByVal;
+      org.created_by = createdByVal;
+    }
   }
   return org;
 };
@@ -137,15 +178,15 @@ function generateOrgId() {
 
 exports.create = async ({ payload, authedUser }) => {
   const user = await resolveActor(authedUser);
-  const isSuperAdmin = (user.role || authedUser.role) === 'superAdmin';
+  const isSuperAdmin = user && (user.role || authedUser?.role) === 'superAdmin';
 
   const industry_id = isSuperAdmin
-    ? payload.industryId || payload.industry_id || payload.industry || user.industry_id
-    : user.industry_id;
+    ? payload.industryId || payload.industry_id || payload.fields?.industryId || payload.fields?.industry_id || payload.industry || payload.fields?.industry || (user ? user.industryId || user.industry_id : null)
+    : (user ? user.industryId || user.industry_id : null);
 
   const { fields: allowedFields } = await resolveAllowedFormFields({
     industry_code: industry_id,
-    role_key: user.role || authedUser.role,
+    role_key: user ? user.role || authedUser?.role : 'admin',
     isSuperAdmin,
   });
   const cleaned = pickAllowed(payload?.fields ?? payload ?? {}, allowedFields);
@@ -190,6 +231,9 @@ exports.create = async ({ payload, authedUser }) => {
   const validTill = new Date(validFrom);
   validTill.setDate(validTill.getDate() + trialPeriodDays);
 
+  const adminId = new mongoose.Types.ObjectId();
+  const creatorId = isSuperAdmin ? 'Super Admin' : 'Admin';
+
   const orgDoc = await organizationModel.create({
     ...mergedWithDefaults,
     costPerLicense: licensesCost,
@@ -199,14 +243,16 @@ exports.create = async ({ payload, authedUser }) => {
     paymentStatus: true,
     validFrom,
     validTill,
+    organizationId: orgId,
     organization_id: orgId,
     industryId: industry_id,
     is_active: payload.is_active !== false,
-    created_by: user._id,
+    createdBy: creatorId,
+    created_by: creatorId,
   });
 
   // Automatically create an Admin user for this organization
-  const orgName = cleaned.organization_name || (cleaned.firstName
+  const orgName = cleaned.organizationName || cleaned.organization_name || (cleaned.firstName
     ? `${cleaned.firstName} ${cleaned.lastName || ''}`.trim()
     : cleaned.name || payload.name || 'Organization');
   const orgEmail = cleaned.emailId || cleaned.email || payload.email;
@@ -228,12 +274,31 @@ exports.create = async ({ payload, authedUser }) => {
   }
 
   await userModel.create({
+    _id: adminId,
     name: adminName,
+    firstName: cleaned.firstName || cleaned.first_name || orgName,
+    lastName: cleaned.lastName || cleaned.last_name || 'Admin',
     email: adminEmail.toLowerCase().trim(),
     password: adminPassword,
     role: 'admin',
-    industry_id: industry_id,
-    needs_password_change: true,
+    organizationId: orgDoc._id,
+    industryId: industry_id,
+    contactNumber: cleaned.contactNumber || cleaned.contact_no || cleaned.contact || '',
+    userImage: '',
+    designation: 'Administrator',
+    team: '',
+    branch: '',
+    branchPermission: [],
+    status: 'active',
+    isActive: true,
+    reportingTo: '',
+    needsPasswordChange: true,
+    deviceId: '',
+    uid: '',
+    latestUpdateProfile: null,
+    activatedAt: new Date(),
+    deactivatedAt: null,
+    createdBy: isSuperAdmin ? user.id : adminId,
   });
 
   // Send credentials email
