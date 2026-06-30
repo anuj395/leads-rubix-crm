@@ -8,7 +8,7 @@ import Typography from '@mui/material/Typography'
 import Stack from '@mui/material/Stack'
 import HourglassEmptyIcon from '@mui/icons-material/HourglassEmpty'
 import { useTheme } from '@mui/material/styles'
-import { Outlet as RouterOutlet } from 'react-router-dom'
+import { Outlet as RouterOutlet, useNavigate } from 'react-router-dom'
 
 import { useAppSelector } from '@/store/hooks'
 import { selectAuth } from '@/features/auth/store/authSlice'
@@ -19,38 +19,66 @@ import { Sidebar } from './Sidebar'
 
 export function MainLayout() {
   const theme = useTheme()
+  const navigate = useNavigate()
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false)
   const [isMobileOpen, setIsMobileOpen] = useState(false)
 
   const { user } = useAppSelector(selectAuth)
-  const [trialDialogOpen, setTrialDialogOpen] = useState(false)
-  const [trialDaysLeft, setTrialDaysLeft] = useState<number | null>(null)
+  const [graceDialogOpen, setGraceDialogOpen] = useState(false)
+  const [graceDaysLeft, setGraceDaysLeft] = useState<number | null>(null)
   const [orgName, setOrgName] = useState('')
 
   useEffect(() => {
-    if (!user || user.role === 'superAdmin') return
+    if (!user) {
+      console.log('[MainLayout] No user found in auth state');
+      return;
+    }
+    if (user.role === 'superAdmin') {
+      console.log('[MainLayout] User is superAdmin, skipping popup');
+      return;
+    }
 
-    const hasShown = sessionStorage.getItem('trial_popup_shown')
-    if (hasShown) return
+    console.log('[MainLayout] Running subscription popup check for user:', user);
 
     void (async () => {
       try {
-        const res = await api.get(`organizations?industry_id=${user.industry_id}`)
+        const res = await api.get(`/organizations?industry_id=${user.industry_id}`)
+        console.log('[MainLayout] Organization fetch response:', res.data);
         const orgs = res.data?.items ?? []
         const org = orgs[0]
-        if (org && org.trialPeriod === true) {
+        if (org) {
+          console.log('[MainLayout] Matching organization found:', org);
           setOrgName((org.organization_name || org.name || 'Your Organization') as string)
-          if (org.validTill) {
-            const till = new Date(org.validTill as string).getTime()
-            const diff = till - Date.now()
-            const days = Math.ceil(diff / (1000 * 60 * 60 * 24))
-            setTrialDaysLeft(days > 0 ? days : 0)
+          const now = Date.now()
+
+          if (org.trialPeriod === true || org.trialPeriod === 'true') {
+            // Trial period check is handled persistently by the Sidebar banner, bypass dialog popup
+            return
+          } else {
+            // trialPeriod === false / 'false'
+            if (user.role !== 'admin') {
+              console.log('[MainLayout] User role is not admin, skipping Grace warning popup. Role:', user.role);
+              return
+            }
+
+            const validTill = org.validTill ? new Date(org.validTill).getTime() : now
+            const graceDays = typeof org.gracePeriodDays === 'number' ? org.gracePeriodDays : 7
+            const graceExpiry = validTill + graceDays * 24 * 60 * 60 * 1000
+            
+            console.log('[MainLayout] Grace check - validTill:', new Date(validTill), 'graceExpiry:', new Date(graceExpiry), 'now:', new Date(now));
+            if (now > validTill && now <= graceExpiry) {
+              const diff = graceExpiry - now
+              const days = Math.ceil(diff / (1000 * 60 * 60 * 24))
+              setGraceDaysLeft(days)
+              setGraceDialogOpen(true)
+              console.log('[MainLayout] Opened Grace warning popup. graceDaysLeft:', days);
+            }
           }
-          setTrialDialogOpen(true)
-          sessionStorage.setItem('trial_popup_shown', 'true')
+        } else {
+          console.log('[MainLayout] No organization document matching user industry_id:', user.industry_id);
         }
       } catch (err) {
-        console.error('Failed to load trial period details', err)
+        console.error('[MainLayout] Failed to load organization status details', err)
       }
     })()
   }, [user])
@@ -172,9 +200,11 @@ export function MainLayout() {
         </Box>
       </Box>
 
+
+
       <Dialog
-        open={trialDialogOpen}
-        onClose={() => setTrialDialogOpen(false)}
+        open={graceDialogOpen}
+        onClose={() => setGraceDialogOpen(false)}
         maxWidth="xs"
         fullWidth
         PaperProps={{
@@ -198,19 +228,19 @@ export function MainLayout() {
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                background: 'linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)',
+                background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
                 color: '#ffffff',
-                boxShadow: '0 4px 14px 0 rgba(59, 130, 246, 0.4)',
+                boxShadow: '0 4px 14px 0 rgba(245, 158, 11, 0.4)',
               }}
             >
               <HourglassEmptyIcon sx={{ fontSize: 32 }} />
             </Box>
             <Stack spacing={1}>
               <Typography variant="h6" fontWeight={700} sx={{ letterSpacing: '-0.025em' }}>
-                Trial Period Active
+                Grace Period Active
               </Typography>
               <Typography variant="body2" color="text.secondary" sx={{ px: 2 }}>
-                Hey <strong>{user?.name}</strong>, your organization <strong>{orgName}</strong> is currently operating under a trial period.
+                Hey <strong>{user?.name}</strong>, your organization <strong>{orgName}</strong>'s subscription has expired and is currently in a grace period.
               </Typography>
             </Stack>
 
@@ -219,38 +249,53 @@ export function MainLayout() {
                 width: '100%',
                 p: 2,
                 borderRadius: 2,
-                bgcolor: theme.palette.mode === 'dark' ? 'rgba(59, 130, 246, 0.1)' : 'rgba(59, 130, 246, 0.05)',
+                bgcolor: theme.palette.mode === 'dark' ? 'rgba(245, 158, 11, 0.1)' : 'rgba(245, 158, 11, 0.05)',
                 border: '1px solid',
-                borderColor: theme.palette.mode === 'dark' ? 'rgba(59, 130, 246, 0.2)' : 'rgba(59, 130, 246, 0.1)',
+                borderColor: theme.palette.mode === 'dark' ? 'rgba(245, 158, 11, 0.2)' : 'rgba(245, 158, 11, 0.1)',
               }}
             >
-              {trialDaysLeft !== null ? (
+              {graceDaysLeft !== null ? (
                 <>
-                  <Typography variant="h3" fontWeight={800} color="primary" sx={{ mb: 0.5 }}>
-                    {trialDaysLeft}
+                  <Typography variant="h3" fontWeight={800} color="warning.main" sx={{ mb: 0.5 }}>
+                    {graceDaysLeft}
                   </Typography>
-                  <Typography variant="caption" fontWeight={600} color="primary" sx={{ textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                    {trialDaysLeft === 1 ? 'Trial Day Remaining' : 'Trial Days Remaining'}
+                  <Typography variant="caption" fontWeight={600} color="warning.main" sx={{ textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                    {graceDaysLeft === 1 ? 'Grace Day Remaining' : 'Grace Days Remaining'}
                   </Typography>
                 </>
               ) : (
-                <Typography variant="body2" fontWeight={600} color="primary">
-                  Trial Active
+                <Typography variant="body2" fontWeight={600} color="warning.main">
+                  Grace Period Active
                 </Typography>
               )}
             </Box>
 
             <Typography variant="caption" color="text.secondary">
-              Please contact your administrator or account owner to subscribe to a pricing plan before the trial expires.
+              Please renew your subscription to avoid suspension of services and loss of application access.
             </Typography>
           </Stack>
         </DialogContent>
-        <DialogActions sx={{ justifyContent: 'center', pb: 2 }}>
+        <DialogActions sx={{ justifyContent: 'center', pb: 2, gap: 1.5 }}>
+          <Button
+            variant="outlined"
+            onClick={() => {
+              setGraceDialogOpen(false)
+              navigate('/account/subscription-details')
+            }}
+            sx={{
+              px: 3,
+              borderRadius: 2,
+              textTransform: 'none',
+              fontWeight: 600,
+            }}
+          >
+            Renew Subscription
+          </Button>
           <Button
             variant="contained"
-            onClick={() => setTrialDialogOpen(false)}
+            onClick={() => setGraceDialogOpen(false)}
             sx={{
-              px: 4,
+              px: 3,
               borderRadius: 2,
               textTransform: 'none',
               fontWeight: 600,

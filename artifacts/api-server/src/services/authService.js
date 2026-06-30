@@ -53,8 +53,10 @@ exports.signup = async (email, password, role, industry_id, name) => {
     name: user.name,
     email: user.email,
     role: user.role,
-    industry_id: user.industry_id,
-    needs_password_change: !!user.needs_password_change,
+    industryId: user.industryId || user.industry_id,
+    industry_id: user.industryId || user.industry_id,
+    needsPasswordChange: !!(user.needsPasswordChange || user.needs_password_change),
+    needs_password_change: !!(user.needsPasswordChange || user.needs_password_change),
   };
   const token = jwt.sign({ id: user.id, role: user.role }, JWT_SECRET, {
     expiresIn: JWT_EXPIRES_IN,
@@ -88,8 +90,10 @@ exports.login = async (email, password) => {
     name: user.name,
     email: user.email,
     role: user.role,
-    industry_id: user.industry_id,
-    needs_password_change: !!user.needs_password_change,
+    industryId: user.industryId || user.industry_id,
+    industry_id: user.industryId || user.industry_id,
+    needsPasswordChange: !!(user.needsPasswordChange || user.needs_password_change),
+    needs_password_change: !!(user.needsPasswordChange || user.needs_password_change),
   };
   return { user: safeUser, token };
 };

@@ -25,6 +25,8 @@ import SupportAgentOutlinedIcon from '@mui/icons-material/SupportAgentOutlined'
 import VpnKeyOutlinedIcon from '@mui/icons-material/VpnKeyOutlined'
 import WhatsAppIcon from '@mui/icons-material/WhatsApp'
 
+import Button from '@mui/material/Button'
+import HourglassEmptyIcon from '@mui/icons-material/HourglassEmpty'
 import Box from '@mui/material/Box'
 import CircularProgress from '@mui/material/CircularProgress'
 import Collapse from '@mui/material/Collapse'
@@ -39,6 +41,9 @@ import { NavLink, useLocation } from 'react-router-dom'
 import type { MenuIconKey } from '@/config/menuConfig'
 import { useSidebarMenu } from '@/features/sidebar/hooks/useSidebarMenu'
 import type { SidebarNavItem } from '@/features/sidebar/types/sidebar.types'
+import { api } from '@/services/api'
+import { selectAuth } from '@/features/auth/store/authSlice'
+import { useAppSelector } from '@/store/hooks'
 
 // ── Icon map ──────────────────────────────────────────────────────────────────
 const iconMap: Partial<Record<MenuIconKey, typeof AppsOutlinedIcon>> = {
@@ -87,12 +92,48 @@ export function Sidebar({ collapsed, onToggle, onMobileClose }: SidebarProps) {
   const theme = useTheme()
   const isDark = theme.palette.mode === 'dark'
   const location = useLocation()
+  const { user } = useAppSelector(selectAuth)
 
   const { menu, loading, error } = useSidebarMenu()
 
   const [expandedItems, setExpandedItems] = useState<Record<string, boolean>>({})
+  const [showTrialBanner, setShowTrialBanner] = useState(false)
+  const [trialDaysLeft, setTrialDaysLeft] = useState<number | null>(null)
+
   const toggleExpand = (id: string) =>
     setExpandedItems((prev) => ({ ...prev, [id]: !prev[id] }))
+
+  useEffect(() => {
+    if (!user || user.role === 'superAdmin') return
+
+    void (async () => {
+      try {
+        const res = await api.get(`/organizations?industry_id=${user.industry_id}`)
+        const orgs = res.data?.items ?? []
+        const org = orgs[0]
+        if (org) {
+          if (org.trialPeriod === true || org.trialPeriod === 'true') {
+            const now = Date.now()
+            const createdAt = org.createdAt ? new Date(org.createdAt).getTime() : now
+            const trialDays = typeof org.trialPeriodDays === 'number' ? org.trialPeriodDays : 7
+            const trialExpiry = createdAt + trialDays * 24 * 60 * 60 * 1000
+            const diff = trialExpiry - now
+            if (diff > 0) {
+              const days = Math.ceil(diff / (1000 * 60 * 60 * 24))
+              setTrialDaysLeft(days)
+              setShowTrialBanner(true)
+            } else {
+              setShowTrialBanner(false)
+            }
+          } else {
+            setShowTrialBanner(false)
+          }
+        }
+      } catch (err) {
+        console.error('[Sidebar] Failed to load trial status', err)
+      }
+    })()
+  }, [user])
 
   // Expand all parents that have children by default
   useEffect(() => {
@@ -383,6 +424,95 @@ export function Sidebar({ collapsed, onToggle, onMobileClose }: SidebarProps) {
           </Stack>
         )}
       </Stack>
+
+      {/* ── Trial Period Banner ───────────────────────────────────────── */}
+      {showTrialBanner && (
+        <Box
+          sx={{
+            p: collapsed ? 1 : 1.75,
+            borderTop: `1px solid ${theme.palette.divider}`,
+            background: isDark 
+              ? 'rgba(59, 130, 246, 0.05)' 
+              : 'rgba(59, 130, 246, 0.03)',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 1,
+            alignItems: collapsed ? 'center' : 'stretch',
+            flexShrink: 0,
+          }}
+        >
+          {collapsed ? (
+            <Tooltip title={`Trial Period Active - ${trialDaysLeft} days remaining. Click to Renew.`} placement="right">
+              <IconButton
+                component={NavLink}
+                to="/account/subscription-details"
+                color="primary"
+                sx={{
+                  width: '2.5rem',
+                  height: '2.5rem',
+                  background: isDark ? 'rgba(59, 130, 246, 0.15)' : 'rgba(59, 130, 246, 0.08)',
+                  '&:hover': {
+                    background: isDark ? 'rgba(59, 130, 246, 0.25)' : 'rgba(59, 130, 246, 0.15)',
+                  }
+                }}
+              >
+                <HourglassEmptyIcon sx={{ fontSize: '1.25rem' }} />
+              </IconButton>
+            </Tooltip>
+          ) : (
+            <>
+              <Stack direction="row" spacing={1.25} alignItems="center">
+                <Box
+                  sx={{
+                    width: 32,
+                    height: 32,
+                    borderRadius: '50%',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    background: 'linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)',
+                    color: '#ffffff',
+                    flexShrink: 0,
+                    boxShadow: '0 2px 8px rgba(59, 130, 246, 0.3)',
+                  }}
+                >
+                  <HourglassEmptyIcon sx={{ fontSize: 16 }} />
+                </Box>
+                <Box minWidth={0}>
+                  <Typography variant="subtitle2" fontWeight={700} sx={{ fontSize: '0.8125rem', lineHeight: 1.2 }}>
+                    Trial Period Active
+                  </Typography>
+                  <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.75rem' }}>
+                    {trialDaysLeft} {trialDaysLeft === 1 ? 'day' : 'days'} remaining
+                  </Typography>
+                </Box>
+              </Stack>
+              <Button
+                component={NavLink}
+                to="/account/subscription-details"
+                variant="contained"
+                size="small"
+                fullWidth
+                sx={{
+                  textTransform: 'none',
+                  fontSize: '0.75rem',
+                  fontWeight: 600,
+                  py: 0.5,
+                  mt: 0.5,
+                  borderRadius: '6px',
+                  background: 'linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)',
+                  boxShadow: '0 2px 6px rgba(59, 130, 246, 0.25)',
+                  '&:hover': {
+                    background: 'linear-gradient(135deg, #2563eb 0%, #1e40af 100%)',
+                  }
+                }}
+              >
+                Renew Subscription
+              </Button>
+            </>
+          )}
+        </Box>
+      )}
     </Box>
   )
 }

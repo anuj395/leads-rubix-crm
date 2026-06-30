@@ -5,6 +5,8 @@ export interface AuthenticatedUser {
   id: string
   name: string
   role: UserRole
-  industry_id?: string   // added: required for non-superAdmin sidebar fetching
+  industry_id?: string
+  industryId?: string
   needs_password_change?: boolean
+  needsPasswordChange?: boolean
 }

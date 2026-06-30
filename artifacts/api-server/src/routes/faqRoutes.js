@@ -11,7 +11,7 @@ router.get('/', authenticate, async (req, res, next) => {
 
     let query = {};
     if (req.user.role !== 'superAdmin') {
-      const org = await Organization.findOne({ industry_id: req.user.industry_id }).exec();
+      const org = await Organization.findOne({ industryId: req.user.industry_id }).exec();
       const orgId = org ? org.organization_id : null;
       query = {
         $or: [
@@ -40,7 +40,7 @@ router.post('/', authenticate, async (req, res, next) => {
 
     let orgId = null;
     if (req.user.role === 'admin') {
-      const org = await Organization.findOne({ industry_id: req.user.industry_id }).exec();
+      const org = await Organization.findOne({ industryId: req.user.industry_id }).exec();
       orgId = org ? org.organization_id : null;
     }
 

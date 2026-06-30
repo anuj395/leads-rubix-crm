@@ -30,6 +30,50 @@ module.exports.authenticate = async (req, res, next) => {
       industry_id: fresh.industry_id,
       email: fresh.email,
     };
+
+    // Subscription & Trial expiration checks for non-superAdmin users
+    if (fresh.role !== 'superAdmin' && fresh.industry_id) {
+      const mongoose = require('mongoose');
+      const Organization = mongoose.model('Organization');
+      const org = await Organization.findOne({ industryId: fresh.industry_id });
+      if (org) {
+        let isExpired = false;
+        const now = new Date();
+        const createdAt = new Date(org.createdAt);
+
+        if (org.trialPeriod === true || org.trialPeriod === 'true') {
+          const trialDays = typeof org.trialPeriodDays === 'number' ? org.trialPeriodDays : 7;
+          const trialExpiry = new Date(createdAt.getTime() + trialDays * 24 * 60 * 60 * 1000);
+          if (now > trialExpiry) {
+            isExpired = true;
+          }
+        } else {
+          // trialPeriod === false
+          const validTill = new Date(org.validTill);
+          const graceDays = typeof org.gracePeriodDays === 'number' ? org.gracePeriodDays : 7;
+          const graceExpiry = new Date(validTill.getTime() + graceDays * 24 * 60 * 60 * 1000);
+          if (now > graceExpiry) {
+            isExpired = true;
+          }
+        }
+
+        if (isExpired) {
+          if (org.paymentStatus !== false && org.paymentStatus !== 'false') {
+            await Organization.updateOne({ _id: org._id }, { $set: { paymentStatus: false } });
+          }
+          // Permit subscription detail checks / updates
+          const isAllowedPath = 
+            (req.method === 'GET' && req.baseUrl === '/api/organizations') ||
+            (req.baseUrl.startsWith('/api/organizations/')) || 
+            (req.method === 'GET' && req.baseUrl === '/api/pricing-plans');
+
+          if (!isAllowedPath) {
+            return res.status(402).json({ message: 'Subscription expired. Please renew.' });
+          }
+        }
+      }
+    }
+
     next();
   } catch (err) {
     next(err);

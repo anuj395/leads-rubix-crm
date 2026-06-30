@@ -31,7 +31,7 @@ router.get('/', authenticate, async (req, res, next) => {
         }
       });
     } else {
-      const org = await Organization.findOne({ industry_id: req.user.industry_id }).exec();
+      const org = await Organization.findOne({ industryId: req.user.industry_id }).exec();
       const orgId = org ? org.organization_id : null;
       if (!orgId) {
         return res.json([]);
@@ -66,7 +66,7 @@ router.post('/', authenticate, async (req, res, next) => {
     let orgId = req.body.organization_id || null;
 
     if (req.user.role !== 'superAdmin') {
-      const org = await Organization.findOne({ industry_id: req.user.industry_id }).exec();
+      const org = await Organization.findOne({ industryId: req.user.industry_id }).exec();
       orgId = org ? org.organization_id : null;
       if (!orgId) {
         return res.status(400).json({ message: 'Organization ID is mandatory for Admin users' });
@@ -105,7 +105,7 @@ router.put('/:id', authenticate, async (req, res, next) => {
     }
 
     if (req.user.role !== 'superAdmin') {
-      const org = await Organization.findOne({ industry_id: req.user.industry_id }).exec();
+      const org = await Organization.findOne({ industryId: req.user.industry_id }).exec();
       const orgId = org ? org.organization_id : null;
       if (String(doc.organization_id) !== String(orgId)) {
         return res.status(403).json({ message: 'Forbidden: Cannot edit configuration of another organization' });
@@ -139,7 +139,7 @@ router.delete('/:id', authenticate, async (req, res, next) => {
     }
 
     if (req.user.role !== 'superAdmin') {
-      const org = await Organization.findOne({ industry_id: req.user.industry_id }).exec();
+      const org = await Organization.findOne({ industryId: req.user.industry_id }).exec();
       const orgId = org ? org.organization_id : null;
       if (String(doc.organization_id) !== String(orgId)) {
         return res.status(403).json({ message: 'Forbidden: Cannot delete configuration of another organization' });

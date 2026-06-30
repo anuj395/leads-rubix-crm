@@ -17,17 +17,22 @@ const userSchema = new mongoose.Schema(
     email: { type: String, required: true, unique: true, lowercase: true, trim: true },
     password: { type: String, required: true },
     role: { type: String, enum: exports.ROLES, default: 'sales' },
-    industry_id: { type: String },
-    is_active: { type: Boolean, default: true },
+    industryId: { type: String, alias: 'industry_id' },
+    isActive: { type: Boolean, default: true, alias: 'is_active' },
     // UID of the direct manager. Walked downward by getVisibleUserIds to
     // enforce the lead-visibility hierarchy (sales → teamLead → leadManager
     // → admin → superAdmin). Stored as the manager's User _id (string).
-    reporting_to: { type: String, default: '' },
+    reportingTo: { type: String, default: '', alias: 'reporting_to' },
     // Per-role custom attributes resolved through the `users` screen config.
     fields: { type: mongoose.Schema.Types.Mixed, default: {} },
-    needs_password_change: { type: Boolean, default: false },
+    needsPasswordChange: { type: Boolean, default: false, alias: 'needs_password_change' },
   },
-  { timestamps: true, minimize: false },
+  { 
+    timestamps: true, 
+    minimize: false,
+    toObject: { virtuals: true, getters: true },
+    toJSON: { virtuals: true, getters: true }
+  },
 );
 
 // hash password before save
@@ -53,11 +58,15 @@ function shapePublic(u) {
     name: u.name,
     email: u.email,
     role: u.role,
-    industry_id: u.industry_id,
-    is_active: u.is_active !== false,
-    reporting_to: u.reporting_to || '',
+    industryId: u.industryId || u.industry_id,
+    industry_id: u.industryId || u.industry_id,
+    isActive: u.isActive !== false && u.is_active !== false,
+    is_active: u.isActive !== false && u.is_active !== false,
+    reportingTo: u.reportingTo || u.reporting_to || '',
+    reporting_to: u.reportingTo || u.reporting_to || '',
     fields: u.fields || {},
-    needs_password_change: !!u.needs_password_change,
+    needsPasswordChange: !!(u.needsPasswordChange || u.needs_password_change),
+    needs_password_change: !!(u.needsPasswordChange || u.needs_password_change),
     createdAt: u.createdAt,
     updatedAt: u.updatedAt,
   };
@@ -131,15 +140,21 @@ exports.update = async (id, patch) => {
   const $set = {};
   if (patch.name !== undefined) $set.name = patch.name;
   if (patch.role !== undefined) $set.role = patch.role;
-  if (patch.industry_id !== undefined) $set.industry_id = patch.industry_id;
-  if (patch.is_active !== undefined) $set.is_active = !!patch.is_active;
-  if (patch.reporting_to !== undefined) $set.reporting_to = String(patch.reporting_to || '');
+  if (patch.industryId !== undefined || patch.industry_id !== undefined) {
+    $set.industryId = patch.industryId !== undefined ? patch.industryId : patch.industry_id;
+  }
+  if (patch.isActive !== undefined || patch.is_active !== undefined) {
+    $set.isActive = !!(patch.isActive !== undefined ? patch.isActive : patch.is_active);
+  }
+  if (patch.reportingTo !== undefined || patch.reporting_to !== undefined) {
+    $set.reportingTo = String(patch.reportingTo !== undefined ? patch.reportingTo : (patch.reporting_to || ''));
+  }
   if (patch.fields !== undefined) $set.fields = patch.fields || {};
   // Password change goes through a separate flow (pre-save hook would not run
   // with findByIdAndUpdate). Allow it here only by hashing manually.
   if (patch.password) {
     $set.password = await bcrypt.hash(String(patch.password), 10);
-    $set.needs_password_change = false;
+    $set.needsPasswordChange = false;
   }
   const updated = await User.findByIdAndUpdate(id, { $set }, { new: true })
     .select('-password')

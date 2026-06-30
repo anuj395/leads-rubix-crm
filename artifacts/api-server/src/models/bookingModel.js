@@ -8,25 +8,31 @@ const mongoose = require('mongoose');
 
 const bookingSchema = new mongoose.Schema(
   {
-    industry_id:    { type: String, default: null, index: true },
+    industryId:     { type: String, default: null, index: true, alias: 'industry_id' },
     // Optional reference to the contact this booking originated from.
-    contact_id:     { type: mongoose.Schema.Types.ObjectId, ref: 'Contact', default: null, index: true },
-    customer_name:  { type: String, default: '' },
-    contact_no:     { type: String, default: '' },
+    contactId:      { type: mongoose.Schema.Types.ObjectId, ref: 'Contact', default: null, index: true, alias: 'contact_id' },
+    customerName:   { type: String, default: '', alias: 'customer_name' },
+    contactNo:      { type: String, default: '', alias: 'contact_no' },
     project:        { type: String, default: '' },
     location:       { type: String, default: '' },
     branch:         { type: String, default: '' },
     team:           { type: String, default: '' },
-    reporting_to:   { type: String, default: '' },
+    reportingTo:    { type: String, default: '', alias: 'reporting_to' },
     contactDetails: { type: mongoose.Schema.Types.Mixed, default: {} },
     bookingDetails: { type: [mongoose.Schema.Types.Mixed], default: [] },
     notes:          { type: [mongoose.Schema.Types.Mixed], default: [] },
     attachments:    { type: [mongoose.Schema.Types.Mixed], default: [] },
     callLogs:       { type: [mongoose.Schema.Types.Mixed], default: [] },
-    is_active:      { type: Boolean, default: true },
-    created_by:     { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
+    isActive:       { type: Boolean, default: true, alias: 'is_active' },
+    createdBy:      { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null, alias: 'created_by' },
   },
-  { timestamps: true, strict: false, minimize: false },
+  { 
+    timestamps: true, 
+    strict: false, 
+    minimize: false,
+    toObject: { virtuals: true, getters: true },
+    toJSON: { virtuals: true, getters: true }
+  },
 );
 
 const Booking = mongoose.model('Booking', bookingSchema, 'bookings');

@@ -201,7 +201,7 @@ exports.create = async ({ payload, authedUser }) => {
   void (async () => {
     try {
       const Organization = mongoose.model('Organization');
-      const org = await Organization.findOne({ industry_id }).exec();
+      const org = await Organization.findOne({ industryId: industry_id }).exec();
       const orgName = org ? (org.name || org.organization_name) : 'Leads Rubix Workspace';
       await sendCredentialsEmail({
         orgName,

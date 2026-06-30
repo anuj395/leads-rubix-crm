@@ -163,7 +163,7 @@ export default function OrganizationsListPage() {
           </Tooltip>
           {isSuperAdmin && (
             <Tooltip title="Change Password">
-              <IconButton size="small" onClick={() => { setPwdDialog({ open: true, email: String(p.row.email_id || ''), password: '' }) }}>
+              <IconButton size="small" onClick={() => { setPwdDialog({ open: true, email: String(p.row.emailId || p.row.email_id || ''), password: '' }) }}>
                 <VpnKeyIcon fontSize="small" />
               </IconButton>
             </Tooltip>

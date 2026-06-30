@@ -8,12 +8,23 @@ const mongoose = require('mongoose');
  */
 const organizationSchema = new mongoose.Schema(
   {
-    industry_id: { type: String, default: null }, // industry code, mirrors user.industry_id
-    is_active: { type: Boolean, default: true },
-    created_by: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
+    industryId: { type: String, default: null, alias: 'industry_id' }, // industry code, mirrors user.industry_id
+    isActive: { type: Boolean, default: true, alias: 'is_active' },
+    createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null, alias: 'created_by' },
   },
-  { timestamps: true, strict: false, minimize: false },
+  { 
+    timestamps: true, 
+    strict: false, 
+    minimize: false,
+    toObject: { virtuals: true, getters: true },
+    toJSON: { virtuals: true, getters: true }
+  },
 );
+
+// Handle any sub-document properties that might be accessed in camelCase
+organizationSchema.virtual('organizationId')
+  .get(function() { return this.organization_id; })
+  .set(function(val) { this.organization_id = val; });
 
 const Organization = mongoose.model('Organization', organizationSchema, 'organizations');
 
@@ -35,7 +46,7 @@ exports.listPaged = async ({
   searchKeys = [],
 } = {}) => {
   const filter = {};
-  if (industry_id) filter.industry_id = industry_id;
+  if (industry_id) filter.industryId = industry_id;
   if (q && String(q).trim()) {
     const re = new RegExp(escapeRegex(String(q).trim()), 'i');
     // Match against any of the screen-config field keys the caller exposes,
@@ -63,7 +74,21 @@ exports.create = async (payload) => {
   return doc.toObject();
 };
 
-exports.update = async (id, patch) =>
-  Organization.findByIdAndUpdate(id, { $set: patch }, { new: true }).lean().exec();
+exports.update = async (id, patch) => {
+  const $set = { ...patch };
+  if (patch.industry_id !== undefined) {
+    $set.industryId = patch.industry_id;
+    delete $set.industry_id;
+  }
+  if (patch.is_active !== undefined) {
+    $set.isActive = patch.is_active;
+    delete $set.is_active;
+  }
+  if (patch.created_by !== undefined) {
+    $set.createdBy = patch.created_by;
+    delete $set.created_by;
+  }
+  return Organization.findByIdAndUpdate(id, { $set }, { new: true }).lean().exec();
+};
 
 exports.remove = async (id) => Organization.findByIdAndDelete(id).lean().exec();

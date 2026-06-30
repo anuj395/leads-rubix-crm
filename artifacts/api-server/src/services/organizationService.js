@@ -140,7 +140,7 @@ exports.create = async ({ payload, authedUser }) => {
   const isSuperAdmin = (user.role || authedUser.role) === 'superAdmin';
 
   const industry_id = isSuperAdmin
-    ? payload.industry_id || payload.industry || user.industry_id
+    ? payload.industryId || payload.industry_id || payload.industry || user.industry_id
     : user.industry_id;
 
   const { fields: allowedFields } = await resolveAllowedFormFields({
@@ -192,24 +192,24 @@ exports.create = async ({ payload, authedUser }) => {
 
   const orgDoc = await organizationModel.create({
     ...mergedWithDefaults,
-    cost_per_license: licensesCost,
-    org_trial_period_users_licenses: trialPeriodLicenses,
+    costPerLicense: licensesCost,
+    orgTrialPeriodUsersLicenses: trialPeriodLicenses,
     gracePeriodDays: gracePeriodDays,
     trialPeriodDays: trialPeriodDays,
     paymentStatus: true,
     validFrom,
     validTill,
     organization_id: orgId,
-    industry_id,
+    industryId: industry_id,
     is_active: payload.is_active !== false,
     created_by: user._id,
   });
 
   // Automatically create an Admin user for this organization
-  const orgName = cleaned.organization_name || (cleaned.first_name
-    ? `${cleaned.first_name} ${cleaned.last_name || ''}`.trim()
+  const orgName = cleaned.organization_name || (cleaned.firstName
+    ? `${cleaned.firstName} ${cleaned.lastName || ''}`.trim()
     : cleaned.name || payload.name || 'Organization');
-  const orgEmail = cleaned.email_id || cleaned.email || payload.email;
+  const orgEmail = cleaned.emailId || cleaned.email || payload.email;
   let adminEmail = orgEmail || `admin@${(cleaned.code || payload.code || 'org').toLowerCase()}.com`;
 
   // Ensure unique admin email
@@ -290,13 +290,17 @@ exports.remove = async ({ id, authedUser }) => {
     const err = new Error('Organization not found'); err.status = 404; throw err;
   }
   
-  // Cascade delete all users belonging to this organization's industry_id
-  if (existing.industry_id) {
+  // Cascade delete all users belonging to this organization's industryId / industry_id
+  const targetIndustry = existing.industryId || existing.industry_id;
+  if (targetIndustry) {
     const deleteResult = await userModel.User.deleteMany({
-      industry_id: existing.industry_id,
+      $or: [
+        { industryId: targetIndustry },
+        { industry_id: targetIndustry }
+      ],
       role: { $ne: 'superAdmin' }
     });
-    console.log(`[organizationService] Cascade deleted ${deleteResult.deletedCount} users for industry_id: ${existing.industry_id}`);
+    console.log(`[organizationService] Cascade deleted ${deleteResult.deletedCount} users for industry: ${targetIndustry}`);
   }
 
   return organizationModel.remove(id);

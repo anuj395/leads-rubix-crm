@@ -156,7 +156,7 @@ router.get('/:key', authenticate, async (req, res) => {
         orgId = (req.query.organization_id === 'null' || !req.query.organization_id) ? null : req.query.organization_id;
       } else {
         const Organization = mongoose.model('Organization');
-        const org = await Organization.findOne({ industry_id: req.user.industry_id }).exec();
+        const org = await Organization.findOne({ industryId: req.user.industry_id }).exec();
         orgId = org ? org.organization_id : null;
       }
 

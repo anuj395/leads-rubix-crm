@@ -7,11 +7,17 @@ const mongoose = require('mongoose');
  */
 const contactSchema = new mongoose.Schema(
   {
-    industry_id: { type: String, default: null }, // industry code, mirrors user.industry_id
+    industryId: { type: String, default: null, alias: 'industry_id' }, // industry code, mirrors user.industry_id
     role_id: { type: String, default: null },     // role key,    mirrors user.role
-    created_by: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
+    createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null, alias: 'created_by' },
   },
-  { timestamps: true, strict: false, minimize: false },
+  { 
+    timestamps: true, 
+    strict: false, 
+    minimize: false,
+    toObject: { virtuals: true, getters: true },
+    toJSON: { virtuals: true, getters: true }
+  },
 );
 
 const Contact = mongoose.model('Contact', contactSchema, 'contacts');
