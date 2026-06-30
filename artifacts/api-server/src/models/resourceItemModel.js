@@ -68,9 +68,10 @@ exports.list = async ({ organization_id, resource_key, all = false } = {}) => {
     });
   }
 
-  let doc = await OrganizationResources.findOne({ organization_id }).lean().exec();
+  const targetOrgId = (organization_id === 'null' || !organization_id) ? null : organization_id;
+  let doc = await OrganizationResources.findOne({ organization_id: targetOrgId }).lean().exec();
   // Fallback to global defaults if no custom organization resources document exists yet
-  if (!doc && organization_id !== null && organization_id !== 'null' && organization_id !== '') {
+  if (!doc && targetOrgId !== null && targetOrgId !== '') {
     doc = await OrganizationResources.findOne({ organization_id: null }).lean().exec();
   }
   if (!doc) return [];

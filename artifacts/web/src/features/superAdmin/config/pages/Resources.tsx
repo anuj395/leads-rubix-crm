@@ -50,6 +50,7 @@ export default function ResourcesPage() {
   const [selectedOrgId, setSelectedOrgId] = useState<string>('')
   const [resourceScreens, setResourceScreens] = useState<Screen[]>([])
   const [activeTab, setActiveTab] = useState(0)
+  const [selectedRowIds, setSelectedRowIds] = useState<any[]>([])
 
   // Resolved configurations for active tab
   const [resolvedScreen, setResolvedScreen] = useState<ResolvedScreen | null>(null)
@@ -123,6 +124,7 @@ export default function ResourcesPage() {
   const selectedIndustry = activeOrg?.industry_id || 'temp0001'
 
   useEffect(() => {
+    setSelectedRowIds([])
     if (!activeScreen || !selectedOrgId) {
       setResolvedScreen(null)
       setRows([])
@@ -190,9 +192,14 @@ export default function ResourcesPage() {
     if (!resolvedScreen) return
     resolvedScreen.form_fields.forEach((field) => {
       if (field.type === 'select' && field.dropdown_source === 'api' && field.dropdown_api) {
-        // Build query string if it needs industry
-        const connector = field.dropdown_api.includes('?') ? '&' : '?'
-        const targetUrl = `${field.dropdown_api}${connector}industry_code=${encodeURIComponent(selectedIndustry)}`
+        const isAbsolute = /^https?:\/\//i.test(field.dropdown_api)
+        const path = isAbsolute
+          ? field.dropdown_api
+          : field.dropdown_api.replace(/^\/+/, '').replace(/^api\//, '')
+
+        const connector = path.includes('?') ? '&' : '?'
+        const orgParam = selectedOrgId ? `&organization_id=${encodeURIComponent(selectedOrgId)}` : ''
+        const targetUrl = `${path}${connector}industry_code=${encodeURIComponent(selectedIndustry)}${orgParam}`
         
         void (async () => {
           try {
@@ -219,7 +226,7 @@ export default function ResourcesPage() {
         })()
       }
     })
-  }, [resolvedScreen, selectedIndustry])
+  }, [resolvedScreen, selectedIndustry, selectedOrgId])
 
   const handleExport = () => {
     if (!resolvedScreen || rows.length === 0) return
@@ -310,10 +317,23 @@ export default function ResourcesPage() {
       const failedRecords: Array<{ record: any; reason: string }> = []
 
       setLoading(true)
+      // Unique key resolver for duplicate checking
+      const uniqueKeys = resolvedScreen.form_fields
+        .map(f => f.key)
+        .filter(k => k === 'value' || k === 'locationName' || k === 'leadSourceId' || k === 'propertyType' || k === 'propertySubType' || k === 'reason' || k === 'stage')
+      
+      const checkKeys = uniqueKeys.length > 0 ? uniqueKeys : (resolvedScreen.form_fields[0] ? [resolvedScreen.form_fields[0].key] : [])
+
+      // Keep track of imported values in the current batch to prevent intra-CSV duplicates
+      const currentBatchValues = new Set<string>()
+
+      setLoading(true)
       for (const payload of parsedPayloads) {
+        // 1. Required fields check
         let missingFields: string[] = []
         for (const field of resolvedScreen.form_fields) {
-          if (field.required && !payload[field.key]) {
+          const val = payload[field.key]
+          if (field.required && (!val || (typeof val === 'string' && !val.trim()))) {
             missingFields.push(field.label)
           }
         }
@@ -324,6 +344,53 @@ export default function ResourcesPage() {
             reason: `Missing required field(s): ${missingFields.join(', ')}`
           })
           continue
+        }
+
+        // 2. Intra-CSV & Existing rows duplicate check
+        if (checkKeys.length > 0) {
+          let hasDuplicate = false
+          let duplicateReason = ''
+
+          for (const key of checkKeys) {
+            const newVal = String(payload[key] ?? '').trim().toLowerCase()
+            if (!newVal) continue
+
+            // Check intra-CSV duplicates
+            const batchKey = `${key}:${newVal}`
+            if (currentBatchValues.has(batchKey)) {
+              hasDuplicate = true
+              duplicateReason = 'Duplicate record found in the CSV file'
+              break
+            }
+
+            // Check database duplicates
+            const existsInDB = rows.some((row) => {
+              const rowVal = String(row[key] ?? '').trim().toLowerCase()
+              return rowVal === newVal
+            })
+
+            if (existsInDB) {
+              hasDuplicate = true
+              duplicateReason = 'Record already exists in the database'
+              break
+            }
+          }
+
+          if (hasDuplicate) {
+            failedRecords.push({
+              record: payload,
+              reason: duplicateReason
+            })
+            continue
+          }
+
+          // Register in current batch to prevent duplicates in next rows of this CSV
+          checkKeys.forEach((key) => {
+            const newVal = String(payload[key] ?? '').trim().toLowerCase()
+            if (newVal) {
+              currentBatchValues.add(`${key}:${newVal}`)
+            }
+          })
         }
 
         try {
@@ -400,8 +467,34 @@ export default function ResourcesPage() {
           setRows(nextRows)
           setResourceDataCache((prev) => ({ ...prev, [`${activeScreen.key}_${selectedOrgId}`]: nextRows }))
           setToast({ open: true, msg: 'Deleted successfully!', sev: 'success' })
+          setSelectedRowIds((prev) => prev.filter((item) => item !== id))
         } catch (e: any) {
           setToast({ open: true, msg: e?.response?.data?.message ?? 'Failed to delete item', sev: 'error' })
+        }
+      }
+    })
+  }
+
+  const handleBulkDelete = async () => {
+    if (!activeScreen || selectedRowIds.length === 0) return
+    confirmDelete({
+      title: 'Confirm Deletion',
+      message: `Are you sure you want to delete ${selectedRowIds.length} selected item(s)? This action cannot be undone.`,
+      onConfirm: async () => {
+        setLoading(true)
+        try {
+          for (const id of selectedRowIds) {
+            await deleteResource(activeScreen.key, String(id))
+          }
+          const nextRows = rows.filter((r) => !selectedRowIds.includes(r.id))
+          setRows(nextRows)
+          setResourceDataCache((prev) => ({ ...prev, [`${activeScreen.key}_${selectedOrgId}`]: nextRows }))
+          setToast({ open: true, msg: 'Selected items deleted successfully!', sev: 'success' })
+          setSelectedRowIds([])
+        } catch (e: any) {
+          setToast({ open: true, msg: e?.response?.data?.message ?? 'Failed to delete some items', sev: 'error' })
+        } finally {
+          setLoading(false)
         }
       }
     })
@@ -432,10 +525,35 @@ export default function ResourcesPage() {
   const handleSave = async () => {
     if (!activeScreen || !resolvedScreen) return
 
-    // Simple validation
+    // Trim and check required fields
     for (const field of resolvedScreen.form_fields) {
-      if (field.required && !formValues[field.key]) {
+      const val = formValues[field.key]
+      if (field.required && (!val || (typeof val === 'string' && !val.trim()))) {
         setToast({ open: true, msg: `${field.label} is required`, sev: 'error' })
+        return
+      }
+    }
+
+    const uniqueKeys = resolvedScreen.form_fields
+      .map(f => f.key)
+      .filter(k => k === 'value' || k === 'locationName' || k === 'leadSourceId' || k === 'propertyType' || k === 'propertySubType' || k === 'reason' || k === 'stage')
+    
+    const checkKeys = uniqueKeys.length > 0 ? uniqueKeys : (resolvedScreen.form_fields[0] ? [resolvedScreen.form_fields[0].key] : [])
+
+    if (checkKeys.length > 0) {
+      const isDuplicate = rows.some((row) => {
+        if (editingItem && (row.id === editingItem.id || row._id === editingItem.id)) {
+          return false
+        }
+        return checkKeys.some((key) => {
+          const rowVal = String(row[key] ?? '').trim().toLowerCase()
+          const newVal = String(formValues[key] ?? '').trim().toLowerCase()
+          return rowVal && newVal && rowVal === newVal
+        })
+      })
+
+      if (isDuplicate) {
+        setToast({ open: true, msg: 'This item already exists.', sev: 'error' })
         return
       }
     }
@@ -746,7 +864,19 @@ export default function ResourcesPage() {
                   title={resolvedScreen.screen.name} 
                   subtitle={activeScreen.description || `Manage ${resolvedScreen.screen.name} lookup items.`}
                   action={
-                    <Button variant="contained" startIcon={<AddIcon />} onClick={openAdd}>Add</Button>
+                    <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+                      {selectedRowIds.length > 0 && (
+                        <Button
+                          variant="outlined"
+                          color="error"
+                          onClick={handleBulkDelete}
+                          sx={{ textTransform: 'none', fontWeight: 600 }}
+                        >
+                          Delete Selected ({selectedRowIds.length})
+                        </Button>
+                      )}
+                      <Button variant="contained" startIcon={<AddIcon />} onClick={openAdd}>Add</Button>
+                    </Box>
                   }
                   fullHeight
                 >
@@ -758,9 +888,12 @@ export default function ResourcesPage() {
                     )}
                     <AppDataGrid 
                       height="100%" 
-                      rows={rows} 
+                    rows={rows} 
                       columns={gridColumns} 
                       getRowId={(r) => r.id}
+                      checkboxSelection
+                      rowSelectionModel={selectedRowIds}
+                      onRowSelectionModelChange={(newSelection) => setSelectedRowIds([...newSelection])}
                       slots={{ toolbar: CustomToolbar }}
                     />
                   </Box>

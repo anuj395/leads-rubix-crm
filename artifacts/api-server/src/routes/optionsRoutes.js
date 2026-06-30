@@ -126,7 +126,7 @@ router.get('/:key', authenticate, async (req, res) => {
     try {
       let orgId = null;
       if (req.user.role === 'superAdmin') {
-        orgId = req.query.organization_id || null;
+        orgId = (req.query.organization_id === 'null' || !req.query.organization_id) ? null : req.query.organization_id;
       } else {
         const Organization = mongoose.model('Organization');
         const org = await Organization.findOne({ industry_id: req.user.industry_id }).exec();
@@ -139,10 +139,12 @@ router.get('/:key', authenticate, async (req, res) => {
       });
 
       const displayField = req.query.display || 'name';
+      const toCamelCase = (str) => str.replace(/([-_][a-z])/ig, ($1) => $1.toUpperCase().replace('-', '').replace('_', ''));
+      const displayFieldCamel = toCamelCase(displayField);
 
       const options = list.map(item => {
         // Items are stored flattened in the array (e.g. { id, name, ... })
-        const val = item[displayField] || Object.values(item).filter(v => typeof v !== 'object')[0] || item.id;
+        const val = item[displayField] || item[displayFieldCamel] || Object.values(item).filter(v => typeof v !== 'object')[0] || item.id;
         return { value: String(val || ''), label: String(val || '') };
       });
 
