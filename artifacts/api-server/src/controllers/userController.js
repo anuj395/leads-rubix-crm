@@ -100,3 +100,17 @@ exports.deleteUser = async (req, res, next) => {
     next(err);
   }
 };
+
+exports.changePasswordByEmail = async (req, res, next) => {
+  try {
+    const { email, password } = req.body || {};
+    const result = await userService.changePasswordByEmail({
+      email,
+      password,
+      authedUser: req.user,
+    });
+    res.json(result);
+  } catch (err) {
+    next(err);
+  }
+};

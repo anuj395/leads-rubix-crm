@@ -30,6 +30,7 @@ export interface PricingPlan {
   licensesCost: number
   trialPeriodLicenses: number
   gracePeriodDays: number
+  trialPeriodDays: number
 }
 
 export default function LicensesPage() {
@@ -50,6 +51,7 @@ export default function LicensesPage() {
     licensesCost: 1000,
     trialPeriodLicenses: 20,
     gracePeriodDays: 7,
+    trialPeriodDays: 30,
   })
 
   const refreshPlans = async () => {
@@ -72,6 +74,7 @@ export default function LicensesPage() {
         licensesCost: p.licensesCost,
         trialPeriodLicenses: p.trialPeriodLicenses,
         gracePeriodDays: p.gracePeriodDays !== undefined ? p.gracePeriodDays : 7,
+        trialPeriodDays: p.trialPeriodDays !== undefined ? p.trialPeriodDays : 30,
       }))
       setItems(mapped)
     } catch (e: any) {
@@ -95,6 +98,7 @@ export default function LicensesPage() {
       licensesCost: 1000,
       trialPeriodLicenses: 20,
       gracePeriodDays: 7,
+      trialPeriodDays: 30,
     })
     setDialogOpen(true)
   }
@@ -105,6 +109,7 @@ export default function LicensesPage() {
       licensesCost: plan.licensesCost ?? 1000,
       trialPeriodLicenses: plan.trialPeriodLicenses ?? 20,
       gracePeriodDays: plan.gracePeriodDays ?? 7,
+      trialPeriodDays: plan.trialPeriodDays ?? 30,
     })
     setDialogOpen(true)
   }
@@ -135,6 +140,7 @@ export default function LicensesPage() {
           licensesCost: form.licensesCost,
           trialPeriodLicenses: form.trialPeriodLicenses,
           gracePeriodDays: form.gracePeriodDays,
+          trialPeriodDays: form.trialPeriodDays,
         })
         setToast({ open: true, msg: 'Pricing plan updated successfully', sev: 'success' })
       } else {
@@ -142,6 +148,7 @@ export default function LicensesPage() {
           licensesCost: form.licensesCost,
           trialPeriodLicenses: form.trialPeriodLicenses,
           gracePeriodDays: form.gracePeriodDays,
+          trialPeriodDays: form.trialPeriodDays,
         })
         setToast({ open: true, msg: 'Pricing plan added successfully', sev: 'success' })
       }
@@ -180,6 +187,12 @@ export default function LicensesPage() {
       {
         field: 'gracePeriodDays',
         headerName: 'Grace Period (Days)',
+        width: 180,
+        renderCell: (p) => `${p.value ?? ''}`,
+      },
+      {
+        field: 'trialPeriodDays',
+        headerName: 'Trial Period (Days)',
         width: 180,
         renderCell: (p) => `${p.value ?? ''}`,
       },
@@ -283,6 +296,16 @@ export default function LicensesPage() {
                 onChange={(e) => setForm({ ...form, gracePeriodDays: parseInt(e.target.value) || 0 })}
                 required
                 helperText="Allowed duration extension before account suspension"
+              />
+            </Box>
+            <Box sx={{ gridColumn: { xs: 'span 1', sm: 'span 2' } }}>
+              <TextField
+                fullWidth
+                type="number"
+                label="Trial Period (Days)"
+                value={form.trialPeriodDays}
+                onChange={(e) => setForm({ ...form, trialPeriodDays: parseInt(e.target.value) || 0 })}
+                required
               />
             </Box>
           </Box>

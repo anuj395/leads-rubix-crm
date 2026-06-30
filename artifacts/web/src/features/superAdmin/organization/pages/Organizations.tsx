@@ -4,13 +4,17 @@ import Button from '@mui/material/Button'
 import Dialog from '@mui/material/Dialog'
 import DialogTitle from '@mui/material/DialogTitle'
 import DialogContent from '@mui/material/DialogContent'
+import DialogActions from '@mui/material/DialogActions'
+import TextField from '@mui/material/TextField'
+import CircularProgress from '@mui/material/CircularProgress'
 import IconButton from '@mui/material/IconButton'
 import Stack from '@mui/material/Stack'
 import Tooltip from '@mui/material/Tooltip'
 import Snackbar from '@mui/material/Snackbar'
 import Switch from '@mui/material/Switch'
 import Alert from '@mui/material/Alert'
-import { Add as AddIcon, Edit as EditIcon, Delete as DeleteIcon } from '@mui/icons-material'
+import Typography from '@mui/material/Typography'
+import { Add as AddIcon, Edit as EditIcon, Delete as DeleteIcon, VpnKey as VpnKeyIcon } from '@mui/icons-material'
 import type { GridColDef, GridFilterModel, GridPaginationModel, GridSortModel } from '@mui/x-data-grid'
 import { AppCard } from '@/components/ui/AppCard'
 import { AppDataGrid } from '@/components/ui/AppDataGrid'
@@ -26,6 +30,7 @@ import { resolveScreen, type ResolvedTableHeader } from '@/services/screenAdminS
 import { useAppSelector } from '@/store/hooks'
 import { StatusBadge } from '@/components/ui/StatusBadge'
 import { useConfirm } from '@/components/common/ConfirmContext'
+import { api } from '@/services/api'
 
 const SERVER_SORTABLE = new Set(['createdAt', 'updatedAt', 'is_active'])
 
@@ -55,6 +60,8 @@ export default function OrganizationsListPage() {
   const [search, setSearch] = useState('')
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editing, setEditing] = useState<Organization | null>(null)
+  const [pwdDialog, setPwdDialog] = useState({ open: false, email: '', password: '' })
+  const [savingPwd, setSavingPwd] = useState(false)
   const { confirmDelete } = useConfirm()
   const [toast, setToast] = useState<{ open: boolean; msg: string; sev: 'success' | 'error' }>({
     open: false, msg: '', sev: 'success',
@@ -155,6 +162,13 @@ export default function OrganizationsListPage() {
             </IconButton>
           </Tooltip>
           {isSuperAdmin && (
+            <Tooltip title="Change Password">
+              <IconButton size="small" onClick={() => { setPwdDialog({ open: true, email: String(p.row.email_id || ''), password: '' }) }}>
+                <VpnKeyIcon fontSize="small" />
+              </IconButton>
+            </Tooltip>
+          )}
+          {isSuperAdmin && (
             <Tooltip title="Delete">
               <IconButton
                 size="small"
@@ -187,6 +201,27 @@ export default function OrganizationsListPage() {
   }, [columns, isSuperAdmin, refresh])
 
   const closeDialog = () => { setDialogOpen(false); setEditing(null) }
+
+  const submitChangePassword = async () => {
+    if (!pwdDialog.email || !pwdDialog.password.trim()) {
+      setToast({ open: true, msg: 'Password is required', sev: 'error' })
+      return
+    }
+    setSavingPwd(true)
+    try {
+      await api.post('/users/change-password', {
+        email: pwdDialog.email,
+        password: pwdDialog.password,
+      })
+      setToast({ open: true, msg: 'Password changed successfully', sev: 'success' })
+      setPwdDialog({ open: false, email: '', password: '' })
+    } catch (e: unknown) {
+      const err = e as { response?: { data?: { message?: string } } }
+      setToast({ open: true, msg: err?.response?.data?.message ?? 'Failed to change password', sev: 'error' })
+    } finally {
+      setSavingPwd(false)
+    }
+  }
 
   return (
     <Box sx={{ p: { xs: 2, sm: 3 }, width: '100%', minWidth: 0, height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
@@ -250,6 +285,31 @@ export default function OrganizationsListPage() {
             }}
           />
         </DialogContent>
+      </Dialog>
+
+      <Dialog open={pwdDialog.open} onClose={() => setPwdDialog({ open: false, email: '', password: '' })} maxWidth="xs" fullWidth>
+        <DialogTitle>Change Organization User Password</DialogTitle>
+        <DialogContent>
+          <Stack spacing={2} sx={{ mt: 1 }}>
+            <Typography variant="body2" color="text.secondary">
+              Changing password for user: <strong>{pwdDialog.email}</strong>
+            </Typography>
+            <TextField
+              label="New Password"
+              type="password"
+              value={pwdDialog.password || ''}
+              onChange={(e) => setPwdDialog({ ...pwdDialog, password: e.target.value })}
+              fullWidth
+              size="small"
+            />
+          </Stack>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setPwdDialog({ open: false, email: '', password: '' })}>Cancel</Button>
+          <Button variant="contained" onClick={submitChangePassword} disabled={savingPwd}>
+            {savingPwd ? <CircularProgress size={18} /> : 'Change Password'}
+          </Button>
+        </DialogActions>
       </Dialog>
 
       <Snackbar

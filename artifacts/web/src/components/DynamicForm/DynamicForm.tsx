@@ -130,6 +130,7 @@ interface Props {
   headerSlot?: ReactNode
   /** Hide built-in submit/cancel actions when the parent provides its own. */
   hideActions?: boolean
+  readOnly?: boolean
 }
 
 export function DynamicForm({
@@ -142,6 +143,7 @@ export function DynamicForm({
   submitLabel = 'Save',
   headerSlot,
   hideActions = false,
+  readOnly = false,
 }: Props) {
   const [fields, setFields] = useState<ResolvedFormField[]>([])
   const [values, setValues] = useState<Record<string, Value>>(initialValues)
@@ -357,7 +359,7 @@ export function DynamicForm({
                 onChange={(e) => setValue(f.key, e.target.value)}
                 error={!!err || !!dropdownErr}
                 helperText={err || dropdownErr || (isLoading ? 'Loading options…' : '')}
-                disabled={isLoading}
+                disabled={isLoading || readOnly}
                 fullWidth
                 SelectProps={{
                   MenuProps: {
@@ -389,6 +391,7 @@ export function DynamicForm({
                 multiline
                 rows={3}
                 fullWidth
+                disabled={readOnly}
                 sx={{ gridColumn: { xs: '1', sm: '1 / -1' } }}
               />
             )
@@ -402,6 +405,7 @@ export function DynamicForm({
                   <Checkbox
                     checked={!!value}
                     onChange={(e) => setValue(f.key, e.target.checked)}
+                    disabled={readOnly}
                   />
                 }
                 label={labelWithRequired}
@@ -440,6 +444,7 @@ export function DynamicForm({
                 error={!!err}
                 helperText={err}
                 fullWidth
+                disabled={readOnly}
                 slotProps={{
                   input: {
                     startAdornment: (
@@ -451,6 +456,7 @@ export function DynamicForm({
                             const nextCode = e.target.value as string
                             setValue(f.key, `${nextCode} ${localNumber}`.trim())
                           }}
+                          disabled={readOnly}
                           disableUnderline
                           renderValue={(value) => {
                             const match = DIALING_CODES.find((dc) => dc.code === value)
@@ -514,6 +520,7 @@ export function DynamicForm({
               error={!!err}
               helperText={err}
               fullWidth
+              disabled={readOnly}
               InputLabelProps={inputType === 'date' ? { shrink: true } : undefined}
             />
           )
@@ -529,12 +536,18 @@ export function DynamicForm({
 
       {!hideActions && (
         <Stack direction="row" spacing={2} sx={{ mt: 3, justifyContent: 'flex-end' }}>
-          {onCancel && (
-            <Button onClick={onCancel} disabled={submitting}>Cancel</Button>
+          {readOnly ? (
+            <Button variant="contained" onClick={onCancel}>Close</Button>
+          ) : (
+            <>
+              {onCancel && (
+                <Button onClick={onCancel} disabled={submitting}>Cancel</Button>
+              )}
+              <Button type="submit" variant="contained" disabled={submitting}>
+                {submitting ? <CircularProgress size={18} sx={{ color: 'white' }} /> : submitLabel}
+              </Button>
+            </>
           )}
-          <Button type="submit" variant="contained" disabled={submitting}>
-            {submitting ? <CircularProgress size={18} sx={{ color: 'white' }} /> : submitLabel}
-          </Button>
         </Stack>
       )}
     </Box>

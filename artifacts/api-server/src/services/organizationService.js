@@ -156,6 +156,7 @@ exports.create = async ({ payload, authedUser }) => {
   let licensesCost = 1000;
   let trialPeriodLicenses = 10;
   let gracePeriodDays = 7;
+  let trialPeriodDays = 7;
   try {
     const PricingPlan = mongoose.model('PricingPlan');
     const plan = await PricingPlan.findOne({}).lean().exec();
@@ -163,6 +164,7 @@ exports.create = async ({ payload, authedUser }) => {
       if (typeof plan.licensesCost === 'number') licensesCost = plan.licensesCost;
       if (typeof plan.trialPeriodLicenses === 'number') trialPeriodLicenses = plan.trialPeriodLicenses;
       if (typeof plan.gracePeriodDays === 'number') gracePeriodDays = plan.gracePeriodDays;
+      if (typeof plan.trialPeriodDays === 'number') trialPeriodDays = plan.trialPeriodDays;
     }
   } catch (err) {
     console.error('[organizationService] Failed to fetch pricing plan defaults:', err);
@@ -186,13 +188,15 @@ exports.create = async ({ payload, authedUser }) => {
 
   const validFrom = new Date();
   const validTill = new Date(validFrom);
-  validTill.setDate(validTill.getDate() + gracePeriodDays);
+  validTill.setDate(validTill.getDate() + trialPeriodDays);
 
   const orgDoc = await organizationModel.create({
     ...mergedWithDefaults,
     cost_per_license: licensesCost,
     org_trial_period_users_licenses: trialPeriodLicenses,
-    grace_period_days: gracePeriodDays,
+    gracePeriodDays: gracePeriodDays,
+    trialPeriodDays: trialPeriodDays,
+    paymentStatus: true,
     validFrom,
     validTill,
     organization_id: orgId,

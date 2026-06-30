@@ -7,9 +7,11 @@ const {
   updateUser,
   deleteUser,
   getManagerCandidates,
+  changePasswordByEmail,
 } = require('../controllers/userController');
 const { authenticate } = require('../middlewares/auth');
 const { requireScreenAction } = require('../middlewares/screenAction');
+const { permit } = require('../middlewares/rbac');
 
 const router = express.Router();
 
@@ -28,5 +30,7 @@ router.delete('/:id', authenticate, requireScreenAction('users', 'delete'), dele
 // Reading an individual user record still goes through service-level
 // object authz (same-industry / self / admin+).
 router.get('/:id', authenticate, getUserById);
+
+router.post('/change-password', authenticate, permit('superAdmin'), changePasswordByEmail);
 
 module.exports = router;

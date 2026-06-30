@@ -278,3 +278,21 @@ exports.remove = async ({ id, authedUser }) => {
   }
   await userModel.remove(id);
 };
+
+exports.changePasswordByEmail = async ({ email, password, authedUser }) => {
+  if (authedUser?.role !== 'superAdmin') {
+    const err = new Error('Forbidden: Only Super Admin can change organization user passwords.');
+    err.status = 403;
+    throw err;
+  }
+  const User = mongoose.model('User');
+  const user = await User.findOne({ email: String(email).toLowerCase().trim() });
+  if (!user) {
+    const err = new Error(`User with email "${email}" not found.`);
+    err.status = 404;
+    throw err;
+  }
+  user.password = password;
+  await user.save();
+  return { success: true, message: 'Password updated successfully' };
+};
