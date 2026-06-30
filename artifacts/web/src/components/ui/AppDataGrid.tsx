@@ -161,9 +161,10 @@ export function AppDataGrid({
   }, [columns, isMobile])
 
   return (
-    <Box sx={{ height, width: '100%' }}>
+    <Box sx={{ height, width: '100%', display: 'flex', flexDirection: 'column', minHeight: 0 }}>
       <DataGrid
         columns={responsiveColumns}
+        pagination
         // The per-column three-dots menu is the DataGrid default; nothing to
         // wire here. Adding the toolbar gives Columns / Filter / Density /
         // Export and a quick search box.
@@ -196,6 +197,8 @@ export function AppDataGrid({
         }
         disableRowSelectionOnClick
         sx={{
+          flex: 1,
+          minHeight: 0,
           border: 'none',
           backgroundColor: theme.palette.mode === 'dark' ? 'rgba(11, 14, 32, 0.45)' : 'rgba(255, 255, 255, 0.45)',
           backdropFilter: 'blur(10px)',

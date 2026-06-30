@@ -151,6 +151,28 @@ export function DynamicForm({
   const [submitError, setSubmitError] = useState<string | null>(null)
   const [loadingConfig, setLoadingConfig] = useState(true)
   const [submitting, setSubmitting] = useState(false)
+  const [trialPeriodLicenses, setTrialPeriodLicenses] = useState<number>(10)
+
+  useEffect(() => {
+    let cancelled = false
+    if (screen === 'organization') {
+      void api.get('pricing-plans')
+        .then((res) => {
+          if (cancelled) return
+          const plans = res.data || []
+          const plan = plans[0] || {}
+          if (typeof plan.trialPeriodLicenses === 'number') {
+            setTrialPeriodLicenses(plan.trialPeriodLicenses)
+          }
+        })
+        .catch((err) => {
+          console.error('Failed to load trial period licenses:', err)
+        })
+    }
+    return () => {
+      cancelled = true
+    }
+  }, [screen])
 
   // Per-field async dropdown state. Keyed by `dropdown_api` URL so two fields
   // pointing at the same source share results.
@@ -285,9 +307,16 @@ export function DynamicForm({
           }
         }
       }
+      if (screen === 'organization') {
+        const numEmployees = Number(values.numEmployees || values.num_employees || 0)
+        if (numEmployees > trialPeriodLicenses) {
+          next.numEmployees = `Number of Employees (${numEmployees}) cannot exceed the trial period licenses limit (${trialPeriodLicenses}).`
+          next.num_employees = `Number of Employees (${numEmployees}) cannot exceed the trial period licenses limit (${trialPeriodLicenses}).`
+        }
+      }
       return next
     },
-    [fields, values],
+    [fields, values, trialPeriodLicenses, screen],
   )
 
   const handleSubmit = async (e: FormEvent) => {
@@ -296,6 +325,7 @@ export function DynamicForm({
     const v = validate()
     setErrors(v)
     if (Object.keys(v).length > 0) return
+
     setSubmitting(true)
     try {
       await onSubmit(values)
