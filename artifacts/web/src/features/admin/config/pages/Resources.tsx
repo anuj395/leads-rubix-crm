@@ -307,7 +307,7 @@ export default function ResourcesPage() {
       // Unique key resolver for duplicate checking
       const uniqueKeys = resolvedScreen.form_fields
         .map(f => f.key)
-        .filter(k => k === 'value' || k === 'locationName' || k === 'leadSourceId' || k === 'propertyType' || k === 'propertySubType' || k === 'reason' || k === 'stage')
+        .filter(k => k === 'value' || k === 'locationName' || k === 'leadSourceId' || k === 'propertyType' || k === 'property_sub_type' || k === 'reason' || k === 'stage')
       
       const checkKeys = uniqueKeys.length > 0 ? uniqueKeys : (resolvedScreen.form_fields[0] ? [resolvedScreen.form_fields[0].key] : [])
 
@@ -338,28 +338,59 @@ export default function ResourcesPage() {
           let hasDuplicate = false
           let duplicateReason = ''
 
-          for (const key of checkKeys) {
-            const newVal = String(payload[key] ?? '').trim().toLowerCase()
-            if (!newVal) continue
-
-            // Check intra-CSV duplicates
-            const batchKey = `${key}:${newVal}`
+          if (activeScreen.key === 'resource_property_sub_types') {
+            const batchKey = checkKeys.map(k => String(payload[k] ?? '').trim().toLowerCase()).join('::')
             if (currentBatchValues.has(batchKey)) {
               hasDuplicate = true
               duplicateReason = 'Duplicate record found in the CSV file'
-              break
+            } else {
+              const existsInDB = rows.some((row) => {
+                return checkKeys.every((key) => {
+                  const rowVal = String(row[key] ?? '').trim().toLowerCase()
+                  const newVal = String(payload[key] ?? '').trim().toLowerCase()
+                  return rowVal && newVal && rowVal === newVal
+                })
+              })
+              if (existsInDB) {
+                hasDuplicate = true
+                duplicateReason = 'Record already exists in the database'
+              }
             }
 
-            // Check database duplicates
-            const existsInDB = rows.some((row) => {
-              const rowVal = String(row[key] ?? '').trim().toLowerCase()
-              return rowVal === newVal
-            })
+            if (!hasDuplicate) {
+              currentBatchValues.add(batchKey)
+            }
+          } else {
+            for (const key of checkKeys) {
+              const newVal = String(payload[key] ?? '').trim().toLowerCase()
+              if (!newVal) continue
 
-            if (existsInDB) {
-              hasDuplicate = true
-              duplicateReason = 'Record already exists in the database'
-              break
+              const batchKey = `${key}:${newVal}`
+              if (currentBatchValues.has(batchKey)) {
+                hasDuplicate = true
+                duplicateReason = 'Duplicate record found in the CSV file'
+                break
+              }
+
+              const existsInDB = rows.some((row) => {
+                const rowVal = String(row[key] ?? '').trim().toLowerCase()
+                return rowVal === newVal
+              })
+
+              if (existsInDB) {
+                hasDuplicate = true
+                duplicateReason = 'Record already exists in the database'
+                break
+              }
+            }
+
+            if (!hasDuplicate) {
+              checkKeys.forEach((key) => {
+                const newVal = String(payload[key] ?? '').trim().toLowerCase()
+                if (newVal) {
+                  currentBatchValues.add(`${key}:${newVal}`)
+                }
+              })
             }
           }
 
@@ -370,14 +401,6 @@ export default function ResourcesPage() {
             })
             continue
           }
-
-          // Register in current batch to prevent duplicates in next rows of this CSV
-          checkKeys.forEach((key) => {
-            const newVal = String(payload[key] ?? '').trim().toLowerCase()
-            if (newVal) {
-              currentBatchValues.add(`${key}:${newVal}`)
-            }
-          })
         }
 
         try {
@@ -523,7 +546,7 @@ export default function ResourcesPage() {
 
     const uniqueKeys = resolvedScreen.form_fields
       .map(f => f.key)
-      .filter(k => k === 'value' || k === 'locationName' || k === 'leadSourceId' || k === 'propertyType' || k === 'propertySubType' || k === 'reason' || k === 'stage')
+      .filter(k => k === 'value' || k === 'locationName' || k === 'leadSourceId' || k === 'propertyType' || k === 'property_sub_type' || k === 'reason' || k === 'stage')
     
     const checkKeys = uniqueKeys.length > 0 ? uniqueKeys : (resolvedScreen.form_fields[0] ? [resolvedScreen.form_fields[0].key] : [])
 
@@ -531,6 +554,13 @@ export default function ResourcesPage() {
       const isDuplicate = rows.some((row) => {
         if (editingItem && (row.id === editingItem.id || row._id === editingItem.id)) {
           return false
+        }
+        if (activeScreen.key === 'resource_property_sub_types') {
+          return checkKeys.every((key) => {
+            const rowVal = String(row[key] ?? '').trim().toLowerCase()
+            const newVal = String(formValues[key] ?? '').trim().toLowerCase()
+            return rowVal && newVal && rowVal === newVal
+          })
         }
         return checkKeys.some((key) => {
           const rowVal = String(row[key] ?? '').trim().toLowerCase()
