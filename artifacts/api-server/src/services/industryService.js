@@ -48,6 +48,7 @@ exports.create = async (payload) => {
     name: payload.name,
     description: payload.description,
     is_active: payload.is_active,
+    status: payload.status,
   });
 };
 

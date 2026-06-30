@@ -103,7 +103,7 @@ router.get('/:key', authenticate, async (req, res) => {
   if (key === 'industries') {
     try {
       const Industry = mongoose.model('Industry');
-      const list = await Industry.find({ is_active: true }).sort({ name: 1 }).lean().exec();
+      const list = await Industry.find({ is_active: true, status: 'Launched' }).sort({ name: 1 }).lean().exec();
       const options = list.map(ind => ({ value: ind.code, label: ind.name }));
       return res.json({ items: options });
     } catch (err) {

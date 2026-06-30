@@ -141,8 +141,10 @@ async function migrateAndSeedSidebar() {
     sources = (Array.isArray(raw) ? raw : [raw]).map(reviveEjson);
   }
 
+  sources = sources.filter(src => String(src.industry_id || '').toLowerCase().trim() === 'temp0001');
+
   if (!sources.length) {
-    console.log('[seed] no legacy sidebar data found — skipping migration');
+    console.log('[seed] no legacy sidebar data found for temp0001 — skipping migration');
     return;
   }
 
@@ -456,7 +458,7 @@ async function seedIndustries() {
   const Industry = mongoose.model('Industry');
   const Role = mongoose.model('Role');
   const raw = JSON.parse(fs.readFileSync(INDUSTRIES_SEED_FILE, 'utf8'));
-  const entries = Array.isArray(raw) ? raw : [];
+  const entries = (Array.isArray(raw) ? raw : []).filter(e => String(e.id || '').toLowerCase().trim() === 'temp0001');
 
   let inserted = 0;
   let updated = 0;
@@ -467,7 +469,7 @@ async function seedIndustries() {
       { code },
       {
         $set: { name: String(name) },
-        $setOnInsert: { code, is_active: true },
+        $setOnInsert: { code, is_active: true, status: 'Launched' },
       },
       { upsert: true, new: false, includeResultMetadata: true },
     );

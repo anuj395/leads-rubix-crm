@@ -6,6 +6,7 @@ const industrySchema = new mongoose.Schema(
     name: { type: String, required: true, trim: true },
     description: { type: String, default: '' },
     is_active: { type: Boolean, default: true },
+    status: { type: String, enum: ['Launched', 'Pre-Launched', 'Pending'], default: 'Launched' },
   },
   { timestamps: true },
 );
@@ -33,12 +34,13 @@ exports.findByCode = async (code) => {
   return doc;
 };
 
-exports.create = async ({ code, name, description, is_active }) => {
+exports.create = async ({ code, name, description, is_active, status }) => {
   const doc = await Industry.create({
     code: String(code).toLowerCase().trim(),
     name: String(name).trim(),
     description: description || '',
     is_active: is_active !== false,
+    status: status || 'Launched',
   });
   return doc.toObject();
 };
@@ -49,6 +51,7 @@ exports.update = async (id, patch) => {
   if (patch.name !== undefined) update.name = String(patch.name).trim();
   if (patch.description !== undefined) update.description = String(patch.description);
   if (patch.is_active !== undefined) update.is_active = !!patch.is_active;
+  if (patch.status !== undefined) update.status = String(patch.status);
   return Industry.findByIdAndUpdate(id, { $set: update }, { new: true }).lean().exec();
 };
 

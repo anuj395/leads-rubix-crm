@@ -369,7 +369,6 @@ export function DynamicForm({
                   },
                 }}
               >
-                <MenuItem value=""><em>—</em></MenuItem>
                 {opts.map((o) => (
                   <MenuItem key={o.value} value={o.value}>{o.label}</MenuItem>
                 ))}

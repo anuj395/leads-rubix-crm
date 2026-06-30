@@ -7,6 +7,7 @@ export interface Industry {
   name: string
   description?: string
   is_active: boolean
+  status?: string
   createdAt?: string
   updatedAt?: string
 }
@@ -16,6 +17,7 @@ export interface IndustryInput {
   name: string
   description?: string
   is_active?: boolean
+  status?: string
 }
 
 // Helper for endpoints that wrap responses as `{ items: [...] }`.
@@ -24,8 +26,9 @@ async function safeList<T>(path: string): Promise<T[]> {
   return (res.data?.items ?? []) as T[]
 }
 
-export async function getIndustries(): Promise<Industry[]> {
-  return safeList<Industry>('industries')
+export async function getIndustries(activeOnly = true): Promise<Industry[]> {
+  const path = activeOnly ? 'industries?active=true' : 'industries'
+  return safeList<Industry>(path)
 }
 
 export async function createIndustryRecord(data: IndustryInput): Promise<Industry> {
