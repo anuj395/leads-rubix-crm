@@ -12,13 +12,16 @@ interface AppModalProps {
   onClose: () => void
   open: boolean
   title: string
+  maxWidth?: 'xs' | 'sm' | 'md' | 'lg' | 'xl'
 }
 
-export function AppModal({ actions, children, onClose, open, title }: AppModalProps) {
+export function AppModal({ actions, children, onClose, open, title, maxWidth = 'sm' }: AppModalProps) {
+  const resolvedMaxWidth = maxWidth === 'md' ? '800px' : maxWidth === 'xs' ? '400px' : '560px'
+
   return (
     <Dialog
       fullWidth
-      maxWidth="sm"
+      maxWidth={maxWidth}
       onClose={onClose}
       open={open}
       sx={{
@@ -27,7 +30,7 @@ export function AppModal({ actions, children, onClose, open, title }: AppModalPr
           mx: { xs: 1, sm: 'auto' },
           // Full width minus margins on mobile
           width: { xs: 'calc(100% - 2rem)', sm: 'auto' },
-          maxWidth: { xs: '100%', sm: '560px' },
+          maxWidth: { xs: '100%', sm: resolvedMaxWidth },
           borderRadius: { xs: '16px', sm: '16px' },
           // Max height with scroll for tall content
           maxHeight: { xs: 'calc(100vh - 4rem)', sm: 'calc(100vh - 6rem)' },

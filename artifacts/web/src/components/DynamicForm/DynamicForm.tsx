@@ -389,7 +389,7 @@ export function DynamicForm({
                 onChange={(e) => setValue(f.key, e.target.value)}
                 error={!!err || !!dropdownErr}
                 helperText={err || dropdownErr || (isLoading ? 'Loading options…' : '')}
-                disabled={isLoading || readOnly}
+                disabled={isLoading || readOnly || f.key === 'industryId' || f.key === 'industry_id'}
                 fullWidth
                 SelectProps={{
                   MenuProps: {
@@ -550,7 +550,7 @@ export function DynamicForm({
               error={!!err}
               helperText={err}
               fullWidth
-              disabled={readOnly}
+              disabled={readOnly || f.key === 'industryId' || f.key === 'industry_id'}
               InputLabelProps={inputType === 'date' ? { shrink: true } : undefined}
             />
           )
