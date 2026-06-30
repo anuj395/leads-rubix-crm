@@ -57,6 +57,16 @@ const authSlice = createSlice({
     clearAuthError(state) {
       state.error = null
     },
+    updateUser(state, action) {
+      if (state.user) {
+        state.user = { ...state.user, ...action.payload }
+      }
+      const session = storage.getAuthSession()
+      if (session) {
+        session.user = { ...session.user, ...action.payload }
+        storage.setAuthSession(session)
+      }
+    },
   },
   extraReducers: (builder) => {
     builder
@@ -105,6 +115,6 @@ const authSlice = createSlice({
   },
 })
 
-export const { clearAuthError } = authSlice.actions
+export const { clearAuthError, updateUser } = authSlice.actions
 export const authReducer = authSlice.reducer
 export const selectAuth = (state: RootState) => state.auth

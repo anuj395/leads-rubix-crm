@@ -324,9 +324,7 @@ const SCREEN_DEFAULTS = [
       { field_key: 'industry_id',   label: 'Industry ID',   type: 'select',   is_required: true,  order: 9,
         dropdown_source: 'api', dropdown_api: '/api/options/industries' },
       { field_key: 'num_employees', label: 'Number of Employees', type: 'number', is_required: false, order: 10 },
-      { field_key: 'cost_per_license', label: 'License Cost', type: 'number', is_required: false, order: 11 },
-      { field_key: 'org_trial_period_users_licenses', label: 'Number of Licenses (Trial Period)', type: 'number', is_required: false, order: 12 },
-      { field_key: 'address',       label: 'Address',       type: 'textarea', is_required: false, order: 13 },
+      { field_key: 'address',       label: 'Address',       type: 'textarea', is_required: false, order: 11 },
     ],
   },
   {
@@ -725,7 +723,6 @@ const DROPDOWN_OPTION_DEFAULTS = {
     { value: '+971', label: '🇦🇪 UAE (+971)' },
     { value: '+65', label: '🇸🇬 Singapore (+65)' },
     { value: '+61', label: '🇦🇺 Australia (+61)' },
-    { value: '+1', label: '🇨🇦 Canada (+1)' },
     { value: '+966', label: '🇸🇦 Saudi Arabia (+966)' },
     { value: '+974', label: '🇶🇦 Qatar (+974)' },
     { value: '+965', label: '🇰🇼 Kuwait (+965)' },
@@ -741,11 +738,11 @@ async function seedDropdownOptions() {
     console.log('[seed] seeding database-driven dropdown options...');
     for (const [key, options] of Object.entries(DROPDOWN_OPTION_DEFAULTS)) {
       for (const opt of options) {
-        await DropdownOption.create({
-          key,
-          value: opt.value,
-          label: opt.label
-        });
+        await DropdownOption.updateOne(
+          { key, value: opt.value },
+          { $set: { label: opt.label } },
+          { upsert: true }
+        );
       }
     }
     console.log('[seed] finished seeding dropdown options.');

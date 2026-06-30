@@ -35,6 +35,7 @@ const {
   seedOrganizations,
   seedBookings,
   fixIntegrationsSidebar,
+  seedDropdownOptions,
 } = require('./seed');
 
 const PORT = config.port || 3001;

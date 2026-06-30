@@ -29,7 +29,7 @@ async function sendCredentialsEmail({ orgName, userName, emailAddress, tempPassw
         
         <!-- Header / Logo Area -->
         <div style="text-align: center; margin-bottom: 32px;">
-          <h2 style="color: #1e3a8a; margin: 0; font-size: 26px; font-weight: 800; letter-spacing: -0.025em;">LEADS RUBIX</h2>
+          <h2 style="color: #272944; margin: 0; font-size: 26px; font-weight: 800; letter-spacing: -0.025em;">LEADS RUBIX</h2>
           <p style="color: #6b7280; font-size: 14px; margin-top: 4px; margin-bottom: 0;">Your Premium CRM Workspace</p>
         </div>
 
@@ -60,7 +60,7 @@ async function sendCredentialsEmail({ orgName, userName, emailAddress, tempPassw
 
         <!-- Call to Action -->
         <div style="text-align: center; margin-bottom: 32px;">
-          <a href="${loginUrl}" style="display: inline-block; padding: 14px 30px; font-size: 15px; font-weight: 600; color: #ffffff; background-color: #1e3a8a; text-decoration: none; border-radius: 8px; box-shadow: 0 4px 6px -1px rgba(30, 58, 138, 0.25);">
+          <a href="${loginUrl}" style="display: inline-block; padding: 14px 30px; font-size: 15px; font-weight: 600; color: #ffffff; background-color: #272944; text-decoration: none; border-radius: 8px; box-shadow: 0 4px 6px -1px rgba(39, 41, 68, 0.25);">
             Log In to Workspace
           </a>
         </div>

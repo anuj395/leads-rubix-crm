@@ -54,6 +54,7 @@ exports.signup = async (email, password, role, industry_id, name) => {
     email: user.email,
     role: user.role,
     industry_id: user.industry_id,
+    needs_password_change: !!user.needs_password_change,
   };
   const token = jwt.sign({ id: user.id, role: user.role }, JWT_SECRET, {
     expiresIn: JWT_EXPIRES_IN,
@@ -88,6 +89,7 @@ exports.login = async (email, password) => {
     email: user.email,
     role: user.role,
     industry_id: user.industry_id,
+    needs_password_change: !!user.needs_password_change,
   };
   return { user: safeUser, token };
 };

@@ -25,6 +25,7 @@ const userSchema = new mongoose.Schema(
     reporting_to: { type: String, default: '' },
     // Per-role custom attributes resolved through the `users` screen config.
     fields: { type: mongoose.Schema.Types.Mixed, default: {} },
+    needs_password_change: { type: Boolean, default: false },
   },
   { timestamps: true, minimize: false },
 );
@@ -56,6 +57,7 @@ function shapePublic(u) {
     is_active: u.is_active !== false,
     reporting_to: u.reporting_to || '',
     fields: u.fields || {},
+    needs_password_change: !!u.needs_password_change,
     createdAt: u.createdAt,
     updatedAt: u.updatedAt,
   };
@@ -137,6 +139,7 @@ exports.update = async (id, patch) => {
   // with findByIdAndUpdate). Allow it here only by hashing manually.
   if (patch.password) {
     $set.password = await bcrypt.hash(String(patch.password), 10);
+    $set.needs_password_change = false;
   }
   const updated = await User.findByIdAndUpdate(id, { $set }, { new: true })
     .select('-password')

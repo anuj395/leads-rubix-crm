@@ -1,6 +1,6 @@
 import { Suspense } from 'react'
 import { Navigate, Route, Routes } from 'react-router-dom'
-import { ForgotPasswordPage, LoginPage, SignupPage } from '@/features/auth'
+import { ForgotPasswordPage, LoginPage, SignupPage, FirstTimeChangePasswordPage } from '@/features/auth'
 import AuthLayout from '@/layouts/AuthLayout'
 import { MainLayout } from '@/layouts/MainLayout/MainLayout'
 import { ProtectedRoute } from './ProtectedRoute'
@@ -34,6 +34,11 @@ export function AppRoutes() {
 
       {/* Protected Routes */}
       <Route element={<ProtectedRoute />}>
+        {/* Force First-Time Password Change */}
+        <Route element={<AuthLayout />}>
+          <Route path="/change-password" element={<FirstTimeChangePasswordPage />} />
+        </Route>
+
         <Route element={<MainLayout />}>
           <Route index element={<Navigate to="/analytics" replace />} />
 

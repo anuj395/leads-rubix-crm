@@ -158,7 +158,13 @@ exports.fetchById = async ({ id, authedUser }) => {
 exports.create = async ({ payload, authedUser }) => {
   const isSuperAdmin = authedUser?.role === 'superAdmin';
   const email = String(payload.email || '').trim().toLowerCase();
-  const password = String(payload.password || '');
+  let password = String(payload.password || '').trim();
+  if (!password) {
+    const chars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+    for (let i = 0; i < 8; i++) {
+      password += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+  }
   const role = String(payload.role || 'sales');
   const name = payload.name ? String(payload.name).trim() : '';
   const industry_id = isSuperAdmin
@@ -166,7 +172,6 @@ exports.create = async ({ payload, authedUser }) => {
     : authedUser?.industry_id;
 
   if (!email) { const e = new Error('email is required'); e.status = 400; throw e; }
-  if (!password) { const e = new Error('password is required'); e.status = 400; throw e; }
   if (!industry_id) { const e = new Error('industry_id is required'); e.status = 400; throw e; }
 
   ensureCanAssignRole({ authedUser, targetRole: role });
@@ -189,6 +194,7 @@ exports.create = async ({ payload, authedUser }) => {
     industry_id,
     is_active: payload.is_active !== false,
     fields: cleanedFields,
+    needs_password_change: true,
   });
 
   // Fetch organization to get organization name

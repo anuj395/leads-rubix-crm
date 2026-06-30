@@ -140,7 +140,7 @@ exports.create = async ({ payload, authedUser }) => {
   const isSuperAdmin = (user.role || authedUser.role) === 'superAdmin';
 
   const industry_id = isSuperAdmin
-    ? payload.industry_id || user.industry_id
+    ? payload.industry_id || payload.industry || user.industry_id
     : user.industry_id;
 
   const { fields: allowedFields } = await resolveAllowedFormFields({
@@ -152,8 +152,24 @@ exports.create = async ({ payload, authedUser }) => {
 
   const orgId = generateOrgId();
 
+  // Fetch pricing plan settings from DB
+  let licensesCost = 1000;
+  let trialPeriodLicenses = 10;
+  try {
+    const PricingPlan = mongoose.model('PricingPlan');
+    const plan = await PricingPlan.findOne({}).lean().exec();
+    if (plan) {
+      if (typeof plan.licensesCost === 'number') licensesCost = plan.licensesCost;
+      if (typeof plan.trialPeriodLicenses === 'number') trialPeriodLicenses = plan.trialPeriodLicenses;
+    }
+  } catch (err) {
+    console.error('[organizationService] Failed to fetch pricing plan defaults:', err);
+  }
+
   const orgDoc = await organizationModel.create({
     ...cleaned,
+    cost_per_license: licensesCost,
+    org_trial_period_users_licenses: trialPeriodLicenses,
     organization_id: orgId,
     industry_id,
     is_active: payload.is_active !== false,
@@ -161,8 +177,10 @@ exports.create = async ({ payload, authedUser }) => {
   });
 
   // Automatically create an Admin user for this organization
-  const orgName = cleaned.name || payload.name || 'Organization';
-  const orgEmail = cleaned.email || payload.email;
+  const orgName = cleaned.first_name
+    ? `${cleaned.first_name} ${cleaned.last_name || ''}`.trim()
+    : cleaned.name || payload.name || 'Organization';
+  const orgEmail = cleaned.email_id || cleaned.email || payload.email;
   let adminEmail = orgEmail || `admin@${(cleaned.code || payload.code || 'org').toLowerCase()}.com`;
 
   // Ensure unique admin email
@@ -172,7 +190,13 @@ exports.create = async ({ payload, authedUser }) => {
   }
 
   const adminName = `${orgName} Admin`;
-  const adminPassword = 'rubix1234';
+  
+  // Generate random 8-character temporary password
+  const chars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+  let adminPassword = '';
+  for (let i = 0; i < 8; i++) {
+    adminPassword += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
 
   await userModel.create({
     name: adminName,
@@ -180,6 +204,7 @@ exports.create = async ({ payload, authedUser }) => {
     password: adminPassword,
     role: 'admin',
     industry_id: industry_id,
+    needs_password_change: true,
   });
 
   // Send credentials email
@@ -235,5 +260,15 @@ exports.remove = async ({ id, authedUser }) => {
   if (!isSuperAdmin && existing.industry_id && existing.industry_id !== user.industry_id) {
     const err = new Error('Organization not found'); err.status = 404; throw err;
   }
+  
+  // Cascade delete all users belonging to this organization's industry_id
+  if (existing.industry_id) {
+    const deleteResult = await userModel.User.deleteMany({
+      industry_id: existing.industry_id,
+      role: { $ne: 'superAdmin' }
+    });
+    console.log(`[organizationService] Cascade deleted ${deleteResult.deletedCount} users for industry_id: ${existing.industry_id}`);
+  }
+
   return organizationModel.remove(id);
 };
