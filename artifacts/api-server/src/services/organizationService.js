@@ -39,7 +39,7 @@ async function resolveAllowedFormFields({ industry_code, role_key, isSuperAdmin 
   const fields = await fieldModel.list({ screen_id: screen._id, activeOnly: true });
 
   if (isSuperAdmin) {
-    return { screen, fields: fields.filter((f) => f.is_form_visible) };
+    return { screen, fields: fields };
   }
 
   const industry = await industryModel.findByCode(industry_code);
@@ -155,21 +155,46 @@ exports.create = async ({ payload, authedUser }) => {
   // Fetch pricing plan settings from DB
   let licensesCost = 1000;
   let trialPeriodLicenses = 10;
+  let gracePeriodDays = 7;
   try {
     const PricingPlan = mongoose.model('PricingPlan');
     const plan = await PricingPlan.findOne({}).lean().exec();
     if (plan) {
       if (typeof plan.licensesCost === 'number') licensesCost = plan.licensesCost;
       if (typeof plan.trialPeriodLicenses === 'number') trialPeriodLicenses = plan.trialPeriodLicenses;
+      if (typeof plan.gracePeriodDays === 'number') gracePeriodDays = plan.gracePeriodDays;
     }
   } catch (err) {
     console.error('[organizationService] Failed to fetch pricing plan defaults:', err);
   }
 
+  // Merge configuration-driven defaults from ScreenField configuration
+  let mergedWithDefaults = { ...cleaned };
+  try {
+    const screen = await screenModel.findByKey(ORG_SCREEN_KEY);
+    if (screen) {
+      const fields = await fieldModel.list({ screen_id: screen._id, activeOnly: true });
+      for (const f of fields) {
+        if (mergedWithDefaults[f.field_key] === undefined && f.default_value !== undefined && f.default_value !== null) {
+          mergedWithDefaults[f.field_key] = f.default_value;
+        }
+      }
+    }
+  } catch (err) {
+    console.error('[organizationService] Failed to merge screen field defaults:', err);
+  }
+
+  const validFrom = new Date();
+  const validTill = new Date(validFrom);
+  validTill.setDate(validTill.getDate() + gracePeriodDays);
+
   const orgDoc = await organizationModel.create({
-    ...cleaned,
+    ...mergedWithDefaults,
     cost_per_license: licensesCost,
     org_trial_period_users_licenses: trialPeriodLicenses,
+    grace_period_days: gracePeriodDays,
+    validFrom,
+    validTill,
     organization_id: orgId,
     industry_id,
     is_active: payload.is_active !== false,
@@ -177,9 +202,9 @@ exports.create = async ({ payload, authedUser }) => {
   });
 
   // Automatically create an Admin user for this organization
-  const orgName = cleaned.first_name
+  const orgName = cleaned.organization_name || (cleaned.first_name
     ? `${cleaned.first_name} ${cleaned.last_name || ''}`.trim()
-    : cleaned.name || payload.name || 'Organization';
+    : cleaned.name || payload.name || 'Organization');
   const orgEmail = cleaned.email_id || cleaned.email || payload.email;
   let adminEmail = orgEmail || `admin@${(cleaned.code || payload.code || 'org').toLowerCase()}.com`;
 

@@ -4,7 +4,15 @@ const { authenticate } = require('../middlewares/auth');
 
 const router = express.Router();
 
-router.get('/', authenticate, async (req, res, next) => {
+// Helper middleware to ensure superAdmin role
+const requireSuperAdmin = (req, res, next) => {
+  if (req.user?.role !== 'superAdmin') {
+    return res.status(403).json({ message: 'Access denied: Super Admin only' });
+  }
+  next();
+};
+
+router.get('/', authenticate, requireSuperAdmin, async (req, res, next) => {
   try {
     const PricingPlan = mongoose.model('PricingPlan');
     const plans = await PricingPlan.find({}).sort({ createdAt: -1 }).exec();
@@ -14,7 +22,7 @@ router.get('/', authenticate, async (req, res, next) => {
   }
 });
 
-router.post('/', authenticate, async (req, res, next) => {
+router.post('/', authenticate, requireSuperAdmin, async (req, res, next) => {
   try {
     const PricingPlan = mongoose.model('PricingPlan');
     const doc = await PricingPlan.create(req.body || {});
@@ -24,7 +32,7 @@ router.post('/', authenticate, async (req, res, next) => {
   }
 });
 
-router.put('/:id', authenticate, async (req, res, next) => {
+router.put('/:id', authenticate, requireSuperAdmin, async (req, res, next) => {
   try {
     const PricingPlan = mongoose.model('PricingPlan');
     const doc = await PricingPlan.findByIdAndUpdate(req.params.id, { $set: req.body || {} }, { new: true }).exec();
@@ -37,7 +45,7 @@ router.put('/:id', authenticate, async (req, res, next) => {
   }
 });
 
-router.delete('/:id', authenticate, async (req, res, next) => {
+router.delete('/:id', authenticate, requireSuperAdmin, async (req, res, next) => {
   try {
     const PricingPlan = mongoose.model('PricingPlan');
     const doc = await PricingPlan.findByIdAndDelete(req.params.id).exec();

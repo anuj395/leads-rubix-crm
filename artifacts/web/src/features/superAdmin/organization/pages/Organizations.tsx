@@ -8,6 +8,7 @@ import IconButton from '@mui/material/IconButton'
 import Stack from '@mui/material/Stack'
 import Tooltip from '@mui/material/Tooltip'
 import Snackbar from '@mui/material/Snackbar'
+import Switch from '@mui/material/Switch'
 import Alert from '@mui/material/Alert'
 import { Add as AddIcon, Edit as EditIcon, Delete as DeleteIcon } from '@mui/icons-material'
 import type { GridColDef, GridFilterModel, GridPaginationModel, GridSortModel } from '@mui/x-data-grid'
@@ -103,6 +104,33 @@ export default function OrganizationsListPage() {
       valueGetter: (_v, row) => (row as Record<string, unknown>)[c.key],
       renderCell: (p) => {
         const v = p.value
+        const isToggleable = c.key === 'allowDuplicateLeads' || c.key === 'showAnalytics' || c.key === 'status'
+
+        if (isToggleable && isSuperAdmin) {
+          const isChecked = c.key === 'status' ? v === 'ACTIVE' : !!v
+          return (
+            <Switch
+              size="small"
+              checked={isChecked}
+              onChange={async (e) => {
+                const nextVal = c.key === 'status'
+                  ? (e.target.checked ? 'ACTIVE' : 'INACTIVE')
+                  : e.target.checked
+                try {
+                  await updateOrganization(p.row._id, {
+                    fields: { ...toFormValues(p.row), [c.key]: nextVal }
+                  })
+                  setToast({ open: true, msg: `${c.label} updated`, sev: 'success' })
+                  await refresh()
+                } catch (e: unknown) {
+                  const err = e as { response?: { data?: { message?: string } } }
+                  setToast({ open: true, msg: err?.response?.data?.message ?? 'Update failed', sev: 'error' })
+                }
+              }}
+            />
+          )
+        }
+
         if (v == null || v === '') return <Box sx={{ color: 'text.secondary' }}>—</Box>
         const lowerKey = c.key.toLowerCase()
         if (lowerKey === 'is_active' || lowerKey === 'status' || typeof v === 'boolean') {

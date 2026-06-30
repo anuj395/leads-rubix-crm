@@ -22,6 +22,7 @@ const screenFieldSchema = new mongoose.Schema(
     sortable: { type: Boolean, default: true },
     order: { type: Number, default: 0 },
     is_active: { type: Boolean, default: true },
+    default_value: { type: mongoose.Schema.Types.Mixed, default: null },
   },
   { timestamps: true },
 );
@@ -72,6 +73,7 @@ exports.create = async (payload) => {
     sortable: payload.sortable !== false,
     order: typeof payload.order === 'number' ? payload.order : 0,
     is_active: payload.is_active !== false,
+    default_value: payload.default_value !== undefined ? payload.default_value : null,
   });
   return doc.toObject();
 };
@@ -96,6 +98,7 @@ exports.update = async (id, patch) => {
   if (patch.sortable !== undefined) update.sortable = !!patch.sortable;
   if (patch.order !== undefined) update.order = Number(patch.order);
   if (patch.is_active !== undefined) update.is_active = !!patch.is_active;
+  if (patch.default_value !== undefined) update.default_value = patch.default_value;
   return ScreenField.findByIdAndUpdate(id, { $set: update }, { new: true }).lean().exec();
 };
 
@@ -119,6 +122,7 @@ exports.upsertByKey = async (screen_id, field_key, attrs) => {
     sortable: attrs.sortable !== false,
     order: typeof attrs.order === 'number' ? attrs.order : 0,
     is_active: attrs.is_active !== false,
+    default_value: attrs.default_value !== undefined ? attrs.default_value : null,
   };
   await ScreenField.updateOne(
     { screen_id, field_key: key },

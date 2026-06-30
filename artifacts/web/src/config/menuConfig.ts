@@ -233,6 +233,7 @@ export const superAdminMenuConfig: SuperAdminMenuItem[] = [
     icon: "billing",
     module: "Account"
   },
+
   {
     key: "account.coupons",
     name: "Coupon",
