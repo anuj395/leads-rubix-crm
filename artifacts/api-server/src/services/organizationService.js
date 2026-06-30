@@ -276,12 +276,13 @@ exports.create = async ({ payload, authedUser }) => {
   await userModel.create({
     _id: adminId,
     name: adminName,
+    organizationName: orgName,
     firstName: cleaned.firstName || cleaned.first_name || orgName,
     lastName: cleaned.lastName || cleaned.last_name || 'Admin',
     email: adminEmail.toLowerCase().trim(),
     password: adminPassword,
     role: 'admin',
-    organizationId: orgDoc._id,
+    organizationId: orgDoc.organizationId || orgDoc.organization_id,
     industryId: industry_id,
     contactNumber: cleaned.contactNumber || cleaned.contact_no || cleaned.contact || '',
     userImage: '',
@@ -295,10 +296,10 @@ exports.create = async ({ payload, authedUser }) => {
     needsPasswordChange: true,
     deviceId: '',
     uid: '',
-    latestUpdateProfile: null,
+    latestUpdateProfile: false,
     activatedAt: new Date(),
     deactivatedAt: null,
-    createdBy: isSuperAdmin ? user.id : adminId,
+    createdBy: creatorId,
   });
 
   // Send credentials email
@@ -338,8 +339,57 @@ exports.update = async ({ id, payload, authedUser }) => {
   const cleaned = pickAllowed(payload?.fields ?? payload ?? {}, allowedFields);
 
   const patch = { ...cleaned };
-  if (payload.is_active !== undefined) patch.is_active = !!payload.is_active;
   if (isSuperAdmin && payload.industry_id) patch.industry_id = payload.industry_id;
+
+  let newActive = undefined;
+  const rawStatus = payload.status ?? payload.fields?.status ?? cleaned.status ?? 
+                    payload.isActive ?? payload.fields?.isActive ?? cleaned.isActive ??
+                    payload.is_active ?? payload.fields?.is_active ?? cleaned.is_active;
+
+  if (rawStatus !== undefined && rawStatus !== null) {
+    if (typeof rawStatus === 'boolean') {
+      newActive = rawStatus;
+    } else if (typeof rawStatus === 'string') {
+      const lower = rawStatus.toLowerCase().trim();
+      if (lower === 'active' || lower === 'true') {
+        newActive = true;
+      } else if (lower === 'inactive' || lower === 'false') {
+        newActive = false;
+      }
+    }
+  }
+
+  if (newActive !== undefined) {
+    patch.isActive = newActive;
+    patch.is_active = newActive;
+    patch.status = newActive ? 'ACTIVE' : 'INACTIVE';
+    
+    const userUpdate = {
+      isActive: newActive,
+      is_active: newActive,
+      status: newActive ? 'active' : 'inactive'
+    };
+    if (newActive) {
+      userUpdate.activatedAt = new Date();
+      userUpdate.deactivatedAt = null;
+      patch.activatedAt = new Date();
+      patch.deactivatedAt = null;
+    } else {
+      userUpdate.deactivatedAt = new Date();
+      patch.deactivatedAt = new Date();
+    }
+    
+    // Update all users belonging to this organization (supporting both old ObjectId and new string matches)
+    await userModel.User.updateMany(
+      {
+        $or: [
+          { organizationId: existing._id },
+          { organizationId: existing.organizationId || existing.organization_id }
+        ]
+      },
+      { $set: userUpdate }
+    );
+  }
 
   return organizationModel.update(id, patch);
 };

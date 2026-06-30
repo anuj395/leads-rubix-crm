@@ -13,13 +13,14 @@ exports.ROLES = ['sales', 'teamLead', 'leadManager', 'admin', 'superAdmin'];
 
 const userSchema = new mongoose.Schema(
   {
-    organizationName: { type: String, alias: 'name' },
+    organizationName: { type: String, alias: 'organization_name' },
+    name: { type: String, default: '' },
     firstName: { type: String, default: '' },
     lastName: { type: String, default: '' },
     email: { type: String, required: true, unique: true, lowercase: true, trim: true },
     password: { type: String, required: true },
     role: { type: String, enum: exports.ROLES, default: 'sales' },
-    organizationId: { type: mongoose.Schema.Types.ObjectId, ref: 'Organization', default: null, alias: 'organization_id' },
+    organizationId: { type: String, default: null, alias: 'organization_id' },
     industryId: { type: String, alias: 'industry_id' },
     contactNumber: { type: String, default: '', alias: 'contact_no' },
     userImage: { type: String, default: '', alias: 'user_image' },
@@ -33,11 +34,11 @@ const userSchema = new mongoose.Schema(
     fields: { type: mongoose.Schema.Types.Mixed, default: {} },
     needsPasswordChange: { type: Boolean, default: false, alias: 'needs_password_change' },
     deviceId: { type: String, default: '', alias: 'device_id' },
-    uid: { type: String, default: '' },
-    latestUpdateProfile: { type: Date, default: null },
+    uid: { type: String, unique: true, index: true },
+    latestUpdateProfile: { type: Boolean, default: false, alias: 'latest_update_profile' },
     activatedAt: { type: Date, default: null, alias: 'activated_at' },
     deactivatedAt: { type: Date, default: null, alias: 'deactivated_at' },
-    createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null, alias: 'created_by' },
+    createdBy: { type: String, default: null, alias: 'created_by' },
   },
   { 
     timestamps: true, 
@@ -47,10 +48,22 @@ const userSchema = new mongoose.Schema(
   },
 );
 
-// hash password before save
+function generateUid() {
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+  let result = '';
+  for (let i = 0; i < 28; i++) {
+    result += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return result;
+}
+
+// hash password and generate uid before save
 userSchema.pre('save', async function (next) {
   if (this.isModified('password')) {
     this.password = await bcrypt.hash(this.password, 10);
+  }
+  if (!this.uid || String(this.uid).trim() === '') {
+    this.uid = generateUid();
   }
   next();
 });
@@ -151,6 +164,9 @@ exports.create = async (data) => {
 exports.update = async (id, patch) => {
   const $set = {};
   if (patch.name !== undefined) $set.name = patch.name;
+  if (patch.organizationName !== undefined || patch.organization_name !== undefined) {
+    $set.organizationName = patch.organizationName !== undefined ? patch.organizationName : patch.organization_name;
+  }
   if (patch.role !== undefined) $set.role = patch.role;
   if (patch.industryId !== undefined || patch.industry_id !== undefined) {
     $set.industryId = patch.industryId !== undefined ? patch.industryId : patch.industry_id;
