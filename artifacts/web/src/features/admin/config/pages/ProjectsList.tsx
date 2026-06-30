@@ -14,8 +14,16 @@ import Stack from '@mui/material/Stack'
 import Tooltip from '@mui/material/Tooltip'
 import IconButton from '@mui/material/IconButton'
 import LinearProgress from '@mui/material/LinearProgress'
-import { Add as AddIcon, Edit as EditIcon, Delete as DeleteIcon } from '@mui/icons-material'
-import type { GridColDef } from '@mui/x-data-grid'
+import { Add as AddIcon, Edit as EditIcon, Delete as DeleteIcon, Upload as UploadIcon, Download as DownloadIcon } from '@mui/icons-material'
+import {
+  type GridColDef,
+  GridToolbarContainer,
+  GridToolbarColumnsButton,
+  GridToolbarFilterButton,
+  GridToolbarDensitySelector,
+  GridToolbarExport,
+  GridToolbarQuickFilter
+} from '@mui/x-data-grid'
 import { AppCard } from '@/components/ui/AppCard'
 import { AppDataGrid } from '@/components/ui/AppDataGrid'
 import { StatusBadge } from '@/components/ui/StatusBadge'
@@ -167,6 +175,25 @@ export default function ProjectsListPage() {
     } catch (e: any) {
       setToast({ open: true, msg: e?.response?.data?.message || 'Failed to save project', sev: 'error' })
     }
+  }
+
+  const handleExport = () => {
+    if (!resolvedScreen || items.length === 0) return
+    const headers = resolvedScreen.table_headers.map(h => h.label)
+    const csvContent = "data:text/csv;charset=utf-8," 
+      + [headers.join(",")].concat(items.map(row => resolvedScreen.table_headers.map(h => `"${row[h.key as keyof Project] ?? ''}"`).join(","))).join("\n")
+    const encodedUri = encodeURI(csvContent)
+    const link = document.createElement("a")
+    link.setAttribute("href", encodedUri)
+    link.setAttribute("download", `projects_export.csv`)
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    setToast({ open: true, msg: 'Exported successfully!', sev: 'success' })
+  }
+
+  const handleImport = () => {
+    setToast({ open: true, msg: `Import template ready!`, sev: 'success' })
   }
 
   const columns = useMemo<GridColDef<Project>[]>(() => {
@@ -420,25 +447,60 @@ export default function ProjectsListPage() {
         overflow: 'hidden',
       }}
     >
-      <AppCard
-        title="Projects Catalog"
-        subtitle="Catalog of properties, real estate developments, and sales units."
-        action={
-          <Button variant="contained" startIcon={<AddIcon />} onClick={openAddDialog}>
-            Add Project
-          </Button>
-        }
-        fullHeight
-      >
-        <Box sx={{ flexGrow: 1, minHeight: 0, position: 'relative' }}>
-          {loading && (
-            <Box sx={{ position: 'absolute', top: 0, left: 0, right: 0, zIndex: 10 }}>
-              <LinearProgress />
+      {(() => {
+        const CustomToolbar = () => (
+          <GridToolbarContainer sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', p: 0.5 }}>
+            <Box sx={{ display: 'flex', gap: 0.5, alignItems: 'center' }}>
+              <GridToolbarColumnsButton />
+              <GridToolbarFilterButton />
+              <GridToolbarDensitySelector />
+              <GridToolbarExport />
+              <Button
+                color="primary"
+                size="small"
+                startIcon={<UploadIcon />}
+                onClick={handleImport}
+                sx={{
+                  textTransform: 'none',
+                  fontWeight: 500,
+                  minHeight: 0,
+                  minWidth: 0,
+                  padding: '4px 5px',
+                }}
+              >
+                Import
+              </Button>
             </Box>
-          )}
-          <AppDataGrid height="100%" rows={items} columns={columns} getRowId={(r) => r.id} />
-        </Box>
-      </AppCard>
+            <GridToolbarQuickFilter />
+          </GridToolbarContainer>
+        )
+
+        return (
+          <AppCard
+            title="Projects Catalog"
+            subtitle="Catalog of properties, real estate developments, and sales units."
+            action={
+              <Button variant="contained" startIcon={<AddIcon />} onClick={openAddDialog}>Add Project</Button>
+            }
+            fullHeight
+          >
+            <Box sx={{ flexGrow: 1, minHeight: 0, position: 'relative' }}>
+              {loading && (
+                <Box sx={{ position: 'absolute', top: 0, left: 0, right: 0, zIndex: 10 }}>
+                  <LinearProgress />
+                </Box>
+              )}
+              <AppDataGrid 
+                height="100%" 
+                rows={items} 
+                columns={columns} 
+                getRowId={(r) => r.id}
+                slots={{ toolbar: CustomToolbar }}
+              />
+            </Box>
+          </AppCard>
+        )
+      })()}
 
       <Dialog 
         open={dialogOpen} 

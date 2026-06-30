@@ -27,7 +27,15 @@ import {
   Download as DownloadIcon,
   Upload as UploadIcon,
 } from '@mui/icons-material'
-import type { GridColDef } from '@mui/x-data-grid'
+import {
+  type GridColDef,
+  GridToolbarContainer,
+  GridToolbarColumnsButton,
+  GridToolbarFilterButton,
+  GridToolbarDensitySelector,
+  GridToolbarExport,
+  GridToolbarQuickFilter
+} from '@mui/x-data-grid'
 import { AppCard } from '@/components/ui/AppCard'
 import { AppDataGrid } from '@/components/ui/AppDataGrid'
 import { getIndustries, type Industry } from '@/services/sidebarAdminService'
@@ -377,29 +385,60 @@ export default function ResourcesPage() {
           </Box>
 
           <Box sx={{ flexGrow: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
-            {activeScreen && resolvedScreen && (
-              <AppCard 
-                title={resolvedScreen.screen.name} 
-                subtitle={activeScreen.description || `Manage ${resolvedScreen.screen.name} lookup items.`}
-                action={
-                  <Stack direction="row" spacing={1}>
-                    <Button variant="contained" size="small" startIcon={<AddIcon />} onClick={openAdd}>Add</Button>
-                    <Button variant="outlined" size="small" startIcon={<UploadIcon />} onClick={handleImport}>Import</Button>
-                    <Button variant="outlined" size="small" startIcon={<DownloadIcon />} onClick={handleExport}>Export</Button>
-                  </Stack>
-                }
-                fullHeight
-              >
-                <Box sx={{ flexGrow: 1, minHeight: 0, width: '100%', position: 'relative' }}>
-                  {loading && (
-                    <Box sx={{ position: 'absolute', top: 0, left: 0, right: 0, zIndex: 10 }}>
-                      <LinearProgress />
-                    </Box>
-                  )}
-                  <AppDataGrid height="100%" rows={rows} columns={gridColumns} getRowId={(r) => r.id} />
-                </Box>
-              </AppCard>
-            )}
+            {activeScreen && resolvedScreen && (() => {
+              const CustomToolbar = () => (
+                <GridToolbarContainer sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', p: 0.5 }}>
+                  <Box sx={{ display: 'flex', gap: 0.5, alignItems: 'center' }}>
+                    <GridToolbarColumnsButton />
+                    <GridToolbarFilterButton />
+                    <GridToolbarDensitySelector />
+                    <GridToolbarExport />
+                    <Button
+                      color="primary"
+                      size="small"
+                      startIcon={<UploadIcon />}
+                      onClick={handleImport}
+                      sx={{
+                        textTransform: 'none',
+                        fontWeight: 500,
+                        minHeight: 0,
+                        minWidth: 0,
+                        padding: '4px 5px',
+                      }}
+                    >
+                      Import
+                    </Button>
+                  </Box>
+                  <GridToolbarQuickFilter />
+                </GridToolbarContainer>
+              )
+
+              return (
+                <AppCard 
+                  title={resolvedScreen.screen.name} 
+                  subtitle={activeScreen.description || `Manage ${resolvedScreen.screen.name} lookup items.`}
+                  action={
+                    <Button variant="contained" startIcon={<AddIcon />} onClick={openAdd}>Add</Button>
+                  }
+                  fullHeight
+                >
+                  <Box sx={{ flexGrow: 1, minHeight: 0, width: '100%', position: 'relative' }}>
+                    {loading && (
+                      <Box sx={{ position: 'absolute', top: 0, left: 0, right: 0, zIndex: 10 }}>
+                        <LinearProgress />
+                      </Box>
+                    )}
+                    <AppDataGrid 
+                      height="100%" 
+                      rows={rows} 
+                      columns={gridColumns} 
+                      getRowId={(r) => r.id}
+                      slots={{ toolbar: CustomToolbar }}
+                    />
+                  </Box>
+                </AppCard>
+              )
+            })()}
           </Box>
         </>
       )}
