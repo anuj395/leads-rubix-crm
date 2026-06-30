@@ -46,33 +46,6 @@ async function seedUsers() {
   const User = mongoose.model('User');
   const bcrypt = require('bcryptjs');
   const hashedDevPassword = bcrypt.hashSync('rubix1234', 10);
-  if (fs.existsSync(SEED_FILE)) {
-    const raw = JSON.parse(fs.readFileSync(SEED_FILE, 'utf8'));
-    const docs = (Array.isArray(raw) ? raw : [raw]).map(reviveEjson);
-    let synced = 0;
-    for (const d of docs) {
-      await User.updateOne(
-        { email: d.email },
-        {
-          $set: {
-            name: d.name,
-            role: d.role,
-            industry_id: d.industry_id,
-            reporting_to: d.reporting_to || '',
-          },
-          $setOnInsert: {
-            _id: d._id,
-            password: hashedDevPassword,
-          }
-        },
-        { upsert: true }
-      );
-      synced++;
-    }
-    console.log(`[seed] synchronized ${synced} user(s) from seed-data/users.json`);
-  } else {
-    console.log('[seed] no seed-data/users.json found — skipping user seed');
-  }
 
   // Ensure all existing users in the database are updated to password 'rubix1234'
   const list = await User.find({});
@@ -95,20 +68,33 @@ async function seedUsers() {
 
 async function ensureDevAdmin() {
   const User = mongoose.model('User');
-  const email = 'dev@rubixcrm.dev';
+  
+  // Delete legacy dev superAdmin if exists
+  await User.deleteOne({ email: 'dev@rubixcrm.dev' });
+  
+  const email = 'info@leadsrubix.com';
   const existing = await User.findOne({ email }).exec();
-  if (existing) return;
+  
+  // Hash password using bcrypt if updating directly, or save new user
+  if (existing) {
+    existing.name = 'Dev Super Admin';
+    existing.password = 'lead@1221';
+    existing.role = 'superAdmin';
+    existing.industry_id = 'temp0001';
+    await existing.save();
+    console.log(`[seed] updated single superAdmin: ${email}`);
+    return;
+  }
 
-  // Goes through the pre-save hook → password gets bcrypt-hashed.
   const dev = new User({
     name: 'Dev Super Admin',
     email,
-    password: 'rubix1234',
+    password: 'lead@1221',
     role: 'superAdmin',
     industry_id: 'temp0001',
   });
   await dev.save();
-  console.log(`[seed] created dev superAdmin: ${email} / rubix1234`);
+  console.log(`[seed] created single superAdmin: ${email} / lead@1221`);
 }
 
 /**
@@ -515,51 +501,15 @@ async function seedIndustries() {
 }
 
 async function seedContacts() {
-  const Contact = mongoose.model('Contact');
-  const existing = await Contact.estimatedDocumentCount();
-
-  if (existing > 0) {
-    console.log(`[seed] contacts collection already has ${existing} doc(s) — skipping bulk seed`);
-  } else if (fs.existsSync(CONTACTS_SEED_FILE)) {
-    const raw = JSON.parse(fs.readFileSync(CONTACTS_SEED_FILE, 'utf8'));
-    const docs = (Array.isArray(raw) ? raw : [raw]).map(reviveEjson);
-    const result = await Contact.collection.insertMany(docs, { ordered: false });
-    console.log(`[seed] inserted ${result.insertedCount} contact(s) from seed-data/contacts.json`);
-  } else {
-    console.log('[seed] no seed-data/contacts.json found — skipping bulk contact seed');
-  }
+  // Skip seeding contacts to rely solely on user-driven DB data
 }
 
 async function seedOrganizations() {
-  const Organization = mongoose.model('Organization');
-  const existing = await Organization.estimatedDocumentCount();
-
-  if (existing > 0) {
-    console.log(`[seed] organizations collection already has ${existing} doc(s) — skipping bulk seed`);
-  } else if (fs.existsSync(ORGANIZATIONS_SEED_FILE)) {
-    const raw = JSON.parse(fs.readFileSync(ORGANIZATIONS_SEED_FILE, 'utf8'));
-    const docs = (Array.isArray(raw) ? raw : [raw]).map(reviveEjson);
-    const result = await Organization.collection.insertMany(docs, { ordered: false });
-    console.log(`[seed] inserted ${result.insertedCount} organization(s) from seed-data/organizations.json`);
-  } else {
-    console.log('[seed] no seed-data/organizations.json found — skipping bulk organization seed');
-  }
+  // Skip seeding organizations to rely solely on user-driven DB data
 }
 
 async function seedBookings() {
-  const Booking = mongoose.model('Booking');
-  const existing = await Booking.estimatedDocumentCount();
-
-  if (existing > 0) {
-    console.log(`[seed] bookings collection already has ${existing} doc(s) — skipping bulk seed`);
-  } else if (fs.existsSync(BOOKINGS_SEED_FILE)) {
-    const raw = JSON.parse(fs.readFileSync(BOOKINGS_SEED_FILE, 'utf8'));
-    const docs = (Array.isArray(raw) ? raw : [raw]).map(reviveEjson);
-    const result = await Booking.collection.insertMany(docs, { ordered: false });
-    console.log(`[seed] inserted ${result.insertedCount} booking(s) from seed-data/bookings.json`);
-  } else {
-    console.log('[seed] no seed-data/bookings.json found — skipping bulk booking seed');
-  }
+  // Skip seeding bookings to rely solely on user-driven DB data
 }
 
 async function fixIntegrationsSidebar() {
@@ -641,6 +591,169 @@ async function fixIntegrationsSidebar() {
   }
 }
 
+const DROPDOWN_OPTION_DEFAULTS = {
+  'lead-types': [
+    { value: 'hot',  label: 'Hot' },
+    { value: 'warm', label: 'Warm' },
+    { value: 'cold', label: 'Cold' },
+  ],
+  'lead-statuses': [
+    { value: 'new',         label: 'New' },
+    { value: 'contacted',   label: 'Contacted' },
+    { value: 'qualified',   label: 'Qualified' },
+    { value: 'unqualified', label: 'Unqualified' },
+    { value: 'converted',   label: 'Converted' },
+  ],
+  'projects': [
+    { value: 'gateway',  label: 'Gateway Towers' },
+    { value: 'horizon',  label: 'Horizon Heights' },
+    { value: 'meadow',   label: 'Meadow Greens' },
+  ],
+  'departments': [
+    { value: 'sales',       label: 'Sales' },
+    { value: 'marketing',   label: 'Marketing' },
+    { value: 'support',     label: 'Customer Support' },
+    { value: 'operations',  label: 'Operations' },
+    { value: 'finance',     label: 'Finance' },
+    { value: 'engineering', label: 'Engineering' },
+  ],
+  'designations': [
+    { value: 'executive',  label: 'Executive' },
+    { value: 'sr_executive', label: 'Sr. Executive' },
+    { value: 'manager',    label: 'Manager' },
+    { value: 'sr_manager', label: 'Sr. Manager' },
+    { value: 'lead',       label: 'Team Lead' },
+    { value: 'director',   label: 'Director' },
+  ],
+  'countries': [
+    { value: 'India', label: 'India' },
+    { value: 'United States', label: 'United States' },
+    { value: 'United Kingdom', label: 'United Kingdom' },
+    { value: 'Canada', label: 'Canada' },
+    { value: 'Australia', label: 'Australia' },
+    { value: 'United Arab Emirates', label: 'United Arab Emirates' },
+    { value: 'Singapore', label: 'Singapore' },
+    { value: 'Saudi Arabia', label: 'Saudi Arabia' },
+  ],
+  'states_India': [
+    { value: 'Andhra Pradesh', label: 'Andhra Pradesh' },
+    { value: 'Arunachal Pradesh', label: 'Arunachal Pradesh' },
+    { value: 'Assam', label: 'Assam' },
+    { value: 'Bihar', label: 'Bihar' },
+    { value: 'Chhattisgarh', label: 'Chhattisgarh' },
+    { value: 'Goa', label: 'Goa' },
+    { value: 'Gujarat', label: 'Gujarat' },
+    { value: 'Haryana', label: 'Haryana' },
+    { value: 'Himachal Pradesh', label: 'Himachal Pradesh' },
+    { value: 'Jharkhand', label: 'Jharkhand' },
+    { value: 'Karnataka', label: 'Karnataka' },
+    { value: 'Kerala', label: 'Kerala' },
+    { value: 'Madhya Pradesh', label: 'Madhya Pradesh' },
+    { value: 'Maharashtra', label: 'Maharashtra' },
+    { value: 'Manipur', label: 'Manipur' },
+    { value: 'Meghalaya', label: 'Meghalaya' },
+    { value: 'Mizoram', label: 'Mizoram' },
+    { value: 'Nagaland', label: 'Nagaland' },
+    { value: 'Odisha', label: 'Odisha' },
+    { value: 'Punjab', label: 'Punjab' },
+    { value: 'Rajasthan', label: 'Rajasthan' },
+    { value: 'Sikkim', label: 'Sikkim' },
+    { value: 'Tamil Nadu', label: 'Tamil Nadu' },
+    { value: 'Telangana', label: 'Telangana' },
+    { value: 'Tripura', label: 'Tripura' },
+    { value: 'Uttar Pradesh', label: 'Uttar Pradesh' },
+    { value: 'Uttarakhand', label: 'Uttarakhand' },
+    { value: 'West Bengal', label: 'West Bengal' },
+    { value: 'Delhi', label: 'Delhi' },
+  ],
+  'states_United States': [
+    { value: 'Alabama', label: 'Alabama' },
+    { value: 'Alaska', label: 'Alaska' },
+    { value: 'Arizona', label: 'Arizona' },
+    { value: 'Arkansas', label: 'Arkansas' },
+    { value: 'California', label: 'California' },
+    { value: 'Colorado', label: 'Colorado' },
+    { value: 'Connecticut', label: 'Connecticut' },
+    { value: 'Delaware', label: 'Delaware' },
+    { value: 'Florida', label: 'Florida' },
+    { value: 'Georgia', label: 'Georgia' },
+    { value: 'Hawaii', label: 'Hawaii' },
+    { value: 'Idaho', label: 'Idaho' },
+    { value: 'Illinois', label: 'Illinois' },
+    { value: 'Indiana', label: 'Indiana' },
+    { value: 'Iowa', label: 'Iowa' },
+    { value: 'Kansas', label: 'Kansas' },
+    { value: 'Kentucky', label: 'Kentucky' },
+    { value: 'Louisiana', label: 'Louisiana' },
+    { value: 'Maine', label: 'Maine' },
+    { value: 'Maryland', label: 'Maryland' },
+    { value: 'Massachusetts', label: 'Massachusetts' },
+    { value: 'Michigan', label: 'Michigan' },
+    { value: 'Minnesota', label: 'Minnesota' },
+    { value: 'Mississippi', label: 'Mississippi' },
+    { value: 'Missouri', label: 'Missouri' },
+    { value: 'Montana', label: 'Montana' },
+    { value: 'Nebraska', label: 'Nebraska' },
+    { value: 'Nevada', label: 'Nevada' },
+    { value: 'New Hampshire', label: 'New Hampshire' },
+    { value: 'New Jersey', label: 'New Jersey' },
+    { value: 'New Mexico', label: 'New Mexico' },
+    { value: 'New York', label: 'New York' },
+    { value: 'North Carolina', label: 'North Carolina' },
+    { value: 'North Dakota', label: 'North Dakota' },
+    { value: 'Ohio', label: 'Ohio' },
+    { value: 'Oklahoma', label: 'Oklahoma' },
+    { value: 'Oregon', label: 'Oregon' },
+    { value: 'Pennsylvania', label: 'Pennsylvania' },
+    { value: 'Rhode Island', label: 'Rhode Island' },
+    { value: 'South Carolina', label: 'South Carolina' },
+    { value: 'South Dakota', label: 'South Dakota' },
+    { value: 'Tennessee', label: 'Tennessee' },
+    { value: 'Texas', label: 'Texas' },
+    { value: 'Utah', label: 'Utah' },
+    { value: 'Vermont', label: 'Vermont' },
+    { value: 'Virginia', label: 'Virginia' },
+    { value: 'Washington', label: 'Washington' },
+    { value: 'West Virginia', label: 'West Virginia' },
+    { value: 'Wisconsin', label: 'Wisconsin' },
+    { value: 'Wyoming', label: 'Wyoming' },
+  ],
+  'country_codes': [
+    { value: '+91', label: '🇮🇳 India (+91)' },
+    { value: '+1', label: '🇺🇸 United States (+1)' },
+    { value: '+44', label: '🇬🇧 United Kingdom (+44)' },
+    { value: '+971', label: '🇦🇪 UAE (+971)' },
+    { value: '+65', label: '🇸🇬 Singapore (+65)' },
+    { value: '+61', label: '🇦🇺 Australia (+61)' },
+    { value: '+1', label: '🇨🇦 Canada (+1)' },
+    { value: '+966', label: '🇸🇦 Saudi Arabia (+966)' },
+    { value: '+974', label: '🇶🇦 Qatar (+974)' },
+    { value: '+965', label: '🇰🇼 Kuwait (+965)' },
+    { value: '+968', label: '🇴🇲 Oman (+968)' },
+    { value: '+973', label: '🇧🇭 Bahrain (+973)' },
+  ]
+};
+
+async function seedDropdownOptions() {
+  const DropdownOption = mongoose.model('DropdownOption');
+  const count = await DropdownOption.estimatedDocumentCount();
+  if (count === 0) {
+    console.log('[seed] seeding database-driven dropdown options...');
+    for (const [key, options] of Object.entries(DROPDOWN_OPTION_DEFAULTS)) {
+      for (const opt of options) {
+        await DropdownOption.create({
+          key,
+          value: opt.value,
+          label: opt.label
+        });
+      }
+    }
+    console.log('[seed] finished seeding dropdown options.');
+  } else {
+    console.log('[seed] dropdown_options already populated — skipping seed');
+  }
+}
+
 module.exports = {
   seedUsers,
   migrateAndSeedSidebar,
@@ -650,4 +763,5 @@ module.exports = {
   seedOrganizations,
   seedBookings,
   fixIntegrationsSidebar,
+  seedDropdownOptions,
 };

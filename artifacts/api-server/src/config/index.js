@@ -6,6 +6,10 @@ module.exports = {
   // use a port that doesn't conflict with a frontend dev server
   port: process.env.PORT || 3001,
   nodeEnv: process.env.NODE_ENV || 'development',
-  mongoUri: process.env.MONGO_URI || 'mongodb://localhost:27017/leadsrubix-migrate-crm'
+  mongoUri: process.env.MONGO_URI || 'mongodb://localhost:27017/leadsrubix-migrate-crm',
+  smtpHost: process.env.SMTP_HOST || 'smtp.gmail.com',
+  smtpPort: parseInt(process.env.SMTP_PORT || '465', 10),
+  smtpUser: process.env.SMTP_USER || 'dev@digitalrubix.com',
+  smtpPass: process.env.SMTP_PASS || 'exch pzyu imoy zptl'
   // add other third-party API keys, etc.
 };

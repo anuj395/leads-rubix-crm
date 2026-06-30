@@ -24,6 +24,7 @@ require('./models/newsModel');
 require('./models/whatsappConfigModel');
 require('./models/resourceItemModel');
 require('./models/apiTokenModel');
+require('./models/dropdownOptionModel');
 
 const {
   seedUsers,
@@ -72,21 +73,9 @@ const PORT = config.port || 3001;
   }
 
   try {
-    await seedContacts();
+    await seedDropdownOptions();
   } catch (err) {
-    console.error('[seed] failed to seed contacts:', err.message || err);
-  }
-
-  try {
-    await seedOrganizations();
-  } catch (err) {
-    console.error('[seed] failed to seed organizations:', err.message || err);
-  }
-
-  try {
-    await seedBookings();
-  } catch (err) {
-    console.error('[seed] failed to seed bookings:', err.message || err);
+    console.error('[seed] failed to seed dropdown options:', err.message || err);
   }
 
   app.listen(PORT, () => {

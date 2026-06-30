@@ -10,6 +10,8 @@ const permissionModel = require('../models/screenPermissionModel');
 const industryModel = require('../models/industryModel');
 const roleModel = require('../models/roleModel');
 const roles = require('../config/roles');
+const mongoose = require('mongoose');
+const { sendCredentialsEmail } = require('../utils/mailer');
 
 const USERS_SCREEN_KEY = 'users';
 
@@ -70,9 +72,10 @@ function pickAllowedFields(payloadFields, allowedFieldDefs) {
  * escalation). superAdmin role can only be granted by another superAdmin.
  */
 function ensureCanAssignRole({ authedUser, targetRole }) {
-  const isSuperAdmin = authedUser?.role === 'superAdmin';
-  if (targetRole === 'superAdmin' && !isSuperAdmin) {
-    const e = new Error('Only superAdmin can assign the superAdmin role'); e.status = 403; throw e;
+  if (targetRole === 'superAdmin') {
+    const e = new Error('Only one Super Admin account is allowed in the system.');
+    e.status = 403;
+    throw e;
   }
   // Block assigning a role strictly greater than the caller's.
   if (!isSuperAdmin && roles.hasAtLeast(targetRole, authedUser?.role)
@@ -178,7 +181,7 @@ exports.create = async ({ payload, authedUser }) => {
   });
   const cleanedFields = pickAllowedFields(payload.fields, allowed);
 
-  return userModel.create({
+  const createdUser = await userModel.create({
     name,
     email,
     password,
@@ -187,6 +190,25 @@ exports.create = async ({ payload, authedUser }) => {
     is_active: payload.is_active !== false,
     fields: cleanedFields,
   });
+
+  // Fetch organization to get organization name
+  void (async () => {
+    try {
+      const Organization = mongoose.model('Organization');
+      const org = await Organization.findOne({ industry_id }).exec();
+      const orgName = org ? (org.name || org.organization_name) : 'Leads Rubix Workspace';
+      await sendCredentialsEmail({
+        orgName,
+        userName: name,
+        emailAddress: email,
+        tempPassword: password
+      });
+    } catch (err) {
+      console.error('[userService] Failed to send credentials email on create:', err);
+    }
+  })();
+
+  return createdUser;
 };
 
 exports.update = async ({ id, payload, authedUser }) => {

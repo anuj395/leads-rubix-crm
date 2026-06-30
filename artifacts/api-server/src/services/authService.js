@@ -22,6 +22,11 @@ exports.signup = async (email, password, role, industry_id, name) => {
   }
 
   const finalRole = role || DEFAULT_ROLE;
+  if (finalRole === 'superAdmin') {
+    const err = new Error('Only one Super Admin account is allowed in the system.');
+    err.status = 403;
+    throw err;
+  }
   if (!userModel.ROLES.includes(finalRole)) {
     const err = new Error('Invalid role');
     err.status = 400;

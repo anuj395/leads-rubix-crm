@@ -72,11 +72,29 @@ router.get('/:key', authenticate, async (req, res) => {
   const { key } = req.params;
   
   if (key === 'countries') {
+    try {
+      const DropdownOption = mongoose.model('DropdownOption');
+      const list = await DropdownOption.find({ key: 'countries' }).lean().exec();
+      if (list && list.length > 0) {
+        return res.json({ items: list.map(item => ({ value: item.value, label: item.label })) });
+      }
+    } catch (err) {
+      console.error('Failed to load DB-driven countries', err);
+    }
     return res.json({ items: countryNames });
   }
   
   if (key === 'states') {
     const country = req.query.country || 'India';
+    try {
+      const DropdownOption = mongoose.model('DropdownOption');
+      const list = await DropdownOption.find({ key: `states_${country}` }).lean().exec();
+      if (list && list.length > 0) {
+        return res.json({ items: list.map(item => ({ value: item.value, label: item.label })) });
+      }
+    } catch (err) {
+      console.error('Failed to load DB-driven states', err);
+    }
     const list = STATES_BY_COUNTRY[country] || STATES_BY_COUNTRY['India'];
     const options = list.map(s => ({ value: s, label: s }));
     return res.json({ items: options });
@@ -105,6 +123,15 @@ router.get('/:key', authenticate, async (req, res) => {
   }
 
   if (key === 'country_codes') {
+    try {
+      const DropdownOption = mongoose.model('DropdownOption');
+      const list = await DropdownOption.find({ key: 'country_codes' }).lean().exec();
+      if (list && list.length > 0) {
+        return res.json({ items: list.map(item => ({ value: item.value, label: item.label })) });
+      }
+    } catch (err) {
+      console.error('Failed to load DB-driven country codes', err);
+    }
     const COUNTRY_CODES = [
       { value: '+91', label: '🇮🇳 India (+91)' },
       { value: '+1', label: '🇺🇸 United States (+1)' },
@@ -153,6 +180,16 @@ router.get('/:key', authenticate, async (req, res) => {
       console.error(err);
       return res.status(500).json({ message: 'Failed to fetch resource options' });
     }
+  }
+
+  try {
+    const DropdownOption = mongoose.model('DropdownOption');
+    const list = await DropdownOption.find({ key }).lean().exec();
+    if (list && list.length > 0) {
+      return res.json({ items: list.map(item => ({ value: item.value, label: item.label })) });
+    }
+  } catch (err) {
+    console.error('Failed to load DB-driven dropdown options', err);
   }
 
   const data = SOURCES[key];

@@ -11,6 +11,8 @@ const permissionModel = require('../models/screenPermissionModel');
 const userModel = require('../models/userModel');
 const industryModel = require('../models/industryModel');
 const roleModel = require('../models/roleModel');
+const mongoose = require('mongoose');
+const { sendCredentialsEmail } = require('../utils/mailer');
 
 const ORG_SCREEN_KEY = 'organization';
 
@@ -169,13 +171,30 @@ exports.create = async ({ payload, authedUser }) => {
     adminEmail = `admin-${Date.now()}@${(cleaned.code || payload.code || 'org').toLowerCase()}.com`;
   }
 
+  const adminName = `${orgName} Admin`;
+  const adminPassword = 'rubix1234';
+
   await userModel.create({
-    name: `${orgName} Admin`,
+    name: adminName,
     email: adminEmail.toLowerCase().trim(),
-    password: 'rubix1234',
+    password: adminPassword,
     role: 'admin',
     industry_id: industry_id,
   });
+
+  // Send credentials email
+  void (async () => {
+    try {
+      await sendCredentialsEmail({
+        orgName,
+        userName: adminName,
+        emailAddress: adminEmail.toLowerCase().trim(),
+        tempPassword: adminPassword
+      });
+    } catch (err) {
+      console.error('[organizationService] Failed to send credentials email for org admin:', err);
+    }
+  })();
 
   return orgDoc;
 };
