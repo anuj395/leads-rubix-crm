@@ -5,7 +5,16 @@ const roleModel = require('../models/roleModel');
 const industryModel = require('../models/industryModel');
 const userModel = require('../models/userModel');
 
-exports.list = (opts) => permissionModel.list(opts);
+exports.list = async (opts) => {
+  const items = await permissionModel.list(opts);
+  const q = { activeOnly: true };
+  if (opts && opts.screen_id) {
+    q.screen_id = opts.screen_id;
+  }
+  const fields = await fieldModel.list(q);
+  const validFieldIds = new Set(fields.map((f) => String(f._id)));
+  return items.filter((item) => validFieldIds.has(String(item.field_id)));
+};
 
 exports.bulkSet = async ({ screen_id, role_id, industry_id, field_ids }) => {
   if (!screen_id || !role_id || !industry_id) {

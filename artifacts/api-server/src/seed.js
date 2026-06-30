@@ -7,12 +7,73 @@ const path = require('path');
 const fs = require('fs');
 const mongoose = require('mongoose');
 
-const SEED_FILE = path.join(__dirname, '..', 'seed-data', 'users.json');
-const SIDEBAR_SEED_FILE = path.join(__dirname, '..', 'seed-data', 'sidebar_configs.json');
-const INDUSTRIES_SEED_FILE = path.join(__dirname, '..', 'seed-data', 'industries.json');
-const CONTACTS_SEED_FILE = path.join(__dirname, '..', 'seed-data', 'contacts.json');
-const ORGANIZATIONS_SEED_FILE = path.join(__dirname, '..', 'seed-data', 'organizations.json');
-const BOOKINGS_SEED_FILE = path.join(__dirname, '..', 'seed-data', 'bookings.json');
+const DEFAULT_INDUSTRIES = [
+  {
+    id: 'temp0001',
+    name: 'Real Estate'
+  }
+];
+
+const DEFAULT_SIDEBAR_CONFIGS = [
+  {
+    _id: new mongoose.Types.ObjectId('69e9f26fbc82449fb2eb7be6'),
+    industry_id: 'temp0001',
+    is_ready_to_launch: true,
+    roles: {
+      admin: [
+        { key: 'analytics', name: 'Analytics', route: '/analytics', icon: 'analytics', module: 'analytics' },
+        { key: 'leads.contact', name: 'Contacts List', route: '/leads/contacts', icon: 'contact', module: 'leads' },
+        { key: 'leads.tasks', name: 'Tasks List', route: '/leads/tasks', icon: 'tasks', module: 'leads' },
+        { key: 'leads.call', name: 'Call Logs List', route: '/leads/call-logs', icon: 'call', module: 'leads' },
+        { key: 'leads.booking', name: 'Bookings List', route: '/leads/bookings', icon: 'booking', module: 'leads' },
+        { key: 'configuration.projects', name: 'Projects List', route: '/configuration/projects', icon: 'projects', module: 'configuration' },
+        { key: 'configuration.whatsapp', name: 'Whatsapp API', route: '/configuration/whatsapp', icon: 'whatsapp', module: 'configuration' },
+        { key: 'configuration.resources', name: 'Resources', route: '/configuration/resources', icon: 'resources', module: 'configuration' },
+        { key: 'configuration.holiday', name: 'Holiday Config', route: '/configuration/holiday-config', icon: 'holiday', module: 'configuration' },
+        { key: 'configuration.days', name: 'Days Config', route: '/configuration/days-config', icon: 'days', module: 'configuration' },
+        { key: 'integrations.integrations', name: 'Integrations', route: '/integrations', icon: 'integrations', module: 'integrations' },
+        { key: 'integrations.api', name: 'API List', route: '/integrations/api', icon: 'api', module: 'integrations' },
+        { key: 'integrations.apiData', name: 'API Data', route: '/integrations/api-data', icon: 'apiData', module: 'integrations' },
+        { key: 'support.news', name: 'News List', route: '/support/news', icon: 'news', module: 'support' },
+        { key: 'support.faq', name: 'FAQ List', route: '/support/faq', icon: 'faq', module: 'support' },
+        { key: 'account.subscription', name: 'Subscription Details', route: '/account/subscription-details', icon: 'subscription', module: 'account' },
+        { key: 'account.password', name: 'Update Password', route: '/account/update-password', icon: 'password', module: 'account' }
+      ],
+      leadManager: [
+        { key: 'analytics', name: 'Analytics', route: '/analytics', icon: 'analytics', module: 'analytics' },
+        { key: 'leads.contact', name: 'Contacts List', route: '/leads/contacts', icon: 'contact', module: 'leads' },
+        { key: 'leads.tasks', name: 'Tasks List', route: '/leads/tasks', icon: 'tasks', module: 'leads' },
+        { key: 'leads.call', name: 'Call Logs List', route: '/leads/call-logs', icon: 'call', module: 'leads' },
+        { key: 'support.news', name: 'News List', route: '/support/news', icon: 'news', module: 'support' },
+        { key: 'support.faq', name: 'FAQ List', route: '/support/faq', icon: 'faq', module: 'support' },
+        { key: 'tool.areaConverter', name: 'Area Converter', route: '/tool/areaConverter', icon: 'areaConverter', module: 'tool' },
+        { key: 'tool.calculator', name: 'Calculator', route: '/tool/calculator', icon: 'calculator', module: 'tool' },
+        { key: 'tool.emiCalculator', name: 'EMI Calculator', route: '/tool/emi-calculator', icon: 'emiCalculator', module: 'tool' }
+      ],
+      sales: [
+        { key: 'leads.contact', name: 'Contacts List', route: '/leads/contacts', icon: 'contact', module: 'leads' },
+        { key: 'leads.tasks', name: 'Tasks List', route: '/leads/tasks', icon: 'tasks', module: 'leads' },
+        { key: 'leads.call', name: 'Call Logs List', route: '/leads/call-logs', icon: 'call', module: 'leads' },
+        { key: 'support.news', name: 'News List', route: '/support/news', icon: 'news', module: 'support' },
+        { key: 'support.faq', name: 'FAQ List', route: '/support/faq', icon: 'faq', module: 'support' },
+        { key: 'tool.areaConverter', name: 'Area Converter', route: '/tool/areaConverter', icon: 'areaConverter', module: 'tool' },
+        { key: 'tool.calculator', name: 'Calculator', route: '/tool/calculator', icon: 'calculator', module: 'tool' },
+        { key: 'tool.emiCalculator', name: 'EMI Calculator', route: '/tool/emi-calculator', icon: 'emiCalculator', module: 'tool' }
+      ],
+      teamLead: [
+        { key: 'analytics', name: 'Analytics', route: '/analytics', icon: 'analytics', module: 'analytics' },
+        { key: 'leads.contact', name: 'Contacts List', route: '/leads/contacts', icon: 'contact', module: 'leads' },
+        { key: 'leads.tasks', name: 'Tasks List', route: '/leads/tasks', icon: 'tasks', module: 'leads' },
+        { key: 'leads.call', name: 'Call Logs List', route: '/leads/call-logs', icon: 'call', module: 'leads' },
+        { key: 'support.news', name: 'News List', route: '/support/news', icon: 'news', module: 'support' },
+        { key: 'support.faq', name: 'FAQ List', route: '/support/faq', icon: 'faq', module: 'support' },
+        { key: 'tool.areaConverter', name: 'Area Converter', route: '/tool/areaConverter', icon: 'areaConverter', module: 'tool' },
+        { key: 'tool.calculator', name: 'Calculator', route: '/tool/calculator', icon: 'calculator', module: 'tool' },
+        { key: 'tool.emiCalculator', name: 'EMI Calculator', route: '/tool/emi-calculator', icon: 'emiCalculator', module: 'tool' }
+      ]
+    }
+  }
+];
 
 const ROLE_DISPLAY_NAMES = {
   superAdmin: 'Super Administrator',
@@ -135,10 +196,9 @@ async function migrateAndSeedSidebar() {
     /* swallow — collection may not exist */
   }
 
-  // Source 2: seed JSON file (used on a fresh in-memory DB)
-  if (!sources.length && fs.existsSync(SIDEBAR_SEED_FILE)) {
-    const raw = JSON.parse(fs.readFileSync(SIDEBAR_SEED_FILE, 'utf8'));
-    sources = (Array.isArray(raw) ? raw : [raw]).map(reviveEjson);
+  // Source 2: inlined default configs
+  if (!sources.length) {
+    sources = DEFAULT_SIDEBAR_CONFIGS;
   }
 
   sources = sources.filter(src => String(src.industry_id || '').toLowerCase().trim() === 'temp0001');
@@ -350,6 +410,104 @@ const SCREEN_DEFAULTS = [
       { field_key: 'team',          label: 'Assigned Team',  type: 'text',     is_required: false, order: 6 },
     ],
   },
+  {
+    key: 'config_api',
+    name: 'API Integration',
+    description: 'Manage incoming webhooks, country codes, and source triggers.',
+    fields: [
+      { field_key: 'organization_id', label: 'Organization', type: 'select', dropdown_source: 'api', dropdown_api: 'options/organizations', is_required: true, order: 1 },
+      { field_key: 'source', label: 'Source', type: 'select', dropdown_source: 'api', dropdown_api: 'options/resource_lead_sources?display=leadSource', is_required: true, order: 2 },
+      { field_key: 'country_code', label: 'Country Code', type: 'select', dropdown_source: 'api', dropdown_api: 'options/country_codes', is_required: true, order: 3 },
+      { field_key: 'status', label: 'Status', type: 'select', dropdown_source: 'static', options: ['ACTIVE', 'INACTIVE'], is_required: true, order: 4 },
+      { field_key: 'api_key', label: 'API Key', type: 'text', is_form_visible: false, is_required: false, order: 5 },
+      { field_key: 'createdAt', label: 'Created At', type: 'date', is_form_visible: false, is_required: false, order: 6 },
+    ]
+  },
+  {
+    key: 'config_projects',
+    name: 'Projects Catalog',
+    description: 'Catalog of property developments and sales listings.',
+    fields: [
+      { field_key: 'organization_id', label: 'Organization', type: 'select', dropdown_source: 'api', dropdown_api: 'options/organizations', is_required: true, order: 1 },
+      { field_key: 'developer_name', label: 'Developer Name', type: 'text', is_required: true, order: 2 },
+      { field_key: 'project_name', label: 'Project Name', type: 'text', is_required: true, order: 3 },
+      { field_key: 'property_type', label: 'Property Type', type: 'select', dropdown_source: 'api', dropdown_api: 'options/resource_property_types', is_required: true, order: 4 },
+      { field_key: 'property_stage', label: 'Property Stage', type: 'select', dropdown_source: 'api', dropdown_api: 'options/resource_property_stages', is_required: true, order: 5 },
+      { field_key: 'project_status', label: 'Property Status', type: 'select', dropdown_source: 'static', options: ['Launched', 'Pre Launch', 'Intermediate Occupation'], is_required: true, order: 6 },
+      { field_key: 'address', label: 'Address', type: 'text', is_required: false, order: 7 },
+      { field_key: 'rera_link', label: 'Rera Link', type: 'text', is_required: false, order: 8 },
+      { field_key: 'walkthrough_link', label: 'Walkthrough Link', type: 'text', is_required: false, order: 9 },
+      { field_key: 'status', label: 'Status', type: 'select', dropdown_source: 'static', options: ['ACTIVE', 'INACTIVE'], is_required: true, order: 10 },
+      { field_key: 'createdAt', label: 'Created At', type: 'date', is_form_visible: false, is_required: false, order: 11 },
+    ]
+  },
+  {
+    key: 'resource_carousel',
+    name: 'Carousel Banners',
+    description: 'Banners shown on mobile/web dashboard carousel',
+    fields: [
+      { field_key: 'url', label: 'Image URL', type: 'text', is_required: true, order: 1 },
+      { field_key: 'image_name', label: 'Image Name', type: 'text', is_required: true, order: 2 },
+    ]
+  },
+  {
+    key: 'resource_locations',
+    name: 'Locations',
+    description: 'Corporate and site branch locations',
+    fields: [
+      { field_key: 'locationName', label: 'Location Name', type: 'text', is_required: true, order: 1 },
+    ]
+  },
+  {
+    key: 'resource_lead_sources',
+    name: 'Lead Sources',
+    description: 'Marketing source channels',
+    fields: [
+      { field_key: 'leadSource', label: 'Lead Source Name', type: 'text', is_required: true, order: 1 },
+      { field_key: 'leadSourceColor', label: 'Color Hex', type: 'text', is_required: false, order: 2 },
+    ]
+  },
+  {
+    key: 'resource_budgets',
+    name: 'Budgets',
+    description: 'Standard budget options',
+    fields: [
+      { field_key: 'budget', label: 'Budget Range', type: 'text', is_required: true, order: 1 },
+    ]
+  },
+  {
+    key: 'resource_transfer_reasons',
+    name: 'Transfer Reasons',
+    description: 'Reasons for transferring leads',
+    fields: [
+      { field_key: 'reason', label: 'Reason', type: 'text', is_required: true, order: 1 },
+    ]
+  },
+  {
+    key: 'resource_property_stages',
+    name: 'Property Stages',
+    description: 'Construction stages',
+    fields: [
+      { field_key: 'stage', label: 'Stage Name', type: 'text', is_required: true, order: 1 },
+    ]
+  },
+  {
+    key: 'resource_property_types',
+    name: 'Property Types',
+    description: 'Property categories',
+    fields: [
+      { field_key: 'propertyType', label: 'Property Type', type: 'text', is_required: true, order: 1 },
+    ]
+  },
+  {
+    key: 'resource_property_sub_types',
+    name: 'Property Sub Types',
+    description: 'Property subcategories',
+    fields: [
+      { field_key: 'propertyType', label: 'Property Type', type: 'select', dropdown_source: 'api', dropdown_api: '/api/options/resource_property_types?display=propertyType', is_required: true, order: 1 },
+      { field_key: 'property_sub_type', label: 'Property Sub Type', type: 'text', is_required: true, order: 2 },
+    ]
+  }
 ];
 
 async function seedScreens() {
@@ -451,14 +609,9 @@ async function seedScreens() {
  * - Always runs on boot — it's a no-op once the rows already match.
  */
 async function seedIndustries() {
-  if (!fs.existsSync(INDUSTRIES_SEED_FILE)) {
-    console.log('[seed] no seed-data/industries.json found — skipping industry seed');
-    return;
-  }
   const Industry = mongoose.model('Industry');
   const Role = mongoose.model('Role');
-  const raw = JSON.parse(fs.readFileSync(INDUSTRIES_SEED_FILE, 'utf8'));
-  const entries = (Array.isArray(raw) ? raw : []).filter(e => String(e.id || '').toLowerCase().trim() === 'temp0001');
+  const entries = DEFAULT_INDUSTRIES;
 
   let inserted = 0;
   let updated = 0;
@@ -477,7 +630,7 @@ async function seedIndustries() {
     else updated += 1;
   }
   console.log(
-    `[seed] industries: ${inserted} inserted, ${updated} refreshed (from seed-data/industries.json)`,
+    `[seed] industries: ${inserted} inserted, ${updated} refreshed`,
   );
 
   // Make sure every industry has the default tenant-scoped roles. Without
