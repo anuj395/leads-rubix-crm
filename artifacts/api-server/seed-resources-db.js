@@ -65,7 +65,7 @@ const RESOURCE_SCREENS = [
     name: 'Carousel Banners',
     description: 'Banners shown on mobile/web dashboard carousel',
     fields: [
-      { field_key: 'url', label: 'Image URL', type: 'text', is_required: true, order: 1 },
+      { field_key: 'url', label: 'Image URL', type: 'image', is_required: true, order: 1 },
       { field_key: 'imageName', label: 'Image Name', type: 'text', is_required: true, order: 2 },
     ],
     items: [

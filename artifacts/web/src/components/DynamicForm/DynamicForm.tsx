@@ -530,6 +530,136 @@ export function DynamicForm({
             )
           }
 
+          if (f.type === 'image') {
+            const hasValue = typeof value === 'string' && value.startsWith('data:image');
+            const previewUrl = typeof value === 'string' ? value : '';
+            return (
+              <Box key={f.key} sx={{ gridColumn: { xs: '1', sm: '1 / -1' }, mb: 1 }}>
+                <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1, fontWeight: 500 }}>
+                  {labelWithRequired}
+                </Typography>
+                <input
+                  type="file"
+                  id={`image-upload-${f.key}`}
+                  accept="image/png, image/jpeg, image/jpg, image/gif, image/webp, image/svg+xml"
+                  style={{ display: 'none' }}
+                  disabled={readOnly}
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (!file) return;
+
+                    // Format Validation
+                    const allowedTypes = ['image/png', 'image/jpeg', 'image/jpg', 'image/gif', 'image/webp', 'image/svg+xml'];
+                    if (!allowedTypes.includes(file.type)) {
+                      setErrors(prev => ({ ...prev, [f.key]: 'Invalid image format. Supported formats: PNG, JPEG, JPG, GIF, WebP, SVG.' }));
+                      return;
+                    }
+
+                    // Size Validation: limit to 20MB
+                    const maxSize = 20 * 1024 * 1024;
+                    if (file.size > maxSize) {
+                      setErrors(prev => ({ ...prev, [f.key]: 'File size must not exceed 20 MB.' }));
+                      return;
+                    }
+
+                    // Clear error and convert to Base64
+                    setErrors(prev => {
+                      const next = { ...prev };
+                      delete next[f.key];
+                      return next;
+                    });
+
+                    const reader = new FileReader();
+                    reader.onload = (event) => {
+                      const base64 = event.target?.result as string;
+                      setValue(f.key, base64);
+                      // If the form has an imageName field, update it automatically
+                      if (values.hasOwnProperty('imageName')) {
+                        setValue('imageName', file.name);
+                      } else if (values.hasOwnProperty('image_name')) {
+                        setValue('image_name', file.name);
+                      }
+                    };
+                    reader.readAsDataURL(file);
+                  }}
+                />
+                <Stack direction="row" spacing={2} alignItems="center">
+                  {hasValue ? (
+                    <Box
+                      component="img"
+                      src={previewUrl}
+                      sx={{
+                        width: 120,
+                        height: 75,
+                        borderRadius: 1,
+                        objectFit: 'cover',
+                        border: '1px solid',
+                        borderColor: 'divider',
+                        boxShadow: 1
+                      }}
+                    />
+                  ) : (
+                    <Box
+                      sx={{
+                        width: 120,
+                        height: 75,
+                        borderRadius: 1,
+                        bgcolor: 'action.hover',
+                        border: '1px dashed',
+                        borderColor: 'divider',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center'
+                      }}
+                    >
+                      <Typography variant="caption" color="text.secondary">No Image</Typography>
+                    </Box>
+                  )}
+                  <Stack spacing={1}>
+                    <Stack direction="row" spacing={1}>
+                      <Button
+                        variant="outlined"
+                        size="small"
+                        disabled={readOnly}
+                        onClick={() => document.getElementById(`image-upload-${f.key}`)?.click()}
+                        sx={{ textTransform: 'none' }}
+                      >
+                        {hasValue ? 'Change Image' : 'Select Image'}
+                      </Button>
+                      {hasValue && (
+                        <Button
+                          variant="outlined"
+                          size="small"
+                          color="error"
+                          disabled={readOnly}
+                          onClick={() => {
+                            setValue(f.key, '');
+                            if (values.hasOwnProperty('imageName')) {
+                              setValue('imageName', '');
+                            } else if (values.hasOwnProperty('image_name')) {
+                              setValue('image_name', '');
+                            }
+                          }}
+                          sx={{ textTransform: 'none' }}
+                        >
+                          Remove
+                        </Button>
+                      )}
+                    </Stack>
+                    <Typography variant="caption" color="text.secondary">
+                      Max size: 20MB. Supports PNG, JPG, JPEG, GIF, WebP, SVG.
+                    </Typography>
+                    {err && (
+                      <Typography variant="caption" color="error">
+                        {err}
+                      </Typography>
+                    )}
+                  </Stack>
+                </Stack>
+              </Box>
+            );
+          }
+
           // text-like inputs
           const inputType =
             f.type === 'email' ? 'email' :

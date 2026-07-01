@@ -314,6 +314,24 @@ export default function ResourcesPage() {
       // Keep track of imported values in the current batch to prevent intra-CSV duplicates
       const currentBatchValues = new Set<string>()
 
+      let masterPropertyTypes: string[] = []
+      let masterPropertySubTypes: Array<{ propertyType: string; propertySubType: string }> = []
+
+      if (activeScreen.key === 'resourcePropertySubTypes') {
+        try {
+          const typesList = await getResources('resourcePropertyTypes', undefined, userIndustryCode)
+          masterPropertyTypes = typesList.map((t: any) => String(t.propertyType ?? '').trim().toLowerCase())
+
+          const subTypesList = await getResources('resourcePropertySubTypes', undefined, userIndustryCode)
+          masterPropertySubTypes = subTypesList.map((s: any) => ({
+            propertyType: String(s.propertyType ?? '').trim().toLowerCase(),
+            propertySubType: String(s.propertySubType ?? '').trim().toLowerCase()
+          }))
+        } catch (err) {
+          console.error('Failed to fetch master data', err)
+        }
+      }
+
       setLoading(true)
       for (const payload of parsedPayloads) {
         // 1. Required fields check
@@ -339,25 +357,43 @@ export default function ResourcesPage() {
           let duplicateReason = ''
 
           if (activeScreen.key === 'resourcePropertySubTypes') {
-            const batchKey = checkKeys.map(k => String(payload[k] ?? '').trim().toLowerCase()).join('::')
-            if (currentBatchValues.has(batchKey)) {
-              hasDuplicate = true
-              duplicateReason = 'Duplicate record found in the CSV file'
-            } else {
-              const existsInDB = rows.some((row) => {
-                return checkKeys.every((key) => {
-                  const rowVal = String(row[key] ?? '').trim().toLowerCase()
-                  const newVal = String(payload[key] ?? '').trim().toLowerCase()
-                  return rowVal && newVal && rowVal === newVal
-                })
+            const csvPropType = String(payload.propertyType ?? '').trim().toLowerCase()
+            const csvPropSubType = String(payload.propertySubType ?? '').trim().toLowerCase()
+
+            if (!masterPropertyTypes.includes(csvPropType)) {
+              failedRecords.push({
+                record: payload,
+                reason: 'Property Type does not exist in master data'
               })
-              if (existsInDB) {
-                hasDuplicate = true
-                duplicateReason = 'Record already exists in the database'
-              }
+              continue
             }
 
-            if (!hasDuplicate) {
+            const existingMapping = masterPropertySubTypes.find(m => m.propertySubType === csvPropSubType)
+            if (existingMapping && existingMapping.propertyType !== csvPropType) {
+              failedRecords.push({
+                record: payload,
+                reason: 'Property Sub Type belongs to a different Property Type'
+              })
+              continue
+            }
+
+            const existsInDB = masterPropertySubTypes.some(m => m.propertyType === csvPropType && m.propertySubType === csvPropSubType)
+            if (existsInDB) {
+              failedRecords.push({
+                record: payload,
+                reason: 'Record already exists in the database'
+              })
+              continue
+            }
+
+            const batchKey = `${csvPropType}::${csvPropSubType}`
+            if (currentBatchValues.has(batchKey)) {
+              failedRecords.push({
+                record: payload,
+                reason: 'Duplicate record found in the CSV file.'
+              })
+              continue
+            } else {
               currentBatchValues.add(batchKey)
             }
           } else {
@@ -609,7 +645,11 @@ export default function ResourcesPage() {
         sortable: header.sortable,
       }
 
-      if (header.type === 'avatar') {
+      if (header.type === 'image') {
+        col.renderCell = (p) => p.value ? <Box component="img" src={p.value} sx={{ width: 60, height: 36, borderRadius: 0.5, objectFit: 'cover', border: '1px solid', borderColor: 'divider', my: 'auto' }} /> : '-'
+        col.width = 100
+        col.flex = 0
+      } else if (header.type === 'avatar') {
         col.renderCell = (p) => <Avatar src={p.value} variant="rounded" sx={{ width: 36, height: 36 }} />
         col.width = 80
         col.flex = 0

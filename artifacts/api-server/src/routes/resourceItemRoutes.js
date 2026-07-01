@@ -91,6 +91,21 @@ router.post('/:resource_key', authenticate, async (req, res, next) => {
     // Extract dynamic data (except system metadata)
     const { industry_code, industry_id, organizationId: bodyOrgId, organization_id, ...payloadData } = req.body || {};
 
+    // Validate image file size (max 20MB)
+    const MAX_IMAGE_SIZE = 20 * 1024 * 1024;
+    for (const key of Object.keys(payloadData)) {
+      const val = payloadData[key];
+      if (typeof val === 'string' && val.startsWith('data:image')) {
+        const base64Data = val.split(',')[1] || '';
+        const sizeInBytes = (base64Data.length * 3) / 4;
+        if (sizeInBytes > MAX_IMAGE_SIZE) {
+          return res.status(400).json({ message: 'File size must not exceed 20 MB.' });
+        }
+      }
+    }
+
+
+
     const industryId = await resolveIndustryId(req);
 
     const doc = await resourceItemModel.create({
@@ -135,6 +150,21 @@ router.put('/:resource_key/:id', authenticate, async (req, res, next) => {
 
     const { industry_code, industry_id, organizationId: bodyOrgId, organization_id, id: bodyId, ...payloadData } = req.body || {};
 
+    // Validate image file size (max 20MB)
+    const MAX_IMAGE_SIZE = 20 * 1024 * 1024;
+    for (const key of Object.keys(payloadData)) {
+      const val = payloadData[key];
+      if (typeof val === 'string' && val.startsWith('data:image')) {
+        const base64Data = val.split(',')[1] || '';
+        const sizeInBytes = (base64Data.length * 3) / 4;
+        if (sizeInBytes > MAX_IMAGE_SIZE) {
+          return res.status(400).json({ message: 'File size must not exceed 20 MB.' });
+        }
+      }
+    }
+
+
+
     const updated = await resourceItemModel.update(id, payloadData);
 
     res.json({
@@ -169,6 +199,7 @@ router.delete('/:resource_key/:id', authenticate, async (req, res, next) => {
         return res.status(403).json({ message: 'Forbidden: Cannot delete resource from another organization' });
       }
     }
+
 
     await resourceItemModel.remove(id);
     res.status(204).end();
