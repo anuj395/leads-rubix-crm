@@ -144,7 +144,8 @@ export default function ApiListPage() {
       setLoading(true)
       const payload = {
         ...form,
-        organization_id: '', // Backend resolves Admin's organization_id automatically
+        organizationId: '',
+        organization_id: '', // Backend resolves Admin's organization ID automatically
       }
 
       if (editing) {
@@ -191,11 +192,11 @@ export default function ApiListPage() {
         sortable: header.sortable,
       }
 
-      if (header.key === 'organization_id') {
+      if (header.key === 'organizationId' || header.key === 'organization_id') {
         col.field = 'organization_name' as any
         col.flex = 1.2
         col.minWidth = 180
-        col.renderCell = (p) => <Box sx={{ fontWeight: 600 }}>{p.value || <em>Global Default</em>}</Box>
+        col.renderCell = (p) => <Box sx={{ fontWeight: 600 }}>{p.row.organization_name || p.row.organizationName || p.value || <em>Global Default</em>}</Box>
       } else if (header.key === 'source') {
         col.flex = 1.2
         col.minWidth = 180
@@ -252,7 +253,7 @@ export default function ApiListPage() {
   }, [resolvedScreen, items, leadSources])
 
   const renderField = (field: ResolvedFormField) => {
-    if (field.key === 'organization_id') {
+    if (field.key === 'organizationId' || field.key === 'organization_id') {
       return null
     }
 

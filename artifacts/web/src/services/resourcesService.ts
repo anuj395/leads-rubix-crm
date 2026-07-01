@@ -1,7 +1,7 @@
 import { api } from './api'
 
 export async function getResources(resourceKey: string, organizationId?: string): Promise<any[]> {
-  const qs = organizationId ? `?organization_id=${encodeURIComponent(organizationId)}` : ''
+  const qs = organizationId ? `?organizationId=${encodeURIComponent(organizationId)}` : ''
   const res = await api.get(`resources/${resourceKey}${qs}`)
   return (res.data ?? []) as any[]
 }
@@ -9,7 +9,7 @@ export async function getResources(resourceKey: string, organizationId?: string)
 export async function createResource(resourceKey: string, data: any, organizationId?: string): Promise<any> {
   const payload = {
     ...data,
-    ...(organizationId ? { organization_id: organizationId } : {}),
+    ...(organizationId ? { organizationId: organizationId } : {}),
   }
   const res = await api.post(`resources/${resourceKey}`, payload)
   return res.data

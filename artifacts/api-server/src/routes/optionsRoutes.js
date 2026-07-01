@@ -127,7 +127,7 @@ router.get('/:key', (req, res, next) => {
     try {
       const Organization = mongoose.model('Organization');
       const list = await Organization.find({}).sort({ name: 1 }).lean().exec();
-      const options = list.map(org => ({ value: String(org.organization_id || org._id), label: org.name }));
+      const options = list.map(org => ({ value: String(org.organizationId || org.organization_id || org._id), label: org.name || org.organizationName }));
       return res.json({ items: options });
     } catch (err) {
       return res.status(500).json({ message: 'Failed to fetch organizations' });
@@ -165,15 +165,16 @@ router.get('/:key', (req, res, next) => {
     try {
       let orgId = null;
       if (req.user.role === 'superAdmin') {
-        orgId = (req.query.organization_id === 'null' || !req.query.organization_id) ? null : req.query.organization_id;
+        orgId = req.query.organizationId || req.query.organization_id;
+        if (orgId === 'null' || orgId === '') orgId = null;
       } else {
         const Organization = mongoose.model('Organization');
         const org = await Organization.findOne({ industryId: req.user.industry_id }).exec();
-        orgId = org ? org.organization_id : null;
+        orgId = org ? (org.organizationId || org.organization_id) : null;
       }
 
       const list = await resourceItemModel.list({
-        organization_id: orgId,
+        organizationId: orgId,
         resource_key: key,
       });
 

@@ -18,7 +18,7 @@ function getFieldName(resourceKey) {
 
 const organizationResourcesSchema = new mongoose.Schema(
   {
-    organization_id: { type: String, default: null, index: true },
+    organizationId: { type: String, default: null, index: true },
     PropertyStages: { type: Array, default: [] },
     PropertySubTypes: { type: Array, default: [] },
     PropertyTypes: { type: Array, default: [] },
@@ -36,7 +36,7 @@ const OrganizationResources = mongoose.model('OrganizationResources', organizati
 
 exports.ResourceItem = OrganizationResources;
 
-exports.list = async ({ organization_id, resource_key, all = false } = {}) => {
+exports.list = async ({ organizationId, resource_key, all = false } = {}) => {
   if (resource_key === 'resource_projects' && all) {
     const docs = await OrganizationResources.find({}).lean().exec();
     const allProjects = [];
@@ -44,16 +44,16 @@ exports.list = async ({ organization_id, resource_key, all = false } = {}) => {
     const orgs = await Organization.find({}).lean().exec();
     const orgMap = {};
     orgs.forEach(o => {
-      orgMap[o.organization_id || o._id.toString()] = o.name || o.organization_name || '';
+      orgMap[o.organizationId || o._id.toString()] = o.name || o.organization_name || '';
     });
 
     docs.forEach(doc => {
-      const orgId = doc.organization_id;
+      const orgId = doc.organizationId;
       const orgName = orgMap[orgId] || '';
       if (Array.isArray(doc.projects)) {
         doc.projects.forEach(p => {
           allProjects.push({
-            organization_id: orgId,
+            organizationId: orgId,
             organization_name: orgName,
             ...p,
           });
@@ -68,11 +68,11 @@ exports.list = async ({ organization_id, resource_key, all = false } = {}) => {
     });
   }
 
-  const targetOrgId = (organization_id === 'null' || !organization_id) ? null : organization_id;
-  let doc = await OrganizationResources.findOne({ organization_id: targetOrgId }).lean().exec();
+  const targetOrgId = (organizationId === 'null' || !organizationId) ? null : organizationId;
+  let doc = await OrganizationResources.findOne({ organizationId: targetOrgId }).lean().exec();
   // Fallback to global defaults if no custom organization resources document exists yet
   if (!doc && targetOrgId !== null && targetOrgId !== '') {
-    doc = await OrganizationResources.findOne({ organization_id: null }).lean().exec();
+    doc = await OrganizationResources.findOne({ organizationId: null }).lean().exec();
   }
   if (!doc) return [];
   const fieldName = getFieldName(resource_key);
@@ -97,7 +97,7 @@ exports.findById = async (id) => {
       if (item) {
         return {
           ...item,
-          organization_id: doc.organization_id,
+          organizationId: doc.organizationId,
         };
       }
     }
@@ -105,10 +105,10 @@ exports.findById = async (id) => {
   return null;
 };
 
-exports.create = async ({ organization_id, resource_key, data }) => {
-  let doc = await OrganizationResources.findOne({ organization_id }).exec();
+exports.create = async ({ organizationId, resource_key, data }) => {
+  let doc = await OrganizationResources.findOne({ organizationId }).exec();
   if (!doc) {
-    doc = new OrganizationResources({ organization_id });
+    doc = new OrganizationResources({ organizationId });
   }
 
   const itemId = new mongoose.Types.ObjectId().toString();

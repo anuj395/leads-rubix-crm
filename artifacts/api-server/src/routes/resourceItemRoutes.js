@@ -10,8 +10,8 @@ async function resolveOrganizationId(req) {
   const Organization = mongoose.model('Organization');
   
   if (req.user.role === 'superAdmin') {
-    // SuperAdmin can specify organization_id in query or body
-    let targetOrgId = req.query.organization_id || req.body.organization_id;
+    // SuperAdmin can specify organizationId in query or body
+    let targetOrgId = req.query.organizationId || req.query.organization_id || req.body.organizationId || req.body.organization_id;
     if (targetOrgId === 'null' || targetOrgId === '') {
       return null;
     }
@@ -22,7 +22,7 @@ async function resolveOrganizationId(req) {
   } else {
     // Regular admin or user: resolve orgId via their user industry_id
     const org = await Organization.findOne({ industryId: req.user.industry_id }).exec();
-    return org ? org.organization_id : null;
+    return org ? (org.organizationId || org.organization_id) : null;
   }
 }
 
@@ -37,7 +37,7 @@ router.get('/:resource_key', authenticate, async (req, res, next) => {
 
     const items = await resourceItemModel.list({
       resource_key,
-      organization_id: orgId,
+      organizationId: orgId,
       all: req.query.all === 'true',
     });
 
@@ -68,10 +68,10 @@ router.post('/:resource_key', authenticate, async (req, res, next) => {
     }
 
     // Extract dynamic data (except system metadata)
-    const { industry_code, industry_id, organization_id, ...payloadData } = req.body || {};
+    const { industry_code, industry_id, organizationId: bodyOrgId, organization_id, ...payloadData } = req.body || {};
 
     const doc = await resourceItemModel.create({
-      organization_id: orgId,
+      organizationId: orgId,
       resource_key,
       data: payloadData,
     });
@@ -103,13 +103,13 @@ router.put('/:resource_key/:id', authenticate, async (req, res, next) => {
     if (req.user.role !== 'superAdmin') {
       const Organization = mongoose.model('Organization');
       const org = await Organization.findOne({ industryId: req.user.industry_id }).exec();
-      const userOrgId = org ? org.organization_id : null;
-      if (!userOrgId || String(doc.organization_id) !== String(userOrgId)) {
+      const userOrgId = org ? (org.organizationId || org.organization_id) : null;
+      if (!userOrgId || String(doc.organizationId || doc.organization_id) !== String(userOrgId)) {
         return res.status(403).json({ message: 'Forbidden: Cannot edit resource from another organization' });
       }
     }
 
-    const { industry_code, industry_id, organization_id, id: bodyId, ...payloadData } = req.body || {};
+    const { industry_code, industry_id, organizationId: bodyOrgId, organization_id, id: bodyId, ...payloadData } = req.body || {};
 
     const updated = await resourceItemModel.update(id, payloadData);
 
@@ -140,8 +140,8 @@ router.delete('/:resource_key/:id', authenticate, async (req, res, next) => {
     if (req.user.role !== 'superAdmin') {
       const Organization = mongoose.model('Organization');
       const org = await Organization.findOne({ industryId: req.user.industry_id }).exec();
-      const userOrgId = org ? org.organization_id : null;
-      if (!userOrgId || String(doc.organization_id) !== String(userOrgId)) {
+      const userOrgId = org ? (org.organizationId || org.organization_id) : null;
+      if (!userOrgId || String(doc.organizationId || doc.organization_id) !== String(userOrgId)) {
         return res.status(403).json({ message: 'Forbidden: Cannot delete resource from another organization' });
       }
     }

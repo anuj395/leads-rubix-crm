@@ -1,8 +1,7 @@
+require('dotenv').config();
 const mongoose = require('mongoose');
 
 const uri = process.env.MONGO_URI || 'mongodb://localhost:27017/leadsrubix-migrate-crm';
-
-// Define schemas if they aren't registered yet (since we are running standalone)
 const ScreenSchema = new mongoose.Schema({
   key: { type: String, required: true, unique: true },
   name: { type: String, required: true },
@@ -161,10 +160,25 @@ const RESOURCE_SCREENS = [
     ]
   }
 ];
-
 async function main() {
   await mongoose.connect(uri);
   console.log('Connected to DB');
+
+  // Perform database migration to rename organization_id to organizationId in resource_items
+  const db = mongoose.connection.db;
+  const collection = db.collection('resource_items');
+  const cursor = collection.find({ organization_id: { $exists: true } });
+  while (await cursor.hasNext()) {
+    const doc = await cursor.next();
+    await collection.updateOne(
+      { _id: doc._id },
+      {
+        $set: { organizationId: doc.organization_id },
+        $unset: { organization_id: "" }
+      }
+    );
+  }
+  console.log('Database migration of organization_id completed successfully!');
 
   // Resolve Real Estate industry (code: temp0001)
   const realEstate = await Industry.findOne({ code: 'temp0001' });

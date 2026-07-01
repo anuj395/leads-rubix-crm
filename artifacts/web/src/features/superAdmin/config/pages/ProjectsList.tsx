@@ -47,7 +47,9 @@ export interface Project {
   property_stage: string
   project_status: 'Launched' | 'Pre Launch' | 'Intermediate Occupation'
   status: 'ACTIVE' | 'INACTIVE'
+  organizationId?: string
   organization_id?: string
+  organizationName?: string
   organization_name?: string
   createdAt?: string
 }
@@ -100,10 +102,10 @@ export default function ProjectsListPage() {
       // Filter projects to only those belonging to organizations under the active industry
       const orgIdsInIndustry = (resOrgs.items || [])
         .filter((o: Organization) => o.industry_id === activeIndustry || o.industryId === activeIndustry)
-        .map((o: Organization) => String(o.organization_id || ''))
+        .map((o: Organization) => String(o.organizationId || o.organization_id || ''))
 
       const filteredProjects = (resProjects.data || []).filter((p: Project) =>
-        orgIdsInIndustry.includes(String(p.organization_id || ''))
+        orgIdsInIndustry.includes(String(p.organizationId || p.organization_id || ''))
       )
       setItems(filteredProjects)
     } catch (e: any) {
@@ -130,7 +132,7 @@ export default function ProjectsListPage() {
 
   const openEditDialog = (proj: Project) => {
     setEditing(proj)
-    const org = organizations.find(o => o.organization_id === proj.organization_id)
+    const org = organizations.find(o => (o.organizationId || o.organization_id) === (proj.organizationId || proj.organization_id))
     const industryForForm = (org?.industry_id || org?.industryId || selectedIndustry || industries[0]?.code || '') as string
     setSelectedIndustryInForm(industryForForm)
     setDialogOpen(true)
@@ -182,11 +184,11 @@ export default function ProjectsListPage() {
         sortable: header.sortable,
       }
 
-      if (header.key === 'organization_id') {
+      if (header.key === 'organizationId' || header.key === 'organization_id') {
         col.field = 'organization_name' as any
         col.flex = 1.2
         col.minWidth = 160
-        col.renderCell = (p) => <Box sx={{ fontWeight: 600 }}>{p.value || <em>Global</em>}</Box>
+        col.renderCell = (p) => <Box sx={{ fontWeight: 600 }}>{p.row.organization_name || p.row.organizationName || p.value || <em>Global</em>}</Box>
       } else if (header.key === 'project_name') {
         col.flex = 1.2
         col.minWidth = 160
@@ -395,7 +397,7 @@ export default function ProjectsListPage() {
                   screen="configProjects"
                   industry_code={selectedIndustryInForm}
                   role_key="admin"
-                  initialValues={editing ? (editing as any) : { organization_id: '', status: 'ACTIVE' }}
+                  initialValues={editing ? (editing as any) : { organizationId: '', status: 'ACTIVE' }}
                   onCancel={() => setDialogOpen(false)}
                   submitLabel={editing ? 'Save' : 'Create'}
                   onSubmit={async (values) => {

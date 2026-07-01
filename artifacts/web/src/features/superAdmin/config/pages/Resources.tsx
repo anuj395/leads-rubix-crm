@@ -126,7 +126,7 @@ export default function ResourcesPage() {
 
   // Load configuration and data for selected screen / organization
   const activeScreen = resourceScreens[activeTab]
-  const activeOrg = organizations.find((o) => o.organization_id === selectedOrgId)
+  const activeOrg = organizations.find((o) => (o.organizationId || o.organization_id) === selectedOrgId)
   const selectedIndustry = activeOrg?.industry_id || selectedIndustryState || 'temp0001'
 
   useEffect(() => {

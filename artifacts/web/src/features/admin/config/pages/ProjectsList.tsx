@@ -205,7 +205,7 @@ export default function ProjectsListPage() {
 
     const cols: GridColDef<Project>[] = resolvedScreen.table_headers.map((header) => {
       // Admin doesn't need to see organization name/id column
-      if (header.key === 'organization_id') return null
+      if (header.key === 'organizationId' || header.key === 'organization_id') return null
 
       const col: GridColDef<Project> = {
         field: header.key as keyof Project,
@@ -282,8 +282,8 @@ export default function ProjectsListPage() {
   }, [resolvedScreen, items])
 
   const renderField = (field: ResolvedFormField) => {
-    // Admin does not render organization_id input field
-    if (field.key === 'organization_id') return null
+    // Admin does not render organizationId or organization_id input field
+    if (field.key === 'organizationId' || field.key === 'organization_id') return null
 
     if (field.key === 'developer_name') {
       return (
