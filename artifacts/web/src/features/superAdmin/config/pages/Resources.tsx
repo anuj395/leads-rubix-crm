@@ -43,6 +43,7 @@ import { getScreens, resolveScreen, type Screen, type ResolvedScreen, type Resol
 import { getResources, createResource, updateResource, deleteResource } from '@/services/resourcesService'
 import { listOrganizationsPaged, type Organization } from '@/services/organizationsService'
 import { api } from '@/services/api'
+import { DynamicForm } from '@/components/DynamicForm/DynamicForm'
 import { useConfirm } from '@/components/common/ConfirmContext'
 
 export default function ResourcesPage() {
@@ -66,8 +67,6 @@ export default function ResourcesPage() {
   // Modals & Forms State
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editingItem, setEditingItem] = useState<any | null>(null)
-  const [formValues, setFormValues] = useState<Record<string, any>>({})
-  const [apiDropdownOptions, setApiDropdownOptions] = useState<Record<string, Array<{ value: string; label: string }>>>({})
 
   // Import Summary State
   const [importSummaryOpen, setImportSummaryOpen] = useState(false)
@@ -194,50 +193,7 @@ export default function ResourcesPage() {
     }
   }, [activeScreen, selectedOrgId, selectedIndustry])
 
-  // Resolve API-driven select options
-  useEffect(() => {
-    if (!resolvedScreen) return
-    resolvedScreen.form_fields.forEach((field) => {
-      if (field.type === 'select' && field.dropdown_source === 'api' && field.dropdown_api) {
-        const isAbsolute = /^https?:\/\//i.test(field.dropdown_api)
-        const path = isAbsolute
-          ? field.dropdown_api
-          : field.dropdown_api.replace(/^\/+/, '').replace(/^api\//, '')
 
-        const connector = path.includes('?') ? '&' : '?'
-        const orgParam = selectedOrgId ? `&organization_id=${encodeURIComponent(selectedOrgId)}` : ''
-        let targetUrl = `${path}${connector}industry_code=${encodeURIComponent(selectedIndustry)}${orgParam}`
-        if (path.includes('options/industries')) {
-          const conn = targetUrl.includes('?') ? '&' : '?'
-          targetUrl += `${conn}launchedOnly=true`
-        }
-        
-        void (async () => {
-          try {
-            const res = await api.get(targetUrl)
-            const raw = res.data?.items ?? res.data ?? []
-            const list = Array.isArray(raw)
-              ? raw
-              : Array.isArray(raw.items)
-                ? raw.items
-                : []
-            const options = list.map((entry: any) => {
-              if (entry && typeof entry === 'object') {
-                return {
-                  value: String(entry.value ?? entry.id ?? entry.key ?? ''),
-                  label: String(entry.label ?? entry.name ?? entry.value ?? ''),
-                }
-              }
-              return { value: String(entry), label: String(entry) }
-            })
-            setApiDropdownOptions((prev) => ({ ...prev, [field.key]: options }))
-          } catch (e) {
-            console.error('Failed to load api option source', e)
-          }
-        })()
-      }
-    })
-  }, [resolvedScreen, selectedIndustry, selectedOrgId])
 
   const handleExport = () => {
     if (!resolvedScreen || rows.length === 0) return
@@ -535,89 +491,13 @@ export default function ResourcesPage() {
   }
 
   const openAdd = () => {
-    if (!resolvedScreen) return
-    const initial: Record<string, any> = {}
-    resolvedScreen.form_fields.forEach((f) => {
-      initial[f.key] = f.type === 'checkbox' ? false : ''
-    })
-    setFormValues(initial)
     setEditingItem(null)
     setDialogOpen(true)
   }
 
   const openEdit = (item: any) => {
-    if (!resolvedScreen) return
-    const values: Record<string, any> = {}
-    resolvedScreen.form_fields.forEach((f) => {
-      values[f.key] = item[f.key] !== undefined ? item[f.key] : (f.type === 'checkbox' ? false : '')
-    })
-    setFormValues(values)
     setEditingItem(item)
     setDialogOpen(true)
-  }
-
-  const handleSave = async () => {
-    if (!activeScreen || !resolvedScreen) return
-
-    // Trim and check required fields
-    for (const field of resolvedScreen.form_fields) {
-      const val = formValues[field.key]
-      if (field.required && (!val || (typeof val === 'string' && !val.trim()))) {
-        setToast({ open: true, msg: `${field.label} is required`, sev: 'error' })
-        return
-      }
-    }
-
-    const uniqueKeys = resolvedScreen.form_fields
-      .map(f => f.key)
-      .filter(k => k === 'value' || k === 'locationName' || k === 'leadSourceId' || k === 'propertyType' || k === 'property_sub_type' || k === 'reason' || k === 'stage')
-    
-    const checkKeys = uniqueKeys.length > 0 ? uniqueKeys : (resolvedScreen.form_fields[0] ? [resolvedScreen.form_fields[0].key] : [])
-
-    if (checkKeys.length > 0) {
-      const isDuplicate = rows.some((row) => {
-        if (editingItem && (row.id === editingItem.id || row._id === editingItem.id)) {
-          return false
-        }
-        if (activeScreen.key === 'resource_property_sub_types') {
-          return checkKeys.every((key) => {
-            const rowVal = String(row[key] ?? '').trim().toLowerCase()
-            const newVal = String(formValues[key] ?? '').trim().toLowerCase()
-            return rowVal && newVal && rowVal === newVal
-          })
-        }
-        return checkKeys.some((key) => {
-          const rowVal = String(row[key] ?? '').trim().toLowerCase()
-          const newVal = String(formValues[key] ?? '').trim().toLowerCase()
-          return rowVal && newVal && rowVal === newVal
-        })
-      })
-
-      if (isDuplicate) {
-        setToast({ open: true, msg: 'This item already exists.', sev: 'error' })
-        return
-      }
-    }
-
-    try {
-      const cacheKey = `${activeScreen.key}_${selectedOrgId}`
-      if (editingItem) {
-        const updated = await updateResource(activeScreen.key, editingItem.id, formValues)
-        const nextRows = rows.map((r) => r.id === editingItem.id ? updated : r)
-        setRows(nextRows)
-        setResourceDataCache((prev) => ({ ...prev, [cacheKey]: nextRows }))
-        setToast({ open: true, msg: 'Updated successfully!', sev: 'success' })
-      } else {
-        const created = await createResource(activeScreen.key, formValues, selectedOrgId)
-        const nextRows = [created, ...rows]
-        setRows(nextRows)
-        setResourceDataCache((prev) => ({ ...prev, [cacheKey]: nextRows }))
-        setToast({ open: true, msg: 'Created successfully!', sev: 'success' })
-      }
-      setDialogOpen(false)
-    } catch (e: any) {
-      setToast({ open: true, msg: e?.response?.data?.message ?? 'Failed to save resource', sev: 'error' })
-    }
   }
 
   // Dynamic columns for AppDataGrid
@@ -699,138 +579,7 @@ export default function ResourcesPage() {
     return cols
   }, [resolvedScreen, rows])
 
-  const renderField = (field: ResolvedFormField) => {
-    if (field.key === 'url' || field.key === 'image' || field.type === 'avatar') {
-      return (
-        <Box key={field.key} sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-          <Typography variant="body2" sx={{ fontWeight: 600, color: 'text.secondary' }}>
-            {field.label} {field.required && <span style={{ color: 'red' }}>*</span>}
-          </Typography>
-          <Box
-            sx={{
-              border: '2px dashed',
-              borderColor: 'divider',
-              borderRadius: 2,
-              p: 3,
-              textAlign: 'center',
-              cursor: 'pointer',
-              bgcolor: 'action.hover',
-              transition: 'all 0.2s',
-              '&:hover': {
-                borderColor: 'primary.main',
-                bgcolor: 'action.selected',
-              },
-            }}
-            onClick={() => document.getElementById(`file-input-${field.key}`)?.click()}
-          >
-            <input
-              type="file"
-              id={`file-input-${field.key}`}
-              accept="image/*"
-              style={{ display: 'none' }}
-              onChange={(e) => {
-                const file = e.target.files?.[0]
-                if (file) {
-                  const reader = new FileReader()
-                  reader.onload = (event) => {
-                    const base64 = event.target?.result as string
-                    setFormValues((prev) => {
-                      const next = { ...prev, [field.key]: base64 }
-                      if (prev.hasOwnProperty('image_name')) {
-                        next['image_name'] = file.name
-                      }
-                      return next
-                    })
-                  }
-                  reader.readAsDataURL(file)
-                }
-              }}
-            />
-            {formValues[field.key] ? (
-              <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1.5 }}>
-                <Box
-                  component="img"
-                  src={formValues[field.key]}
-                  sx={{
-                    maxWidth: '100%',
-                    maxHeight: 120,
-                    borderRadius: 1.5,
-                    objectFit: 'contain',
-                    boxShadow: 2,
-                  }}
-                />
-                <Button size="small" variant="outlined" color="primary" sx={{ textTransform: 'none', fontWeight: 600 }}>
-                  Change Image
-                </Button>
-              </Box>
-            ) : (
-              <Box sx={{ py: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1 }}>
-                <UploadIcon sx={{ fontSize: 32, color: 'text.secondary' }} />
-                <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 500 }}>
-                  Click to upload image
-                </Typography>
-              </Box>
-            )}
-          </Box>
-        </Box>
-      )
-    }
 
-    if (field.type === 'checkbox') {
-      return (
-        <FormControlLabel
-          key={field.key}
-          control={
-            <Checkbox
-              checked={!!formValues[field.key]}
-              onChange={(e) => setFormValues((prev) => ({ ...prev, [field.key]: e.target.checked }))}
-            />
-          }
-          label={field.label}
-        />
-      )
-    }
-
-    if (field.type === 'select') {
-      const options = field.dropdown_source === 'static'
-        ? (field.options || []).map(o => ({ value: o, label: o }))
-        : (apiDropdownOptions[field.key] || [])
-
-      return (
-        <TextField
-          key={field.key}
-          fullWidth
-          select
-          label={field.label}
-          value={formValues[field.key] || ''}
-          onChange={(e) => setFormValues((prev) => ({ ...prev, [field.key]: e.target.value }))}
-          required={field.required}
-        >
-          {options.map((opt) => (
-            <MenuItem key={opt.value} value={opt.value}>
-              {opt.label}
-            </MenuItem>
-          ))}
-        </TextField>
-      )
-    }
-
-    return (
-      <TextField
-        key={field.key}
-        fullWidth
-        label={field.label}
-        type={field.type === 'number' ? 'number' : field.type === 'date' ? 'date' : 'text'}
-        InputLabelProps={field.type === 'date' ? { shrink: true } : undefined}
-        multiline={field.type === 'textarea'}
-        rows={field.type === 'textarea' ? 3 : 1}
-        value={formValues[field.key] || ''}
-        onChange={(e) => setFormValues((prev) => ({ ...prev, [field.key]: e.target.value }))}
-        placeholder={`Enter ${field.label.toLowerCase()}`}
-        required={field.required}
-      />
-    )
-  }
 
   return (
     <Box sx={{ p: { xs: 2, sm: 3 }, width: '100%', minWidth: 0, height: '100%', display: 'flex', flexDirection: 'column', gap: 3, overflow: 'hidden' }}>
@@ -964,7 +713,7 @@ export default function ResourcesPage() {
         open={dialogOpen} 
         onClose={() => setDialogOpen(false)} 
         fullWidth 
-        maxWidth="lg"
+        maxWidth="md"
         PaperProps={{
           sx: {
             width: '100%',
@@ -976,49 +725,33 @@ export default function ResourcesPage() {
           {editingItem ? 'Edit' : 'Add'} {resolvedScreen?.screen.name}
         </DialogTitle>
         <DialogContent dividers>
-          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5, pt: 1 }}>
-            {(() => {
-              const fields = resolvedScreen?.form_fields || []
-              const renderedKeys = new Set<string>()
-
-              return fields.map((field) => {
-                if (renderedKeys.has(field.key)) return null
-
-                // Group value and country_code side-by-side (2fr 1fr)
-                if (field.key === 'value') {
-                  const countryCodeField = fields.find(f => f.key === 'country_code')
-                  if (countryCodeField) {
-                    renderedKeys.add('country_code')
-                    return (
-                      <Box key={field.key} sx={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 2 }}>
-                        {renderField(field)}
-                        {renderField(countryCodeField)}
-                      </Box>
-                    )
+          {activeScreen && (
+            <DynamicForm
+              screen={activeScreen.key}
+              industry_code={selectedIndustry}
+              role_key="admin"
+              initialValues={editingItem ? editingItem : {}}
+              onCancel={() => setDialogOpen(false)}
+              submitLabel={editingItem ? 'Save' : 'Create'}
+              onSubmit={async (values) => {
+                try {
+                  if (editingItem) {
+                    await updateResource(activeScreen.key, editingItem.id, values as any)
+                    setToast({ open: true, msg: 'Item updated successfully', sev: 'success' })
+                  } else {
+                    await createResource(activeScreen.key, values as any, selectedOrgId)
+                    setToast({ open: true, msg: 'Item created successfully', sev: 'success' })
                   }
-
-                  // Group value and color side-by-side (2fr 1fr)
-                  const colorField = fields.find(f => f.key === 'color')
-                  if (colorField) {
-                    renderedKeys.add('color')
-                    return (
-                      <Box key={field.key} sx={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 2 }}>
-                        {renderField(field)}
-                        {renderField(colorField)}
-                      </Box>
-                    )
-                  }
+                  setDialogOpen(false)
+                  const items = await getResources(activeScreen.key, selectedOrgId)
+                  setRows(items)
+                } catch (e: any) {
+                  setToast({ open: true, msg: e?.response?.data?.message || 'Failed to save resource', sev: 'error' })
                 }
-
-                return renderField(field)
-              })
-            })()}
-          </Box>
+              }}
+            />
+          )}
         </DialogContent>
-        <DialogActions sx={{ p: 2 }}>
-          <Button onClick={() => setDialogOpen(false)}>Cancel</Button>
-          <Button onClick={handleSave} variant="contained">Save</Button>
-        </DialogActions>
       </Dialog>
 
       <Snackbar

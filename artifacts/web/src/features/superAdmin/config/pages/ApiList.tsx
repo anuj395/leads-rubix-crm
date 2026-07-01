@@ -26,25 +26,15 @@ import { getResources } from '@/services/resourcesService'
 import { resolveScreen, type ResolvedScreen, type ResolvedFormField } from '@/services/screenAdminService'
 import { useConfirm } from '@/components/common/ConfirmContext'
 import { getIndustries, type Industry } from '@/services/sidebarAdminService'
-
-const COUNTRY_CODES = [
-  { code: '+91', label: '🇮🇳 India (+91)' },
-  { code: '+1', label: '🇺🇸 United States (+1)' },
-  { code: '+44', label: '🇬🇧 United Kingdom (+44)' },
-  { code: '+971', label: '🇦🇪 UAE (+971)' },
-  { code: '+65', label: '🇸🇬 Singapore (+65)' },
-  { code: '+61', label: '🇦🇺 Australia (+61)' },
-]
+import { DynamicForm } from '@/components/DynamicForm/DynamicForm'
 
 // Stale-while-revalidate frontend caches for instant loading
 const tokensCache = { data: [] as ApiTokenConfig[], initialized: false }
-const leadSourcesCache = new Map<string, any[]>()
 const organizationsCache = { data: [] as Organization[], initialized: false }
 
 export default function ApiListPage() {
   const [items, setItems] = useState<ApiTokenConfig[]>(tokensCache.data)
   const [organizations, setOrganizations] = useState<Organization[]>(organizationsCache.data)
-  const [leadSources, setLeadSources] = useState<any[]>([])
   const [industries, setIndustries] = useState<Industry[]>([])
   const [selectedIndustry, setSelectedIndustry] = useState<string>('')
   const [loading, setLoading] = useState(false)
@@ -58,33 +48,28 @@ export default function ApiListPage() {
     sev: 'success',
   })
 
-  // Form state
-  const [form, setForm] = useState({
-    organization_id: '',
-    leadSourceId: '',
-    source: '',
-    country_code: '+91',
-    status: 'ACTIVE' as ApiTokenConfig['status'],
-  })
-
   const loadData = async (targetIndustry?: string) => {
     try {
       if (!tokensCache.initialized || !organizationsCache.initialized) {
         setLoading(true)
       }
       
-      const [tokens, orgsData, resolved, inds] = await Promise.all([
-        getApiTokens(),
-        listOrganizationsPaged({ page: 0, pageSize: 100 }),
-        resolveScreen({ screen_key: 'config_api' }),
-        getIndustries(true)
-      ])
+      let currentIndustries = industries
+      if (currentIndustries.length === 0) {
+        currentIndustries = await getIndustries(true)
+        setIndustries(currentIndustries)
+      }
 
-      setIndustries(inds)
-      const activeIndustry = targetIndustry || selectedIndustry || inds[0]?.code || ''
+      const activeIndustry = targetIndustry || selectedIndustry || currentIndustries[0]?.code || ''
       if (activeIndustry && selectedIndustry !== activeIndustry) {
         setSelectedIndustry(activeIndustry)
       }
+
+      const [tokens, orgsData, resolved] = await Promise.all([
+        getApiTokens(),
+        listOrganizationsPaged({ page: 0, pageSize: 100 }),
+        resolveScreen({ screen_key: 'config_api', industry_code: activeIndustry || undefined })
+      ])
 
       // Update cache
       tokensCache.data = tokens
@@ -106,51 +91,15 @@ export default function ApiListPage() {
     loadData()
   }, [])
 
-  // Resolve dynamic Lead Sources with caching when organization changes in form
-  useEffect(() => {
-    if (!form.organization_id) {
-      setLeadSources([])
-      setForm(prev => ({ ...prev, leadSourceId: '', source: '' }))
-      return
-    }
 
-    const orgId = form.organization_id
-    if (leadSourcesCache.has(orgId)) {
-      setLeadSources(leadSourcesCache.get(orgId)!)
-    }
-
-    void (async () => {
-      try {
-        const sources = await getResources('resource_lead_sources', orgId)
-        leadSourcesCache.set(orgId, sources)
-        setLeadSources(sources)
-      } catch (e) {
-        console.error('Failed to load lead sources', e)
-      }
-    })()
-  }, [form.organization_id])
 
   const openAddDialog = () => {
     setEditing(null)
-    setForm({
-      organization_id: '',
-      leadSourceId: '',
-      source: '',
-      country_code: '+91',
-      status: 'ACTIVE',
-    })
     setDialogOpen(true)
   }
 
   const openEditDialog = (apiE: ApiTokenConfig) => {
     setEditing(apiE)
-    setForm({
-      organization_id: apiE.organization_id || '',
-      leadSourceId: apiE.leadSourceId || '',
-      source: apiE.source || '',
-      country_code: apiE.country_code || '+91',
-      status: apiE.status || 'ACTIVE',
-    })
     setDialogOpen(true)
   }
 
@@ -175,49 +124,12 @@ export default function ApiListPage() {
     })
   }
 
-  const handleSave = async () => {
-    if (!form.organization_id || !form.source) {
-      setToast({ open: true, msg: 'Organization and Source are required', sev: 'error' })
-      return
-    }
-
-    try {
-      setLoading(true)
-      const payload = {
-        ...form,
-      }
-
-      if (editing) {
-        await updateApiToken(editing.id, payload)
-        setToast({ open: true, msg: 'API integration updated successfully', sev: 'success' })
-      } else {
-        await createApiToken(payload)
-        setToast({ open: true, msg: 'API integration added successfully', sev: 'success' })
-      }
-      setDialogOpen(false)
-      loadData()
-    } catch (e: any) {
-      setToast({ open: true, msg: e?.response?.data?.message || 'Failed to save configuration', sev: 'error' })
-    } finally {
-      setLoading(false)
-    }
-  }
-
   const handleCopy = (txt: string) => {
     navigator.clipboard.writeText(txt)
     setToast({ open: true, msg: 'API Key copied to clipboard!', sev: 'success' })
   }
 
-  const handleSourceChange = (val: string) => {
-    const matched = leadSources.find(s => s.id === val || String(s.name || s.value || s.leadSource || '') === val)
-    const sourceName = matched ? String(matched.name || matched.value || matched.leadSource || '') : val
-    const sourceId = matched ? String(matched.id || '') : ''
-    setForm(prev => ({
-      ...prev,
-      leadSourceId: sourceId,
-      source: sourceName
-    }))
-  }
+
 
   const columns = useMemo<GridColDef<ApiTokenConfig>[]>(() => {
     if (!resolvedScreen) return []
@@ -288,102 +200,7 @@ export default function ApiListPage() {
     })
 
     return cols
-  }, [resolvedScreen, items, leadSources])
-
-  const renderField = (field: ResolvedFormField) => {
-    if (field.key === 'organization_id') {
-      return (
-        <TextField
-          key={field.key}
-          select
-          fullWidth
-          label={field.label}
-          value={form.organization_id}
-          onChange={(e) => setForm(prev => ({ ...prev, organization_id: e.target.value }))}
-          required={field.required}
-        >
-          {organizations.filter(org => org.industry_id === selectedIndustry).map((org) => (
-            <MenuItem key={org._id || String(org.organization_id || '')} value={String(org.organization_id || '')}>
-              {String(org.name || org.organization_id || '')}
-            </MenuItem>
-          ))}
-        </TextField>
-      )
-    }
-
-    if (field.key === 'source') {
-      return (
-        <TextField
-          key={field.key}
-          select
-          fullWidth
-          label={field.label}
-          value={form.leadSourceId || form.source}
-          onChange={(e) => handleSourceChange(e.target.value)}
-          disabled={!form.organization_id}
-          required={field.required}
-        >
-          {leadSources.map((src) => (
-            <MenuItem key={src.id} value={src.id}>
-              {String(src.name || src.value || src.leadSource || '')}
-            </MenuItem>
-          ))}
-        </TextField>
-      )
-    }
-
-    if (field.key === 'country_code') {
-      return (
-        <TextField
-          key={field.key}
-          select
-          fullWidth
-          label={field.label}
-          value={form.country_code}
-          onChange={(e) => setForm(prev => ({ ...prev, country_code: e.target.value }))}
-          required={field.required}
-        >
-          {COUNTRY_CODES.map((item) => (
-            <MenuItem key={item.code} value={item.code}>
-              {item.label}
-            </MenuItem>
-          ))}
-        </TextField>
-      )
-    }
-
-    if (field.key === 'status') {
-      if (!editing) return null
-      return (
-        <TextField
-          key={field.key}
-          select
-          fullWidth
-          label={field.label}
-          value={form.status}
-          onChange={(e) => setForm(prev => ({ ...prev, status: e.target.value as ApiTokenConfig['status'] }))}
-          required={field.required}
-        >
-          {(field.options || ['ACTIVE', 'INACTIVE']).map((opt) => (
-            <MenuItem key={opt} value={opt}>
-              {opt}
-            </MenuItem>
-          ))}
-        </TextField>
-      )
-    }
-
-    return (
-      <TextField
-        key={field.key}
-        fullWidth
-        label={field.label}
-        value={form[field.key as keyof typeof form] || ''}
-        onChange={(e) => setForm(prev => ({ ...prev, [field.key]: e.target.value }))}
-        required={field.required}
-      />
-    )
-  }
+  }, [resolvedScreen, items])
 
   const filteredItems = useMemo(() => {
     if (!selectedIndustry) return items
@@ -446,7 +263,7 @@ export default function ApiListPage() {
       <Dialog 
         open={dialogOpen} 
         onClose={() => setDialogOpen(false)} 
-        maxWidth="lg"
+        maxWidth="md"
         fullWidth
         PaperProps={{
           sx: {
@@ -459,45 +276,30 @@ export default function ApiListPage() {
           {editing ? 'Edit API Connection' : 'Create API'}
         </DialogTitle>
         <DialogContent dividers>
-          <Box
-            sx={{
-              display: 'flex',
-              flexDirection: 'column',
-              gap: 2.5,
-              pt: 1
-            }}
-          >
-            {(() => {
-              const fields = resolvedScreen?.form_fields || []
-              const renderedKeys = new Set<string>()
-
-              return fields.map((field) => {
-                if (renderedKeys.has(field.key)) return null
-
-                if (field.key === 'source') {
-                  const countryField = fields.find(f => f.key === 'country_code')
-                  if (countryField) {
-                    renderedKeys.add('country_code')
-                    return (
-                      <Box key={field.key} sx={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 2 }}>
-                        {renderField(field)}
-                        {renderField(countryField)}
-                      </Box>
-                    )
-                  }
+          <DynamicForm
+            screen="config_api"
+            industry_code={selectedIndustry}
+            role_key="admin"
+            initialValues={editing ? (editing as any) : { organization_id: '', status: 'ACTIVE' }}
+            onCancel={() => setDialogOpen(false)}
+            submitLabel={editing ? 'Save' : 'Create'}
+            onSubmit={async (values) => {
+              try {
+                if (editing) {
+                  await updateApiToken(editing.id, values as any)
+                  setToast({ open: true, msg: 'API integration updated successfully', sev: 'success' })
+                } else {
+                  await createApiToken(values as any)
+                  setToast({ open: true, msg: 'API integration added successfully', sev: 'success' })
                 }
-
-                return renderField(field)
-              })
-            })()}
-          </Box>
+                setDialogOpen(false)
+                loadData()
+              } catch (e: any) {
+                setToast({ open: true, msg: e?.response?.data?.message || 'Failed to save configuration', sev: 'error' })
+              }
+            }}
+          />
         </DialogContent>
-        <DialogActions sx={{ p: 2 }}>
-          <Button onClick={() => setDialogOpen(false)}>Cancel</Button>
-          <Button onClick={handleSave} variant="contained">
-            Submit
-          </Button>
-        </DialogActions>
       </Dialog>
 
       <Snackbar

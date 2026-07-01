@@ -107,8 +107,10 @@ exports.resolve = async ({ screen_key, industry_code, role_key, authedUser }) =>
   }
 
   const isSuperAdmin = resolvedRoleKey === 'superAdmin' || authedUser?.role === 'superAdmin';
+  const isConfigScreen = screen_key === 'config_projects' || screen_key === 'config_api' || screen_key.startsWith('resource_');
+  const bypassPermissions = isSuperAdmin && !isConfigScreen;
 
-  if (!isSuperAdmin && !industryCode) {
+  if (!bypassPermissions && !industryCode) {
     const err = new Error('industry_code is required (none found on user)');
     err.status = 400;
     throw err;
@@ -122,7 +124,7 @@ exports.resolve = async ({ screen_key, industry_code, role_key, authedUser }) =>
   let industry = null;
   if (industryCode) {
     industry = await industryModel.findByCode(industryCode);
-    if (!industry && !isSuperAdmin) {
+    if (!industry && !bypassPermissions) {
       const err = new Error(`Industry with code "${industryCode}" not found`);
       err.status = 404;
       throw err;
@@ -130,7 +132,7 @@ exports.resolve = async ({ screen_key, industry_code, role_key, authedUser }) =>
   }
 
   let role = null;
-  if (!isSuperAdmin) {
+  if (!bypassPermissions) {
     role = await roleModel.findByIndustryAndKey(industry._id, resolvedRoleKey);
     if (!role) {
       const err = new Error(`Role "${resolvedRoleKey}" not found for industry "${industryCode}"`);
@@ -152,7 +154,7 @@ exports.resolve = async ({ screen_key, industry_code, role_key, authedUser }) =>
   }
 
   let allowed;
-  if (isSuperAdmin) {
+  if (bypassPermissions) {
     // SuperAdmin sees every active field on the screen.
     allowed = fields;
   } else {

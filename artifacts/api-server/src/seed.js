@@ -645,7 +645,7 @@ async function seedIndustries() {
   // these, dynamic-form resolve calls 404 the moment an admin tries to add a
   // user under a freshly-seeded industry. `superAdmin` is intentionally NOT
   // a per-industry role — it's handled as a system-wide bypass.
-  const DEFAULT_ROLES = ['admin', 'leadManager', 'teamLead', 'sales'];
+  const DEFAULT_ROLES = ['superAdmin', 'admin', 'leadManager', 'teamLead', 'sales'];
   const allIndustries = await Industry.find({}).lean().exec();
   let rolesAdded = 0;
   for (const ind of allIndustries) {

@@ -9,6 +9,7 @@ import TextField from '@mui/material/TextField'
 import Chip from '@mui/material/Chip'
 import Snackbar from '@mui/material/Snackbar'
 import Alert from '@mui/material/Alert'
+import Typography from '@mui/material/Typography'
 import MenuItem from '@mui/material/MenuItem'
 import Stack from '@mui/material/Stack'
 import Tooltip from '@mui/material/Tooltip'
@@ -32,6 +33,7 @@ import { listOrganizationsPaged, type Organization } from '@/services/organizati
 import { getIndustries, type Industry } from '@/services/sidebarAdminService'
 import { getResources } from '@/services/resourcesService'
 import { resolveScreen, type ResolvedScreen, type ResolvedFormField } from '@/services/screenAdminService'
+import { DynamicForm } from '@/components/DynamicForm/DynamicForm'
 
 export interface Project {
   id: string
@@ -50,17 +52,11 @@ export interface Project {
   createdAt?: string
 }
 
-const PROPERTY_STATUS_OPTIONS = [
-  { label: 'Launched', value: 'Launched' },
-  { label: 'Pre Launch', value: 'Pre Launch' },
-  { label: 'Intermediate Occupation', value: 'Intermediate Occupation' }
-]
+
 
 export default function ProjectsListPage() {
   const [items, setItems] = useState<Project[]>([])
   const [organizations, setOrganizations] = useState<Organization[]>([])
-  const [propertyTypes, setPropertyTypes] = useState<any[]>([])
-  const [propertyStages, setPropertyStages] = useState<any[]>([])
   const [loading, setLoading] = useState(false)
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editing, setEditing] = useState<Project | null>(null)
@@ -77,21 +73,6 @@ export default function ProjectsListPage() {
   const [industries, setIndustries] = useState<Industry[]>([])
   const [selectedIndustry, setSelectedIndustry] = useState<string>('')
   const [selectedIndustryInForm, setSelectedIndustryInForm] = useState<string>('')
-  const [formFields, setFormFields] = useState<ResolvedFormField[]>([])
-
-  // Form state (holds dynamic keys in addition to base organization and status)
-  const [form, setForm] = useState<Record<string, any>>({
-    organization_id: '',
-    project_name: '',
-    developer_name: '',
-    address: '',
-    rera_link: '',
-    walkthrough_link: '',
-    propertyType: '',
-    property_stage: '',
-    project_status: 'Launched' as Project['project_status'],
-    status: 'ACTIVE' as Project['status'],
-  })
 
   const loadData = async (targetIndustry?: string) => {
     setLoading(true)
@@ -136,63 +117,14 @@ export default function ProjectsListPage() {
     }
   }
 
-  const resolveFieldsForForm = async (industryCode: string, projectToEdit: Project | null) => {
-    try {
-      const resolved = await resolveScreen({ screen_key: 'config_projects', industry_code: industryCode })
-      setFormFields(resolved.form_fields)
-
-      // Initialize form values dynamically based on resolved fields
-      const newForm: Record<string, any> = {
-        organization_id: projectToEdit?.organization_id || '',
-        status: projectToEdit?.status || 'ACTIVE',
-      }
-      resolved.form_fields.forEach((f) => {
-        if (f.key !== 'organization_id' && f.key !== 'status') {
-          newForm[f.key] = projectToEdit ? (projectToEdit as any)[f.key] || '' : ''
-        }
-      })
-      setForm(newForm)
-    } catch (e) {
-      console.error('Failed to resolve form fields for industry', e)
-    }
-  }
-
-  const handleFormIndustryChange = async (newIndustry: string) => {
-    setSelectedIndustryInForm(newIndustry)
-    await resolveFieldsForForm(newIndustry, null)
-  }
-
   useEffect(() => {
     loadData()
   }, [])
-
-  // Resolve dynamic options when organization selection changes in form
-  useEffect(() => {
-    if (!form.organization_id) {
-      setPropertyTypes([])
-      setPropertyStages([])
-      return
-    }
-
-    void (async () => {
-      try {
-        const [types, stages] = await Promise.all([
-          getResources('resource_property_types', form.organization_id),
-          getResources('resource_property_stages', form.organization_id)
-        ])
-        setPropertyTypes(types)
-        setPropertyStages(stages)
-      } catch (e) {
-        console.error('Failed to load organization custom stages/types', e)
-      }
-    })()
-  }, [form.organization_id])
 
   const openAddDialog = () => {
     setEditing(null)
     const industryForForm = selectedIndustry || industries[0]?.code || ''
     setSelectedIndustryInForm(industryForForm)
-    void resolveFieldsForForm(industryForForm, null)
     setDialogOpen(true)
   }
 
@@ -201,7 +133,6 @@ export default function ProjectsListPage() {
     const org = organizations.find(o => o.organization_id === proj.organization_id)
     const industryForForm = (org?.industry_id || org?.industryId || selectedIndustry || industries[0]?.code || '') as string
     setSelectedIndustryInForm(industryForForm)
-    void resolveFieldsForForm(industryForForm, proj)
     setDialogOpen(true)
   }
 
@@ -217,37 +148,6 @@ export default function ProjectsListPage() {
       loadData()
     } catch (e: any) {
       setToast({ open: true, msg: e?.response?.data?.message || 'Failed to delete project', sev: 'error' })
-    }
-  }
-
-  const handleSave = async () => {
-    if (!form.organization_id) {
-      setToast({ open: true, msg: 'Organization selection is required', sev: 'error' })
-      return
-    }
-    // Validation: make sure all required dynamic form fields are filled
-    const missing = formFields
-      .filter((f) => f.required)
-      .map((f) => f.key)
-      .filter((k) => !form[k])
-    
-    if (missing.length > 0) {
-      setToast({ open: true, msg: `The following fields are required: ${missing.join(', ')}`, sev: 'error' })
-      return
-    }
-
-    try {
-      if (editing) {
-        await api.put(`/resources/resource_projects/${editing.id}`, form)
-        setToast({ open: true, msg: 'Project updated successfully', sev: 'success' })
-      } else {
-        await api.post('/resources/resource_projects', form)
-        setToast({ open: true, msg: 'Project created successfully', sev: 'success' })
-      }
-      setDialogOpen(false)
-      loadData()
-    } catch (e: any) {
-      setToast({ open: true, msg: e?.response?.data?.message || 'Failed to save project', sev: 'error' })
     }
   }
 
@@ -353,185 +253,7 @@ export default function ProjectsListPage() {
     return cols
   }, [resolvedScreen, items])
 
-  const renderField = (field: ResolvedFormField) => {
-    if (field.key === 'organization_id') {
-      const filteredOrgs = organizations.filter(
-        (o) => o.industry_id === selectedIndustryInForm || o.industryId === selectedIndustryInForm
-      )
-      return (
-        <TextField
-          key={field.key}
-          select
-          fullWidth
-          label={field.label}
-          value={form.organization_id}
-          onChange={(e) => setForm(prev => ({ ...prev, organization_id: e.target.value }))}
-          required={field.required}
-        >
-          {filteredOrgs.map((org) => (
-            <MenuItem key={org._id || String(org.organization_id || '')} value={String(org.organization_id || '')}>
-              {String(org.name || org.organization_id || '')}
-            </MenuItem>
-          ))}
-        </TextField>
-      )
-    }
 
-    if (field.key === 'developer_name') {
-      return (
-        <TextField
-          key={field.key}
-          fullWidth
-          label={field.label}
-          value={form.developer_name}
-          onChange={(e) => setForm(prev => ({ ...prev, developer_name: e.target.value }))}
-          required={field.required}
-        />
-      )
-    }
-
-    if (field.key === 'project_name') {
-      return (
-        <TextField
-          key={field.key}
-          fullWidth
-          label={field.label}
-          value={form.project_name}
-          onChange={(e) => setForm(prev => ({ ...prev, project_name: e.target.value }))}
-          required={field.required}
-        />
-      )
-    }
-
-    if (field.key === 'propertyType') {
-      return (
-        <TextField
-          key={field.key}
-          select
-          fullWidth
-          label={field.label}
-          value={form.propertyType}
-          onChange={(e) => setForm(prev => ({ ...prev, propertyType: e.target.value }))}
-          disabled={!form.organization_id}
-          required={field.required}
-        >
-          {propertyTypes.map((t) => (
-            <MenuItem key={t.id || t.name} value={t.name || t.value}>
-              {t.name || t.value}
-            </MenuItem>
-          ))}
-        </TextField>
-      )
-    }
-
-    if (field.key === 'property_stage') {
-      return (
-        <TextField
-          key={field.key}
-          select
-          fullWidth
-          label={field.label}
-          value={form.property_stage}
-          onChange={(e) => setForm(prev => ({ ...prev, property_stage: e.target.value }))}
-          disabled={!form.organization_id}
-          required={field.required}
-        >
-          {propertyStages.map((s) => (
-            <MenuItem key={s.id || s.name} value={s.name || s.value}>
-              {s.name || s.value}
-            </MenuItem>
-          ))}
-        </TextField>
-      )
-    }
-
-    if (field.key === 'project_status') {
-      return (
-        <TextField
-          key={field.key}
-          select
-          fullWidth
-          label={field.label}
-          value={form.project_status}
-          onChange={(e) => setForm(prev => ({ ...prev, project_status: e.target.value as any }))}
-          required={field.required}
-        >
-          {PROPERTY_STATUS_OPTIONS.map((opt) => (
-            <MenuItem key={opt.value} value={opt.value}>
-              {opt.label}
-            </MenuItem>
-          ))}
-        </TextField>
-      )
-    }
-
-    if (field.key === 'status') {
-      return (
-        <TextField
-          key={field.key}
-          select
-          fullWidth
-          label={field.label}
-          value={form.status}
-          onChange={(e) => setForm(prev => ({ ...prev, status: e.target.value as any }))}
-          required={field.required}
-        >
-          <MenuItem value="ACTIVE">ACTIVE</MenuItem>
-          <MenuItem value="INACTIVE">INACTIVE</MenuItem>
-        </TextField>
-      )
-    }
-
-    if (field.key === 'address') {
-      return (
-        <TextField
-          key={field.key}
-          fullWidth
-          label={field.label}
-          value={form.address}
-          onChange={(e) => setForm(prev => ({ ...prev, address: e.target.value }))}
-          required={field.required}
-        />
-      )
-    }
-
-    if (field.key === 'rera_link') {
-      return (
-        <TextField
-          key={field.key}
-          fullWidth
-          label={field.label}
-          value={form.rera_link}
-          onChange={(e) => setForm(prev => ({ ...prev, rera_link: e.target.value }))}
-          required={field.required}
-        />
-      )
-    }
-
-    if (field.key === 'walkthrough_link') {
-      return (
-        <TextField
-          key={field.key}
-          fullWidth
-          label={field.label}
-          value={form.walkthrough_link}
-          onChange={(e) => setForm(prev => ({ ...prev, walkthrough_link: e.target.value }))}
-          required={field.required}
-        />
-      )
-    }
-
-    return (
-      <TextField
-        key={field.key}
-        fullWidth
-        label={field.label}
-        value={form[field.key as keyof typeof form] || ''}
-        onChange={(e) => setForm(prev => ({ ...prev, [field.key]: e.target.value }))}
-        required={field.required}
-      />
-    )
-  }
 
   return (
     <Box
@@ -623,7 +345,7 @@ export default function ProjectsListPage() {
       <Dialog 
         open={dialogOpen} 
         onClose={() => setDialogOpen(false)} 
-        maxWidth="lg" 
+        maxWidth="md" 
         fullWidth
         PaperProps={{
           sx: {
@@ -634,100 +356,68 @@ export default function ProjectsListPage() {
       >
         <DialogTitle>{editing ? 'Edit Project' : 'Add New Project'}</DialogTitle>
         <DialogContent dividers>
-          <Box
-            sx={{
-              display: 'flex',
-              flexDirection: 'column',
-              gap: 2.5,
-              pt: 1,
-            }}
-          >
-            <TextField
-              select
-              fullWidth
-              label="Industry"
-              value={selectedIndustryInForm}
-              onChange={(e) => handleFormIndustryChange(e.target.value)}
-              disabled={!!editing}
-              required
-            >
-              {industries.map((ind) => (
-                <MenuItem key={ind.code} value={ind.code}>
-                  {ind.name}
-                </MenuItem>
-              ))}
-            </TextField>
+          <Stack spacing={3} sx={{ pt: 1, minHeight: editing ? 'auto' : '260px' }}>
+            {!editing && !selectedIndustryInForm && (
+              <Box sx={{ maxWidth: 400, mx: 'auto', width: '100%', py: 4, textAlign: 'center' }}>
+                <Typography variant="body1" sx={{ mb: 3, fontWeight: 500, color: 'text.secondary' }}>
+                  Select your business industry to initialize the form:
+                </Typography>
+                <TextField
+                  select
+                  size="medium"
+                  label="Select Industry"
+                  value={selectedIndustryInForm}
+                  onChange={(e) => setSelectedIndustryInForm(e.target.value)}
+                  fullWidth
+                >
+                  {industries.map((ind) => (
+                    <MenuItem key={ind.code} value={ind.code}>
+                      {ind.name}
+                    </MenuItem>
+                  ))}
+                </TextField>
+              </Box>
+            )}
 
-            {(() => {
-              const fields = formFields || []
-              const renderedKeys = new Set<string>()
-
-              return fields.map((field) => {
-                if (renderedKeys.has(field.key)) return null
-
-                if (field.key === 'developer_name') {
-                  const sibling = fields.find(f => f.key === 'project_name')
-                  if (sibling) {
-                    renderedKeys.add('project_name')
-                    return (
-                      <Box key={field.key} sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2 }}>
-                        {renderField(field)}
-                        {renderField(sibling)}
-                      </Box>
-                    )
-                  }
-                }
-
-                if (field.key === 'propertyType') {
-                  const sibling = fields.find(f => f.key === 'property_stage')
-                  if (sibling) {
-                    renderedKeys.add('property_stage')
-                    return (
-                      <Box key={field.key} sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2 }}>
-                        {renderField(field)}
-                        {renderField(sibling)}
-                      </Box>
-                    )
-                  }
-                }
-
-                if (field.key === 'project_status') {
-                  const sibling = fields.find(f => f.key === 'status')
-                  if (sibling) {
-                    renderedKeys.add('status')
-                    return (
-                      <Box key={field.key} sx={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 2 }}>
-                        {renderField(field)}
-                        {renderField(sibling)}
-                      </Box>
-                    )
-                  }
-                }
-
-                if (field.key === 'rera_link') {
-                  const sibling = fields.find(f => f.key === 'walkthrough_link')
-                  if (sibling) {
-                    renderedKeys.add('walkthrough_link')
-                    return (
-                      <Box key={field.key} sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2 }}>
-                        {renderField(field)}
-                        {renderField(sibling)}
-                      </Box>
-                    )
-                  }
-                }
-
-                return renderField(field)
-              })
-            })()}
-          </Box>
+            {(selectedIndustryInForm || editing) && (
+              <>
+                {!editing && (
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', pb: 1, borderBottom: '1px dashed', borderColor: 'divider' }}>
+                    <Typography variant="subtitle2" color="secondary" sx={{ fontWeight: 600 }}>
+                      Industry: {industries.find(i => i.code === selectedIndustryInForm)?.name || selectedIndustryInForm}
+                    </Typography>
+                    <Button size="small" onClick={() => setSelectedIndustryInForm('')}>
+                      Change Industry
+                    </Button>
+                  </Box>
+                )}
+                <DynamicForm
+                  screen="config_projects"
+                  industry_code={selectedIndustryInForm}
+                  role_key="admin"
+                  initialValues={editing ? (editing as any) : { organization_id: '', status: 'ACTIVE' }}
+                  onCancel={() => setDialogOpen(false)}
+                  submitLabel={editing ? 'Save' : 'Create'}
+                  onSubmit={async (values) => {
+                    try {
+                      if (editing) {
+                        await api.put(`/resources/resource_projects/${editing.id}`, values)
+                        setToast({ open: true, msg: 'Project updated successfully', sev: 'success' })
+                      } else {
+                        await api.post('/resources/resource_projects', values)
+                        setToast({ open: true, msg: 'Project created successfully', sev: 'success' })
+                      }
+                      setDialogOpen(false)
+                      loadData()
+                    } catch (e: any) {
+                      setToast({ open: true, msg: e?.response?.data?.message || 'Failed to save project', sev: 'error' })
+                    }
+                  }}
+                />
+              </>
+            )}
+          </Stack>
         </DialogContent>
-        <DialogActions sx={{ p: 2 }}>
-          <Button onClick={() => setDialogOpen(false)}>Cancel</Button>
-          <Button onClick={handleSave} variant="contained">
-            Save
-          </Button>
-        </DialogActions>
       </Dialog>
 
       <Dialog open={deleteConfirmOpen} onClose={() => setDeleteConfirmOpen(false)} maxWidth="xs" fullWidth>
