@@ -164,17 +164,36 @@ router.get('/:key', (req, res, next) => {
   if (key.startsWith('resource_')) {
     try {
       let orgId = null;
+      let resolvedIndustryId = null;
       if (req.user.role === 'superAdmin') {
         orgId = req.query.organizationId || req.query.organization_id;
         if (orgId === 'null' || orgId === '') orgId = null;
+
+        const targetInd = req.query.industryId || req.query.industry_id || req.query.industry_code || req.body.industryId || req.body.industry_id || req.body.industry_code;
+        if (targetInd) {
+          const Industry = mongoose.model('Industry');
+          let ind = await Industry.findOne({ code: targetInd }).lean().exec();
+          if (ind) {
+            resolvedIndustryId = ind._id;
+          } else if (mongoose.Types.ObjectId.isValid(targetInd)) {
+            ind = await Industry.findById(targetInd).lean().exec();
+            if (ind) resolvedIndustryId = ind._id;
+          }
+        }
       } else {
         const Organization = mongoose.model('Organization');
         const org = await Organization.findOne({ industryId: req.user.industry_id }).exec();
         orgId = org ? (org.organizationId || org.organization_id) : null;
+        if (org && org.industryId) {
+          const Industry = mongoose.model('Industry');
+          const ind = await Industry.findOne({ code: org.industryId }).lean().exec();
+          if (ind) resolvedIndustryId = ind._id;
+        }
       }
 
       const list = await resourceItemModel.list({
         organizationId: orgId,
+        industryId: resolvedIndustryId,
         resource_key: key,
       });
 

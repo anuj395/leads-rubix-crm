@@ -19,6 +19,7 @@ function getFieldName(resourceKey) {
 const organizationResourcesSchema = new mongoose.Schema(
   {
     organizationId: { type: String, default: null, index: true },
+    industryId: { type: mongoose.Schema.Types.ObjectId, ref: 'Industry', default: null, index: true },
     PropertyStages: { type: Array, default: [] },
     PropertySubTypes: { type: Array, default: [] },
     PropertyTypes: { type: Array, default: [] },
@@ -36,7 +37,7 @@ const OrganizationResources = mongoose.model('OrganizationResources', organizati
 
 exports.ResourceItem = OrganizationResources;
 
-exports.list = async ({ organizationId, resource_key, all = false } = {}) => {
+exports.list = async ({ organizationId, industryId, resource_key, all = false } = {}) => {
   if (resource_key === 'resource_projects' && all) {
     const docs = await OrganizationResources.find({}).lean().exec();
     const allProjects = [];
@@ -69,10 +70,16 @@ exports.list = async ({ organizationId, resource_key, all = false } = {}) => {
   }
 
   const targetOrgId = (organizationId === 'null' || !organizationId) ? null : organizationId;
-  let doc = await OrganizationResources.findOne({ organizationId: targetOrgId }).lean().exec();
+  let query = { organizationId: targetOrgId };
+  if (targetOrgId === null && industryId) {
+    query.industryId = industryId;
+  }
+  let doc = await OrganizationResources.findOne(query).lean().exec();
   // Fallback to global defaults if no custom organization resources document exists yet
   if (!doc && targetOrgId !== null && targetOrgId !== '') {
-    doc = await OrganizationResources.findOne({ organizationId: null }).lean().exec();
+    let fallbackQuery = { organizationId: null };
+    if (industryId) fallbackQuery.industryId = industryId;
+    doc = await OrganizationResources.findOne(fallbackQuery).lean().exec();
   }
   if (!doc) return [];
   const fieldName = getFieldName(resource_key);
@@ -105,10 +112,44 @@ exports.findById = async (id) => {
   return null;
 };
 
-exports.create = async ({ organizationId, resource_key, data }) => {
-  let doc = await OrganizationResources.findOne({ organizationId }).exec();
+exports.create = async ({ organizationId, industryId, resource_key, data }) => {
+  let query = { organizationId };
+  if (organizationId === null && industryId) {
+    query.industryId = industryId;
+  }
+  let doc = await OrganizationResources.findOne(query).exec();
   if (!doc) {
     doc = new OrganizationResources({ organizationId });
+  }
+
+  let resolvedIndustryId = industryId;
+  if (!doc.industryId || !mongoose.Types.ObjectId.isValid(doc.industryId.toString()) || doc.industryId.toString().startsWith('temp')) {
+    if (organizationId && organizationId !== 'null') {
+      const Organization = mongoose.model('Organization');
+      const org = await Organization.findOne({ organizationId }).lean().exec();
+      if (org) {
+        const orgIndustry = org.industryId || org.industry_id;
+        if (orgIndustry) {
+          const Industry = mongoose.model('Industry');
+          const ind = await Industry.findOne({ code: orgIndustry }).lean().exec();
+          if (ind) {
+            resolvedIndustryId = ind._id;
+          }
+        }
+      }
+    }
+
+    if (resolvedIndustryId) {
+      if (!mongoose.Types.ObjectId.isValid(resolvedIndustryId.toString())) {
+        const Industry = mongoose.model('Industry');
+        const ind = await Industry.findOne({ code: resolvedIndustryId }).lean().exec();
+        if (ind) resolvedIndustryId = ind._id;
+      }
+    }
+
+    if (resolvedIndustryId && mongoose.Types.ObjectId.isValid(resolvedIndustryId.toString())) {
+      doc.industryId = resolvedIndustryId;
+    }
   }
 
   const itemId = new mongoose.Types.ObjectId().toString();

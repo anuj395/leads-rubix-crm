@@ -167,6 +167,13 @@ async function main() {
   // Perform database migration to rename organization_id to organizationId in resource_items
   const db = mongoose.connection.db;
   const collection = db.collection('resource_items');
+
+  // Clear legacy format documents containing resource_key
+  const deleteLegacyRes = await collection.deleteMany({ resource_key: { $exists: true } });
+  if (deleteLegacyRes.deletedCount > 0) {
+    console.log(`Cleaned up ${deleteLegacyRes.deletedCount} legacy resource documents.`);
+  }
+
   const cursor = collection.find({ organization_id: { $exists: true } });
   while (await cursor.hasNext()) {
     const doc = await cursor.next();
@@ -182,6 +189,21 @@ async function main() {
 
   // Resolve Real Estate industry (code: temp0001)
   const realEstate = await Industry.findOne({ code: 'temp0001' });
+  if (realEstate) {
+    const updateResult = await collection.updateMany(
+      {
+        $or: [
+          { industryId: { $exists: false } },
+          { industryId: null },
+          { industryId: { $type: "string" } }
+        ]
+      },
+      { $set: { industryId: realEstate._id } }
+    );
+    if (updateResult.modifiedCount > 0) {
+      console.log(`Set industryId to Real Estate on ${updateResult.modifiedCount} documents.`);
+    }
+  }
   if (!realEstate) {
     console.log('Real Estate industry (temp0001) not found in DB!');
     await mongoose.disconnect();

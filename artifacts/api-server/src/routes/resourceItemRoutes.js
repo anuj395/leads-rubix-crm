@@ -26,6 +26,24 @@ async function resolveOrganizationId(req) {
   }
 }
 
+// Helper to resolve Industry ID
+async function resolveIndustryId(req) {
+  const { industryId, industry_id, industry_code } = { ...req.query, ...req.body };
+  const target = industry_code || industryId || industry_id;
+  if (target) {
+    const Industry = mongoose.model('Industry');
+    // Try to find by code first
+    let ind = await Industry.findOne({ code: target }).lean().exec();
+    if (ind) return ind._id;
+    // If target is a valid ObjectId, try finding by _id
+    if (mongoose.Types.ObjectId.isValid(target)) {
+      ind = await Industry.findById(target).lean().exec();
+      if (ind) return ind._id;
+    }
+  }
+  return null;
+}
+
 router.get('/:resource_key', authenticate, async (req, res, next) => {
   try {
     const { resource_key } = req.params;
@@ -35,9 +53,12 @@ router.get('/:resource_key', authenticate, async (req, res, next) => {
       return res.status(400).json({ message: 'Organization identifier is mandatory for Admin users' });
     }
 
+    const industryId = await resolveIndustryId(req);
+
     const items = await resourceItemModel.list({
       resource_key,
       organizationId: orgId,
+      industryId,
       all: req.query.all === 'true',
     });
 
@@ -70,8 +91,11 @@ router.post('/:resource_key', authenticate, async (req, res, next) => {
     // Extract dynamic data (except system metadata)
     const { industry_code, industry_id, organizationId: bodyOrgId, organization_id, ...payloadData } = req.body || {};
 
+    const industryId = await resolveIndustryId(req);
+
     const doc = await resourceItemModel.create({
       organizationId: orgId,
+      industryId,
       resource_key,
       data: payloadData,
     });

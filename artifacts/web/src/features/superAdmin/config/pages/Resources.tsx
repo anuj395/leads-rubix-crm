@@ -150,7 +150,7 @@ export default function ResourcesPage() {
         try {
           const [resolved, items] = await Promise.all([
             resolveScreen({ screen_key: activeScreen.key, industry_code: selectedIndustry }),
-            getResources(activeScreen.key, selectedOrgId)
+            getResources(activeScreen.key, selectedOrgId, selectedIndustry)
           ])
           setResolvedScreensCache(prev => ({ ...prev, [cacheKey]: resolved }))
           setResourceDataCache(prev => ({ ...prev, [cacheKey]: items }))
@@ -169,7 +169,7 @@ export default function ResourcesPage() {
         setLoading(true)
         const [resolved, items] = await Promise.all([
           resolveScreen({ screen_key: activeScreen.key, industry_code: selectedIndustry }),
-          getResources(activeScreen.key, selectedOrgId)
+          getResources(activeScreen.key, selectedOrgId, selectedIndustry)
         ])
         if (cancelled) return
         
@@ -384,7 +384,7 @@ export default function ResourcesPage() {
         }
 
         try {
-          const created = await createResource(activeScreen.key, payload, selectedOrgId)
+          const created = await createResource(activeScreen.key, payload, selectedOrgId, selectedIndustry)
           createdItems.push(created)
         } catch (err: any) {
           failedRecords.push({
@@ -736,14 +736,14 @@ export default function ResourcesPage() {
               onSubmit={async (values) => {
                 try {
                   if (editingItem) {
-                    await updateResource(activeScreen.key, editingItem.id, values as any)
+                    await updateResource(activeScreen.key, editingItem.id, values as any, selectedIndustry)
                     setToast({ open: true, msg: 'Item updated successfully', sev: 'success' })
                   } else {
-                    await createResource(activeScreen.key, values as any, selectedOrgId)
+                    await createResource(activeScreen.key, values as any, selectedOrgId, selectedIndustry)
                     setToast({ open: true, msg: 'Item created successfully', sev: 'success' })
                   }
                   setDialogOpen(false)
-                  const items = await getResources(activeScreen.key, selectedOrgId)
+                  const items = await getResources(activeScreen.key, selectedOrgId, selectedIndustry)
                   setRows(items)
                 } catch (e: any) {
                   setToast({ open: true, msg: e?.response?.data?.message || 'Failed to save resource', sev: 'error' })
