@@ -340,11 +340,11 @@ const SCREEN_DEFAULTS = [
     name: 'Contacts',
     description: 'Customer / lead contact list',
     fields: [
-      { field_key: 'customer_name', label: 'Name',      type: 'text',  is_required: true,  order: 1 },
+      { field_key: 'customerName', label: 'Name',      type: 'text',  is_required: true,  order: 1 },
       { field_key: 'email',         label: 'Email',     type: 'email', is_required: false, order: 2 },
-      { field_key: 'contact_no',    label: 'Phone',     type: 'text',  is_required: false, order: 3 },
+      { field_key: 'contactNo',    label: 'Phone',     type: 'text',  is_required: false, order: 3 },
       { field_key: 'status',        label: 'Status',    type: 'badge', is_required: false, order: 4 },
-      { field_key: 'lead_type',     label: 'Lead Type', type: 'select', is_required: false, order: 5,
+      { field_key: 'leadType',     label: 'Lead Type', type: 'select', is_required: false, order: 5,
         dropdown_source: 'api', dropdown_api: '/api/options/lead-types' },
       { field_key: 'project',       label: 'Project',   type: 'select', is_required: false, order: 6,
         dropdown_source: 'api', dropdown_api: '/api/options/projects' },
@@ -355,10 +355,10 @@ const SCREEN_DEFAULTS = [
     name: 'Tasks',
     description: 'Lead / follow-up tasks',
     fields: [
-      { field_key: 'task_type',     label: 'Type',          type: 'text',  is_required: true,  order: 1 },
+      { field_key: 'taskType',     label: 'Type',          type: 'text',  is_required: true,  order: 1 },
       { field_key: 'status',        label: 'Status',        type: 'badge', is_required: false, order: 2 },
-      { field_key: 'assigned_to',   label: 'Assigned To',   type: 'text',  is_required: false, order: 3 },
-      { field_key: 'next_follow_up',label: 'Next Follow-up',type: 'date',  is_required: false, order: 4 },
+      { field_key: 'assignedTo',   label: 'Assigned To',   type: 'text',  is_required: false, order: 3 },
+      { field_key: 'nextFollowUp',label: 'Next Follow-up',type: 'date',  is_required: false, order: 4 },
       { field_key: 'notes',         label: 'Notes',         type: 'textarea', is_required: false, order: 5 },
     ],
   },
@@ -368,12 +368,12 @@ const SCREEN_DEFAULTS = [
     description: 'Per-role custom fields shown on the Add/Edit User form',
     fields: [
       { field_key: 'phone',         label: 'Phone',         type: 'text',   is_required: false, order: 1 },
-      { field_key: 'employee_id',   label: 'Employee ID',   type: 'text',   is_required: false, order: 2 },
+      { field_key: 'employeeId',   label: 'Employee ID',   type: 'text',   is_required: false, order: 2 },
       { field_key: 'department',    label: 'Department',    type: 'select', is_required: false, order: 3,
         dropdown_source: 'api', dropdown_api: '/api/options/departments' },
       { field_key: 'designation',   label: 'Designation',   type: 'select', is_required: false, order: 4,
         dropdown_source: 'api', dropdown_api: '/api/options/designations' },
-      { field_key: 'joining_date',  label: 'Joining Date',  type: 'date',   is_required: false, order: 5 },
+      { field_key: 'joiningDate',  label: 'Joining Date',  type: 'date',   is_required: false, order: 5 },
     ],
   },
   {
@@ -410,7 +410,7 @@ const SCREEN_DEFAULTS = [
     name: 'Bookings',
     description: 'Customer booking records — fully dynamic table & form',
     fields: [
-      { field_key: 'customer_name', label: 'Customer Name', type: 'text',     is_required: true,  order: 1 },
+      { field_key: 'customerName', label: 'Customer Name', type: 'text',     is_required: true,  order: 1 },
       { field_key: 'contactNumber',    label: 'Phone Number',  type: 'text',     is_required: false, order: 2 },
       { field_key: 'project',       label: 'Project Name',  type: 'text',     is_required: false, order: 3 },
       { field_key: 'location',      label: 'Location',      type: 'text',     is_required: false, order: 4 },
@@ -419,47 +419,47 @@ const SCREEN_DEFAULTS = [
     ],
   },
   {
-    key: 'config_api',
+    key: 'configApi',
     name: 'API Integration',
     description: 'Manage incoming webhooks, country codes, and source triggers.',
     fields: [
       { field_key: 'organizationId', label: 'Organization', type: 'select', dropdown_source: 'api', dropdown_api: 'options/organizations', is_required: true, order: 1 },
-      { field_key: 'source', label: 'Source', type: 'select', dropdown_source: 'api', dropdown_api: 'options/resource_lead_sources?display=leadSource', is_required: true, order: 2 },
-      { field_key: 'country_code', label: 'Country Code', type: 'select', dropdown_source: 'api', dropdown_api: 'options/country_codes', is_required: true, order: 3 },
+      { field_key: 'source', label: 'Source', type: 'select', dropdown_source: 'api', dropdown_api: 'options/resourceLeadSources?display=leadSource', is_required: true, order: 2 },
+      { field_key: 'countryCode', label: 'Country Code', type: 'select', dropdown_source: 'api', dropdown_api: 'options/country_codes', is_required: true, order: 3 },
       { field_key: 'status', label: 'Status', type: 'select', dropdown_source: 'static', options: ['ACTIVE', 'INACTIVE'], is_required: true, order: 4 },
-      { field_key: 'api_key', label: 'API Key', type: 'text', is_form_visible: false, is_required: false, order: 5 },
+      { field_key: 'apiKey', label: 'API Key', type: 'text', is_form_visible: false, is_required: false, order: 5 },
       { field_key: 'createdAt', label: 'Created At', type: 'date', is_form_visible: false, is_required: false, order: 6 },
     ]
   },
   {
-    key: 'config_projects',
+    key: 'configProjects',
     name: 'Projects Catalog',
     description: 'Catalog of property developments and sales listings.',
     fields: [
-      { field_key: 'organization_id', label: 'Organization', type: 'select', dropdown_source: 'api', dropdown_api: 'options/organizations', is_required: true, order: 1 },
-      { field_key: 'developer_name', label: 'Developer Name', type: 'text', is_required: true, order: 2 },
-      { field_key: 'project_name', label: 'Project Name', type: 'text', is_required: true, order: 3 },
-      { field_key: 'property_type', label: 'Property Type', type: 'select', dropdown_source: 'api', dropdown_api: 'options/resource_property_types', is_required: true, order: 4 },
-      { field_key: 'property_stage', label: 'Property Stage', type: 'select', dropdown_source: 'api', dropdown_api: 'options/resource_property_stages', is_required: true, order: 5 },
-      { field_key: 'project_status', label: 'Property Status', type: 'select', dropdown_source: 'static', options: ['Launched', 'Pre Launch', 'Intermediate Occupation'], is_required: true, order: 6 },
+      { field_key: 'organizationId', label: 'Organization', type: 'select', dropdown_source: 'api', dropdown_api: 'options/organizations', is_required: true, order: 1 },
+      { field_key: 'developerName', label: 'Developer Name', type: 'text', is_required: true, order: 2 },
+      { field_key: 'projectName', label: 'Project Name', type: 'text', is_required: true, order: 3 },
+      { field_key: 'propertyType', label: 'Property Type', type: 'select', dropdown_source: 'api', dropdown_api: 'options/resourcePropertyTypes', is_required: true, order: 4 },
+      { field_key: 'propertyStage', label: 'Property Stage', type: 'select', dropdown_source: 'api', dropdown_api: 'options/resourcePropertyStages', is_required: true, order: 5 },
+      { field_key: 'projectStatus', label: 'Property Status', type: 'select', dropdown_source: 'static', options: ['Launched', 'Pre Launch', 'Intermediate Occupation'], is_required: true, order: 6 },
       { field_key: 'address', label: 'Address', type: 'text', is_required: false, order: 7 },
-      { field_key: 'rera_link', label: 'Rera Link', type: 'text', is_required: false, order: 8 },
-      { field_key: 'walkthrough_link', label: 'Walkthrough Link', type: 'text', is_required: false, order: 9 },
+      { field_key: 'reraLink', label: 'Rera Link', type: 'text', is_required: false, order: 8 },
+      { field_key: 'walkthroughLink', label: 'Walkthrough Link', type: 'text', is_required: false, order: 9 },
       { field_key: 'status', label: 'Status', type: 'select', dropdown_source: 'static', options: ['ACTIVE', 'INACTIVE'], is_required: true, order: 10 },
       { field_key: 'createdAt', label: 'Created At', type: 'date', is_form_visible: false, is_required: false, order: 11 },
     ]
   },
   {
-    key: 'resource_carousel',
+    key: 'resourceCarousel',
     name: 'Carousel Banners',
     description: 'Banners shown on mobile/web dashboard carousel',
     fields: [
       { field_key: 'url', label: 'Image URL', type: 'text', is_required: true, order: 1 },
-      { field_key: 'image_name', label: 'Image Name', type: 'text', is_required: true, order: 2 },
+      { field_key: 'imageName', label: 'Image Name', type: 'text', is_required: true, order: 2 },
     ]
   },
   {
-    key: 'resource_locations',
+    key: 'resourceLocations',
     name: 'Locations',
     description: 'Corporate and site branch locations',
     fields: [
@@ -467,7 +467,7 @@ const SCREEN_DEFAULTS = [
     ]
   },
   {
-    key: 'resource_lead_sources',
+    key: 'resourceLeadSources',
     name: 'Lead Sources',
     description: 'Marketing source channels',
     fields: [
@@ -476,7 +476,7 @@ const SCREEN_DEFAULTS = [
     ]
   },
   {
-    key: 'resource_budgets',
+    key: 'resourceBudgets',
     name: 'Budgets',
     description: 'Standard budget options',
     fields: [
@@ -484,7 +484,7 @@ const SCREEN_DEFAULTS = [
     ]
   },
   {
-    key: 'resource_transfer_reasons',
+    key: 'resourceTransferReasons',
     name: 'Transfer Reasons',
     description: 'Reasons for transferring leads',
     fields: [
@@ -492,7 +492,7 @@ const SCREEN_DEFAULTS = [
     ]
   },
   {
-    key: 'resource_property_stages',
+    key: 'resourcePropertyStages',
     name: 'Property Stages',
     description: 'Construction stages',
     fields: [
@@ -500,7 +500,7 @@ const SCREEN_DEFAULTS = [
     ]
   },
   {
-    key: 'resource_property_types',
+    key: 'resourcePropertyTypes',
     name: 'Property Types',
     description: 'Property categories',
     fields: [
@@ -508,12 +508,12 @@ const SCREEN_DEFAULTS = [
     ]
   },
   {
-    key: 'resource_property_sub_types',
+    key: 'resourcePropertySubTypes',
     name: 'Property Sub Types',
     description: 'Property subcategories',
     fields: [
-      { field_key: 'propertyType', label: 'Property Type', type: 'select', dropdown_source: 'api', dropdown_api: '/api/options/resource_property_types?display=propertyType', is_required: true, order: 1 },
-      { field_key: 'property_sub_type', label: 'Property Sub Type', type: 'text', is_required: true, order: 2 },
+      { field_key: 'propertyType', label: 'Property Type', type: 'select', dropdown_source: 'api', dropdown_api: '/api/options/resourcePropertyTypes?display=propertyType', is_required: true, order: 1 },
+      { field_key: 'propertySubType', label: 'Property Sub Type', type: 'text', is_required: true, order: 2 },
     ]
   }
 ];
@@ -529,6 +529,15 @@ async function seedScreens() {
   // intentionally re-run it on every boot instead of short-circuiting on a
   // non-empty `screens` collection. That way new screens added to
   // SCREEN_DEFAULTS (e.g. `organization`) get installed without dropping the DB.
+
+  // Clean up deprecated resource_carousel and other snake_case screens
+  const deprecatedKeys = [
+    'resource_carousel', 'config_projects', 'config_api', 
+    'resource_locations', 'resource_lead_sources', 'resource_budgets', 
+    'resource_transfer_reasons', 'resource_property_stages', 
+    'resource_property_types', 'resource_property_sub_types'
+  ];
+  await Screen.deleteMany({ key: { $in: deprecatedKeys } });
 
   // Upsert screens + fields.
   const fieldsByScreen = new Map();

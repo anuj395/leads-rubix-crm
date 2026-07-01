@@ -1,15 +1,15 @@
 const mongoose = require('mongoose');
 
 const KEY_MAP = {
-  resource_property_types: 'PropertyTypes',
-  resource_property_sub_types: 'PropertySubTypes',
-  resource_budgets: 'budgets',
-  resource_locations: 'locations',
-  resource_lead_sources: 'leadSources',
-  resource_transfer_reasons: 'TransferReasons',
-  resource_property_stages: 'PropertyStages',
-  resource_carousel: 'carousel',
-  resource_projects: 'projects',
+  resourcePropertyTypes: 'PropertyTypes',
+  resourcePropertySubTypes: 'PropertySubTypes',
+  resourceBudgets: 'budgets',
+  resourceLocations: 'locations',
+  resourceLeadSources: 'leadSources',
+  resourceTransferReasons: 'TransferReasons',
+  resourcePropertyStages: 'PropertyStages',
+  resourceCarousel: 'carousel',
+  resourceProjects: 'projects',
 };
 
 function getFieldName(resourceKey) {

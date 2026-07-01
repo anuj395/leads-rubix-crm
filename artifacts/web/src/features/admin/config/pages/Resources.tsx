@@ -91,16 +91,16 @@ export default function ResourcesPage() {
         const scrs = await getScreens()
         
         // Filter screens starting with resource_
-        const filtered = scrs.filter((s) => s.key.startsWith('resource_') && s.is_active)
+        const filtered = scrs.filter((s) => s.key.startsWith('resource') && s.is_active)
         const orderMap: Record<string, number> = {
-          'resource_carousel': 10,
-          'resource_locations': 20,
-          'resource_budgets': 30,
-          'resource_lead_sources': 40,
-          'resource_transfer_reasons': 50,
-          'resource_property_stages': 60,
-          'resource_property_types': 70,
-          'resource_property_sub_types': 80,
+          'resourceCarousel': 10,
+          'resourceLocations': 20,
+          'resourceBudgets': 30,
+          'resourceLeadSources': 40,
+          'resourceTransferReasons': 50,
+          'resourcePropertyStages': 60,
+          'resourcePropertyTypes': 70,
+          'resourcePropertySubTypes': 80,
         }
         const sorted = [...filtered].sort((a, b) => (orderMap[a.key] || 999) - (orderMap[b.key] || 999))
         setResourceScreens(sorted)
@@ -338,7 +338,7 @@ export default function ResourcesPage() {
           let hasDuplicate = false
           let duplicateReason = ''
 
-          if (activeScreen.key === 'resource_property_sub_types') {
+          if (activeScreen.key === 'resourcePropertySubTypes') {
             const batchKey = checkKeys.map(k => String(payload[k] ?? '').trim().toLowerCase()).join('::')
             if (currentBatchValues.has(batchKey)) {
               hasDuplicate = true
@@ -555,7 +555,7 @@ export default function ResourcesPage() {
         if (editingItem && (row.id === editingItem.id || row._id === editingItem.id)) {
           return false
         }
-        if (activeScreen.key === 'resource_property_sub_types') {
+        if (activeScreen.key === 'resourcePropertySubTypes') {
           return checkKeys.every((key) => {
             const rowVal = String(row[key] ?? '').trim().toLowerCase()
             const newVal = String(formValues[key] ?? '').trim().toLowerCase()
@@ -851,8 +851,8 @@ export default function ResourcesPage() {
                     <GridToolbarColumnsButton />
                     <GridToolbarFilterButton />
                     <GridToolbarDensitySelector />
-                    {activeScreen?.key !== 'resource_carousel' && <GridToolbarExport />}
-                    {activeScreen?.key !== 'resource_carousel' && (
+                    {activeScreen?.key !== 'resourceCarousel' && <GridToolbarExport />}
+                    {activeScreen?.key !== 'resourceCarousel' && (
                       <Button
                         color="primary"
                         size="small"

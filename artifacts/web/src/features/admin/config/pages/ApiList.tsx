@@ -67,8 +67,8 @@ export default function ApiListPage() {
       
       const [tokens, sources, resolved] = await Promise.all([
         getApiTokens(),
-        getResources('resource_lead_sources'),
-        resolveScreen({ screen_key: 'config_api' })
+        getResources('resourceLeadSources'),
+        resolveScreen({ screen_key: 'configApi' })
       ])
 
       // Update cache

@@ -87,10 +87,10 @@ export default function ProjectsListPage() {
     setLoading(true)
     try {
       const [resProjects, types, stages, resolved] = await Promise.all([
-        api.get('/resources/resource_projects'),
-        getResources('resource_property_types'),
-        getResources('resource_property_stages'),
-        resolveScreen({ screen_key: 'config_projects', industry_code: user?.industryId || user?.industry_id })
+        api.get('/resources/resourceProjects'),
+        getResources('resourcePropertyTypes'),
+        getResources('resourcePropertyStages'),
+        resolveScreen({ screen_key: 'configProjects', industry_code: user?.industryId || user?.industry_id })
       ])
       setItems(resProjects.data || [])
       setPropertyTypes(types)
@@ -152,7 +152,7 @@ export default function ProjectsListPage() {
 
   const handleDelete = async (id: string) => {
     try {
-      await api.delete(`/resources/resource_projects/${id}`)
+      await api.delete(`/resources/resourceProjects/${id}`)
       setToast({ open: true, msg: 'Project deleted successfully', sev: 'success' })
       loadData()
     } catch (e: any) {
@@ -168,10 +168,10 @@ export default function ProjectsListPage() {
 
     try {
       if (editing) {
-        await api.put(`/resources/resource_projects/${editing.id}`, form)
+        await api.put(`/resources/resourceProjects/${editing.id}`, form)
         setToast({ open: true, msg: 'Project updated successfully', sev: 'success' })
       } else {
-        await api.post('/resources/resource_projects', form)
+        await api.post('/resources/resourceProjects', form)
         setToast({ open: true, msg: 'Project created successfully', sev: 'success' })
       }
       setDialogOpen(false)

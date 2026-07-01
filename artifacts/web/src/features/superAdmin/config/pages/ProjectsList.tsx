@@ -89,9 +89,9 @@ export default function ProjectsListPage() {
       }
 
       const [resProjects, resOrgs, resolved] = await Promise.all([
-        api.get('/resources/resource_projects?all=true'),
+        api.get('/resources/resourceProjects?all=true'),
         listOrganizationsPaged({ page: 0, pageSize: 200 }),
-        resolveScreen({ screen_key: 'config_projects', industry_code: activeIndustry || undefined })
+        resolveScreen({ screen_key: 'configProjects', industry_code: activeIndustry || undefined })
       ])
       
       setOrganizations(resOrgs.items || [])
@@ -143,7 +143,7 @@ export default function ProjectsListPage() {
 
   const handleDelete = async (id: string) => {
     try {
-      await api.delete(`/resources/resource_projects/${id}`)
+      await api.delete(`/resources/resourceProjects/${id}`)
       setToast({ open: true, msg: 'Project deleted successfully', sev: 'success' })
       loadData()
     } catch (e: any) {
@@ -392,7 +392,7 @@ export default function ProjectsListPage() {
                   </Box>
                 )}
                 <DynamicForm
-                  screen="config_projects"
+                  screen="configProjects"
                   industry_code={selectedIndustryInForm}
                   role_key="admin"
                   initialValues={editing ? (editing as any) : { organization_id: '', status: 'ACTIVE' }}
@@ -401,10 +401,10 @@ export default function ProjectsListPage() {
                   onSubmit={async (values) => {
                     try {
                       if (editing) {
-                        await api.put(`/resources/resource_projects/${editing.id}`, values)
+                        await api.put(`/resources/resourceProjects/${editing.id}`, values)
                         setToast({ open: true, msg: 'Project updated successfully', sev: 'success' })
                       } else {
-                        await api.post('/resources/resource_projects', values)
+                        await api.post('/resources/resourceProjects', values)
                         setToast({ open: true, msg: 'Project created successfully', sev: 'success' })
                       }
                       setDialogOpen(false)

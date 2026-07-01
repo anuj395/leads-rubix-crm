@@ -107,8 +107,7 @@ exports.resolve = async ({ screen_key, industry_code, role_key, authedUser }) =>
   }
 
   const isSuperAdmin = resolvedRoleKey === 'superAdmin' || authedUser?.role === 'superAdmin';
-  const isConfigScreen = screen_key === 'config_projects' || screen_key === 'config_api' || screen_key.startsWith('resource_');
-  const bypassPermissions = isSuperAdmin && !isConfigScreen;
+  const bypassPermissions = false;
 
   if (!bypassPermissions && !industryCode) {
     const err = new Error('industry_code is required (none found on user)');
@@ -134,6 +133,18 @@ exports.resolve = async ({ screen_key, industry_code, role_key, authedUser }) =>
   let role = null;
   if (!bypassPermissions) {
     role = await roleModel.findByIndustryAndKey(industry._id, resolvedRoleKey);
+    if (!role && resolvedRoleKey === 'superAdmin') {
+      try {
+        role = await roleModel.create({
+          industry_id: industry._id,
+          key: 'superAdmin',
+          name: 'Super Administrator',
+          is_active: true
+        });
+      } catch (e) {
+        // ignore
+      }
+    }
     if (!role) {
       const err = new Error(`Role "${resolvedRoleKey}" not found for industry "${industryCode}"`);
       err.status = 404;

@@ -68,7 +68,7 @@ export default function ApiListPage() {
       const [tokens, orgsData, resolved] = await Promise.all([
         getApiTokens(),
         listOrganizationsPaged({ page: 0, pageSize: 100 }),
-        resolveScreen({ screen_key: 'config_api', industry_code: activeIndustry || undefined })
+        resolveScreen({ screen_key: 'configApi', industry_code: activeIndustry || undefined })
       ])
 
       // Update cache
@@ -277,7 +277,7 @@ export default function ApiListPage() {
         </DialogTitle>
         <DialogContent dividers>
           <DynamicForm
-            screen="config_api"
+            screen="configApi"
             industry_code={selectedIndustry}
             role_key="admin"
             initialValues={editing ? (editing as any) : { organization_id: '', status: 'ACTIVE' }}

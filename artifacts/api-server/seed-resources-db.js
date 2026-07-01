@@ -62,19 +62,19 @@ const ResourceItem = mongoose.models.ResourceItem || mongoose.model('ResourceIte
 
 const RESOURCE_SCREENS = [
   {
-    key: 'resource_carousel',
+    key: 'resourceCarousel',
     name: 'Carousel Banners',
     description: 'Banners shown on mobile/web dashboard carousel',
     fields: [
       { field_key: 'url', label: 'Image URL', type: 'text', is_required: true, order: 1 },
-      { field_key: 'image_name', label: 'Image Name', type: 'text', is_required: true, order: 2 },
+      { field_key: 'imageName', label: 'Image Name', type: 'text', is_required: true, order: 2 },
     ],
     items: [
-      { url: 'https://via.placeholder.com/150', image_name: 'app_banner.png' },
+      { url: 'https://via.placeholder.com/150', imageName: 'app_banner.png' },
     ]
   },
   {
-    key: 'resource_locations',
+    key: 'resourceLocations',
     name: 'Locations',
     description: 'Corporate and site branch locations',
     fields: [
@@ -86,7 +86,7 @@ const RESOURCE_SCREENS = [
     ]
   },
   {
-    key: 'resource_lead_sources',
+    key: 'resourceLeadSources',
     name: 'Lead Sources',
     description: 'Marketing source channels',
     fields: [
@@ -100,7 +100,7 @@ const RESOURCE_SCREENS = [
     ]
   },
   {
-    key: 'resource_budgets',
+    key: 'resourceBudgets',
     name: 'Budgets',
     description: 'Standard budget options',
     fields: [
@@ -112,7 +112,7 @@ const RESOURCE_SCREENS = [
     ]
   },
   {
-    key: 'resource_transfer_reasons',
+    key: 'resourceTransferReasons',
     name: 'Transfer Reasons',
     description: 'Reasons for transferring leads',
     fields: [
@@ -124,7 +124,7 @@ const RESOURCE_SCREENS = [
     ]
   },
   {
-    key: 'resource_property_stages',
+    key: 'resourcePropertyStages',
     name: 'Property Stages',
     description: 'Construction stages',
     fields: [
@@ -136,7 +136,7 @@ const RESOURCE_SCREENS = [
     ]
   },
   {
-    key: 'resource_property_types',
+    key: 'resourcePropertyTypes',
     name: 'Property Types',
     description: 'Property categories',
     fields: [
@@ -148,16 +148,16 @@ const RESOURCE_SCREENS = [
     ]
   },
   {
-    key: 'resource_property_sub_types',
+    key: 'resourcePropertySubTypes',
     name: 'Property Sub Types',
     description: 'Property subcategories',
     fields: [
-      { field_key: 'propertyType', label: 'Property Type', type: 'select', dropdown_source: 'api', dropdown_api: '/api/options/resource_property_types?display=propertyType', is_required: true, order: 1 },
-      { field_key: 'property_sub_type', label: 'Property Sub Type', type: 'text', is_required: true, order: 2 },
+      { field_key: 'propertyType', label: 'Property Type', type: 'select', dropdown_source: 'api', dropdown_api: '/api/options/resourcePropertyTypes?display=propertyType', is_required: true, order: 1 },
+      { field_key: 'propertySubType', label: 'Property Sub Type', type: 'text', is_required: true, order: 2 },
     ],
     items: [
-      { propertyType: 'Residential Properties', property_sub_type: 'Apartments/Condos' },
-      { propertyType: 'Commercial Properties', property_sub_type: 'Office Spaces' },
+      { propertyType: 'Residential Properties', propertySubType: 'Apartments/Condos' },
+      { propertyType: 'Commercial Properties', propertySubType: 'Office Spaces' },
     ]
   }
 ];
@@ -178,6 +178,14 @@ async function main() {
   // Fetch all roles for Real Estate
   const roles = await Role.find({ industry_id: realEstate._id });
   console.log(`Found ${roles.length} roles for Real Estate`);
+
+  // Clean up deprecated resource_carousel and other snake_case screens
+  const deprecatedKeys = [
+    'resource_carousel', 'resource_locations', 'resource_lead_sources', 
+    'resource_budgets', 'resource_transfer_reasons', 'resource_property_stages', 
+    'resource_property_types', 'resource_property_sub_types'
+  ];
+  await Screen.deleteMany({ key: { $in: deprecatedKeys } });
 
   for (const spec of RESOURCE_SCREENS) {
     console.log(`Seeding Screen: ${spec.key}...`);
