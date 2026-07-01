@@ -33,9 +33,9 @@ export const login = createAsyncThunk(
 // ── Register ──────────────────────────────────────────────────────────────────
 export const register = createAsyncThunk(
   'auth/register',
-  async (credentials: RegisterCredentials, { rejectWithValue }) => {
+  async (payload: any, { rejectWithValue }) => {
     try {
-      return await authService.register(credentials)
+      return await authService.register(payload)
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unable to create account.'
       return rejectWithValue(message)

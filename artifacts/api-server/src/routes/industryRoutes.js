@@ -5,9 +5,9 @@ const { permit } = require('../middlewares/rbac');
 
 const router = express.Router();
 
-// reads — any authenticated user
-router.get('/', authenticate, ctrl.list);
-router.get('/:id', authenticate, ctrl.get);
+// reads — public access for signup and selection
+router.get('/', ctrl.list);
+router.get('/:id', ctrl.get);
 
 // writes — superAdmin only
 router.post('/', authenticate, permit('superAdmin'), ctrl.create);

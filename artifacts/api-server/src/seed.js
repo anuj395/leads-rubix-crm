@@ -156,7 +156,8 @@ async function ensureDevAdmin() {
   }
 
   const dev = new User({
-    name: 'Gourav Chopra',
+    firstName: 'Gourav',
+    lastName: 'Chopra',
     email,
     password: 'lead@1221',
     role: 'superAdmin',
@@ -392,7 +393,7 @@ const SCREEN_DEFAULTS = [
       { field_key: 'city',          label: 'City',          type: 'text',     is_required: true,  order: 8 },
       { field_key: 'pincode',       label: 'Pincode',       type: 'text',     is_required: false, order: 9 },
       { field_key: 'industryId',   label: 'Industry ID',   type: 'select',   is_required: true,  order: 10,
-        dropdown_source: 'api', dropdown_api: '/api/options/industries' },
+        dropdown_source: 'api', dropdown_api: '/api/options/industries?launchedOnly=true' },
       { field_key: 'numEmployees', label: 'Number of Employees', type: 'number', is_required: false, order: 11 },
       { field_key: 'address',       label: 'Address',       type: 'textarea', is_required: false, order: 12 },
       { field_key: 'allowDuplicateLeads', label: 'Allow Duplicate Leads', type: 'checkbox', is_form_visible: false, default_value: true, order: 13 },

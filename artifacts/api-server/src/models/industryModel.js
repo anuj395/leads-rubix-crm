@@ -18,9 +18,10 @@ const Industry = mongoose.model('Industry', industrySchema, 'industries');
 exports.Industry = Industry;
 
 exports.list = async ({ activeOnly = false } = {}) => {
-  const q = { status: 'Launched' };
+  const q = {};
   if (activeOnly) {
     q.is_active = true;
+    q.status = 'Launched';
   }
   return Industry.find(q).sort({ code: 1 }).lean().exec();
 };

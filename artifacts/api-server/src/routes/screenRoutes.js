@@ -6,7 +6,12 @@ const { permit } = require('../middlewares/rbac');
 const router = express.Router();
 
 // Compose endpoint — used by all client pages to resolve their dynamic config.
-router.post('/resolve', authenticate, ctrl.resolve);
+router.post('/resolve', (req, res, next) => {
+  if (req.body?.screen_key === 'organization') {
+    return ctrl.resolve(req, res, next);
+  }
+  return authenticate(req, res, next);
+}, ctrl.resolve);
 
 // reads — any authenticated user
 router.get('/', authenticate, ctrl.list);

@@ -1,7 +1,4 @@
-- [x] Rewrite Admin `Resources.tsx`
-  - [x] Render 8 configuration cards in a responsive grid layout
-  - [x] Implement tables and CRUD actions (Add, Edit, Delete, Import, Export) for each card
-- [x] Rewrite Super Admin `Resources.tsx`
-  - [x] Render 8 configuration cards in a responsive grid layout
-  - [x] Implement tables and CRUD actions (Add, Edit, Delete, Import, Export) for each card
-- [x] Verify everything compiles and runs successfully
+- [x] Support custom passwords in backend organization creation
+- [x] Route public signup controller through organization creation service
+- [x] Integrate industry selector and DynamicForm into public Signup view
+- [x] Verify compilation and execution

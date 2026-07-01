@@ -29,6 +29,7 @@ import { AppDataGrid } from '@/components/ui/AppDataGrid'
 import { StatusBadge } from '@/components/ui/StatusBadge'
 import { api } from '@/services/api'
 import { listOrganizationsPaged, type Organization } from '@/services/organizationsService'
+import { getIndustries, type Industry } from '@/services/sidebarAdminService'
 import { getResources } from '@/services/resourcesService'
 import { resolveScreen, type ResolvedScreen, type ResolvedFormField } from '@/services/screenAdminService'
 
@@ -72,8 +73,14 @@ export default function ProjectsListPage() {
     sev: 'success',
   })
 
-  // Form state
-  const [form, setForm] = useState({
+  // Dynamic industry-specific states
+  const [industries, setIndustries] = useState<Industry[]>([])
+  const [selectedIndustry, setSelectedIndustry] = useState<string>('')
+  const [selectedIndustryInForm, setSelectedIndustryInForm] = useState<string>('')
+  const [formFields, setFormFields] = useState<ResolvedFormField[]>([])
+
+  // Form state (holds dynamic keys in addition to base organization and status)
+  const [form, setForm] = useState<Record<string, any>>({
     organization_id: '',
     project_name: '',
     developer_name: '',
@@ -86,17 +93,38 @@ export default function ProjectsListPage() {
     status: 'ACTIVE' as Project['status'],
   })
 
-  const loadData = async () => {
+  const loadData = async (targetIndustry?: string) => {
     setLoading(true)
     try {
+      let currentIndustries = industries
+      if (currentIndustries.length === 0) {
+        currentIndustries = await getIndustries(true)
+        setIndustries(currentIndustries)
+      }
+
+      const activeIndustry = targetIndustry || selectedIndustry || currentIndustries[0]?.code || ''
+      if (activeIndustry && selectedIndustry !== activeIndustry) {
+        setSelectedIndustry(activeIndustry)
+      }
+
       const [resProjects, resOrgs, resolved] = await Promise.all([
         api.get('/resources/resource_projects?all=true'),
         listOrganizationsPaged({ page: 0, pageSize: 200 }),
-        resolveScreen({ screen_key: 'config_projects' })
+        resolveScreen({ screen_key: 'config_projects', industry_code: activeIndustry || undefined })
       ])
-      setItems(resProjects.data || [])
+      
       setOrganizations(resOrgs.items || [])
       setResolvedScreen(resolved)
+
+      // Filter projects to only those belonging to organizations under the active industry
+      const orgIdsInIndustry = (resOrgs.items || [])
+        .filter((o: Organization) => o.industry_id === activeIndustry || o.industryId === activeIndustry)
+        .map((o: Organization) => String(o.organization_id || ''))
+
+      const filteredProjects = (resProjects.data || []).filter((p: Project) =>
+        orgIdsInIndustry.includes(String(p.organization_id || ''))
+      )
+      setItems(filteredProjects)
     } catch (e: any) {
       setToast({
         open: true,
@@ -106,6 +134,32 @@ export default function ProjectsListPage() {
     } finally {
       setLoading(false)
     }
+  }
+
+  const resolveFieldsForForm = async (industryCode: string, projectToEdit: Project | null) => {
+    try {
+      const resolved = await resolveScreen({ screen_key: 'config_projects', industry_code: industryCode })
+      setFormFields(resolved.form_fields)
+
+      // Initialize form values dynamically based on resolved fields
+      const newForm: Record<string, any> = {
+        organization_id: projectToEdit?.organization_id || '',
+        status: projectToEdit?.status || 'ACTIVE',
+      }
+      resolved.form_fields.forEach((f) => {
+        if (f.key !== 'organization_id' && f.key !== 'status') {
+          newForm[f.key] = projectToEdit ? (projectToEdit as any)[f.key] || '' : ''
+        }
+      })
+      setForm(newForm)
+    } catch (e) {
+      console.error('Failed to resolve form fields for industry', e)
+    }
+  }
+
+  const handleFormIndustryChange = async (newIndustry: string) => {
+    setSelectedIndustryInForm(newIndustry)
+    await resolveFieldsForForm(newIndustry, null)
   }
 
   useEffect(() => {
@@ -136,35 +190,18 @@ export default function ProjectsListPage() {
 
   const openAddDialog = () => {
     setEditing(null)
-    setForm({
-      organization_id: '',
-      project_name: '',
-      developer_name: '',
-      address: '',
-      rera_link: '',
-      walkthrough_link: '',
-      propertyType: '',
-      property_stage: '',
-      project_status: 'Launched',
-      status: 'ACTIVE',
-    })
+    const industryForForm = selectedIndustry || industries[0]?.code || ''
+    setSelectedIndustryInForm(industryForForm)
+    void resolveFieldsForForm(industryForForm, null)
     setDialogOpen(true)
   }
 
   const openEditDialog = (proj: Project) => {
     setEditing(proj)
-    setForm({
-      organization_id: proj.organization_id || '',
-      project_name: proj.project_name || '',
-      developer_name: proj.developer_name || '',
-      address: proj.address || '',
-      rera_link: proj.rera_link || '',
-      walkthrough_link: proj.walkthrough_link || '',
-      propertyType: proj.propertyType || '',
-      property_stage: proj.property_stage || '',
-      project_status: proj.project_status || 'Launched',
-      status: proj.status || 'ACTIVE',
-    })
+    const org = organizations.find(o => o.organization_id === proj.organization_id)
+    const industryForForm = (org?.industry_id || org?.industryId || selectedIndustry || industries[0]?.code || '') as string
+    setSelectedIndustryInForm(industryForForm)
+    void resolveFieldsForForm(industryForForm, proj)
     setDialogOpen(true)
   }
 
@@ -188,8 +225,14 @@ export default function ProjectsListPage() {
       setToast({ open: true, msg: 'Organization selection is required', sev: 'error' })
       return
     }
-    if (!form.project_name || !form.developer_name) {
-      setToast({ open: true, msg: 'Developer Name and Project Name are required', sev: 'error' })
+    // Validation: make sure all required dynamic form fields are filled
+    const missing = formFields
+      .filter((f) => f.required)
+      .map((f) => f.key)
+      .filter((k) => !form[k])
+    
+    if (missing.length > 0) {
+      setToast({ open: true, msg: `The following fields are required: ${missing.join(', ')}`, sev: 'error' })
       return
     }
 
@@ -312,6 +355,9 @@ export default function ProjectsListPage() {
 
   const renderField = (field: ResolvedFormField) => {
     if (field.key === 'organization_id') {
+      const filteredOrgs = organizations.filter(
+        (o) => o.industry_id === selectedIndustryInForm || o.industryId === selectedIndustryInForm
+      )
       return (
         <TextField
           key={field.key}
@@ -322,7 +368,7 @@ export default function ProjectsListPage() {
           onChange={(e) => setForm(prev => ({ ...prev, organization_id: e.target.value }))}
           required={field.required}
         >
-          {organizations.map((org) => (
+          {filteredOrgs.map((org) => (
             <MenuItem key={org._id || String(org.organization_id || '')} value={String(org.organization_id || '')}>
               {String(org.name || org.organization_id || '')}
             </MenuItem>
@@ -536,6 +582,26 @@ export default function ProjectsListPage() {
             }
             fullHeight
           >
+            <Stack direction="row" spacing={2} sx={{ mb: 2, pt: 1 }}>
+              <TextField
+                select
+                size="small"
+                label="Select Industry"
+                value={selectedIndustry}
+                onChange={(e) => {
+                  setSelectedIndustry(e.target.value)
+                  void loadData(e.target.value)
+                }}
+                sx={{ minWidth: 240 }}
+              >
+                {industries.map((ind) => (
+                  <MenuItem key={ind.code} value={ind.code}>
+                    {ind.name}
+                  </MenuItem>
+                ))}
+              </TextField>
+            </Stack>
+
             <Box sx={{ flexGrow: 1, minHeight: 0, position: 'relative' }}>
               {loading && (
                 <Box sx={{ position: 'absolute', top: 0, left: 0, right: 0, zIndex: 10 }}>
@@ -576,8 +642,24 @@ export default function ProjectsListPage() {
               pt: 1,
             }}
           >
+            <TextField
+              select
+              fullWidth
+              label="Industry"
+              value={selectedIndustryInForm}
+              onChange={(e) => handleFormIndustryChange(e.target.value)}
+              disabled={!!editing}
+              required
+            >
+              {industries.map((ind) => (
+                <MenuItem key={ind.code} value={ind.code}>
+                  {ind.name}
+                </MenuItem>
+              ))}
+            </TextField>
+
             {(() => {
-              const fields = resolvedScreen?.form_fields || []
+              const fields = formFields || []
               const renderedKeys = new Set<string>()
 
               return fields.map((field) => {

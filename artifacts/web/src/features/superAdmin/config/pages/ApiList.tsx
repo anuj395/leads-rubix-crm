@@ -25,6 +25,7 @@ import { listOrganizationsPaged, type Organization } from '@/services/organizati
 import { getResources } from '@/services/resourcesService'
 import { resolveScreen, type ResolvedScreen, type ResolvedFormField } from '@/services/screenAdminService'
 import { useConfirm } from '@/components/common/ConfirmContext'
+import { getIndustries, type Industry } from '@/services/sidebarAdminService'
 
 const COUNTRY_CODES = [
   { code: '+91', label: '🇮🇳 India (+91)' },
@@ -44,6 +45,8 @@ export default function ApiListPage() {
   const [items, setItems] = useState<ApiTokenConfig[]>(tokensCache.data)
   const [organizations, setOrganizations] = useState<Organization[]>(organizationsCache.data)
   const [leadSources, setLeadSources] = useState<any[]>([])
+  const [industries, setIndustries] = useState<Industry[]>([])
+  const [selectedIndustry, setSelectedIndustry] = useState<string>('')
   const [loading, setLoading] = useState(false)
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editing, setEditing] = useState<ApiTokenConfig | null>(null)
@@ -64,17 +67,24 @@ export default function ApiListPage() {
     status: 'ACTIVE' as ApiTokenConfig['status'],
   })
 
-  const loadData = async () => {
+  const loadData = async (targetIndustry?: string) => {
     try {
       if (!tokensCache.initialized || !organizationsCache.initialized) {
         setLoading(true)
       }
       
-      const [tokens, orgsData, resolved] = await Promise.all([
+      const [tokens, orgsData, resolved, inds] = await Promise.all([
         getApiTokens(),
         listOrganizationsPaged({ page: 0, pageSize: 100 }),
-        resolveScreen({ screen_key: 'config_api' })
+        resolveScreen({ screen_key: 'config_api' }),
+        getIndustries(true)
       ])
+
+      setIndustries(inds)
+      const activeIndustry = targetIndustry || selectedIndustry || inds[0]?.code || ''
+      if (activeIndustry && selectedIndustry !== activeIndustry) {
+        setSelectedIndustry(activeIndustry)
+      }
 
       // Update cache
       tokensCache.data = tokens
@@ -292,7 +302,7 @@ export default function ApiListPage() {
           onChange={(e) => setForm(prev => ({ ...prev, organization_id: e.target.value }))}
           required={field.required}
         >
-          {organizations.map((org) => (
+          {organizations.filter(org => org.industry_id === selectedIndustry).map((org) => (
             <MenuItem key={org._id || String(org.organization_id || '')} value={String(org.organization_id || '')}>
               {String(org.name || org.organization_id || '')}
             </MenuItem>
@@ -375,6 +385,12 @@ export default function ApiListPage() {
     )
   }
 
+  const filteredItems = useMemo(() => {
+    if (!selectedIndustry) return items
+    const orgIds = new Set(organizations.filter(o => o.industry_id === selectedIndustry).map(o => String(o.organization_id || o._id)))
+    return items.filter(item => orgIds.has(String(item.organization_id)))
+  }, [items, organizations, selectedIndustry])
+
   return (
     <Box
       sx={{
@@ -397,13 +413,33 @@ export default function ApiListPage() {
         }
         fullHeight
       >
+        <Stack direction="row" spacing={2} sx={{ mb: 2, pt: 1 }}>
+          <TextField
+            select
+            size="small"
+            label="Select Industry"
+            value={selectedIndustry}
+            onChange={(e) => {
+              setSelectedIndustry(e.target.value)
+              void loadData(e.target.value)
+            }}
+            sx={{ minWidth: 240 }}
+          >
+            {industries.map((ind) => (
+              <MenuItem key={ind.code} value={ind.code}>
+                {ind.name}
+              </MenuItem>
+            ))}
+          </TextField>
+        </Stack>
+
         <Box sx={{ flexGrow: 1, minHeight: 0, position: 'relative' }}>
           {loading && (
             <Box sx={{ position: 'absolute', top: 0, left: 0, right: 0, zIndex: 10 }}>
               <LinearProgress />
             </Box>
           )}
-          <AppDataGrid height="100%" rows={items} columns={columns} getRowId={(r) => r.id} />
+          <AppDataGrid height="100%" rows={filteredItems} columns={columns} getRowId={(r) => r.id} />
         </Box>
       </AppCard>
 

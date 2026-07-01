@@ -33,21 +33,9 @@ export const authService = {
     }
   },
 
-  async register(credentials: RegisterCredentials): Promise<AuthSession> {
-    const name = credentials.name.trim()
-    const email = credentials.email.trim().toLowerCase()
-    const password = credentials.password.trim()
-
-    if (name.length < 2) {
-      throw new Error('Enter a full name with at least 2 characters.')
-    }
-
-    if (!email || password.length < 4) {
-      throw new Error('Use a valid email and a password with at least 4 characters.')
-    }
-
+  async register(payload: any): Promise<AuthSession> {
     try {
-      const response = await api.post('auth/signup', { name, email, password })
+      const response = await api.post('auth/signup', payload)
       const data = response.data as AuthSession
       return data
     } catch (err: any) {

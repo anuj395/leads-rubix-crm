@@ -29,6 +29,7 @@ import { AppDataGrid } from '@/components/ui/AppDataGrid'
 import { StatusBadge } from '@/components/ui/StatusBadge'
 import { api } from '@/services/api'
 import { getResources } from '@/services/resourcesService'
+import { useAppSelector } from '@/store/hooks'
 import { resolveScreen, type ResolvedScreen, type ResolvedFormField } from '@/services/screenAdminService'
 
 export interface Project {
@@ -53,6 +54,7 @@ const PROPERTY_STATUS_OPTIONS = [
 ]
 
 export default function ProjectsListPage() {
+  const user = useAppSelector((s) => s.auth.user)
   const [items, setItems] = useState<Project[]>([])
   const [propertyTypes, setPropertyTypes] = useState<any[]>([])
   const [propertyStages, setPropertyStages] = useState<any[]>([])
@@ -88,7 +90,7 @@ export default function ProjectsListPage() {
         api.get('/resources/resource_projects'),
         getResources('resource_property_types'),
         getResources('resource_property_stages'),
-        resolveScreen({ screen_key: 'config_projects' })
+        resolveScreen({ screen_key: 'config_projects', industry_code: user?.industryId || user?.industry_id })
       ])
       setItems(resProjects.data || [])
       setPropertyTypes(types)
@@ -106,8 +108,10 @@ export default function ProjectsListPage() {
   }
 
   useEffect(() => {
-    loadData()
-  }, [])
+    if (user) {
+      void loadData()
+    }
+  }, [user])
 
   const openAddDialog = () => {
     setEditing(null)

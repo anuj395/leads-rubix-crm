@@ -106,7 +106,7 @@ exports.resolve = async ({ screen_key, industry_code, role_key, authedUser }) =>
     if (!resolvedRoleKey) resolvedRoleKey = u?.role || authedUser?.role;
   }
 
-  const isSuperAdmin = resolvedRoleKey === 'superAdmin';
+  const isSuperAdmin = resolvedRoleKey === 'superAdmin' || authedUser?.role === 'superAdmin';
 
   if (!isSuperAdmin && !industryCode) {
     const err = new Error('industry_code is required (none found on user)');

@@ -177,10 +177,10 @@ function generateOrgId() {
 }
 
 exports.create = async ({ payload, authedUser }) => {
-  const user = await resolveActor(authedUser);
+  const user = authedUser?.id ? await resolveActor(authedUser) : null;
   const isSuperAdmin = user && (user.role || authedUser?.role) === 'superAdmin';
 
-  const industry_id = isSuperAdmin
+  const industry_id = (isSuperAdmin || !user)
     ? payload.industryId || payload.industry_id || payload.fields?.industryId || payload.fields?.industry_id || payload.industry || payload.fields?.industry || (user ? user.industryId || user.industry_id : null)
     : (user ? user.industryId || user.industry_id : null);
 
@@ -265,7 +265,7 @@ exports.create = async ({ payload, authedUser }) => {
     : cleaned.name || payload.name || 'Organization');
   const orgEmail = cleaned.emailId || cleaned.email || payload.email;
   let adminEmail = orgEmail || `admin@${(cleaned.code || payload.code || 'org').toLowerCase()}.com`;
-
+  
   // Ensure unique admin email
   const existingUser = await userModel.User.findOne({ email: adminEmail.toLowerCase().trim() });
   if (existingUser) {
@@ -274,11 +274,16 @@ exports.create = async ({ payload, authedUser }) => {
 
   const adminName = `${orgName} Admin`;
   
-  // Generate random 8-character temporary password
+  // Generate random 8-character temporary password or use custom password
+  const customPassword = payload.password || payload.fields?.password || payload.customAdminPassword;
   const chars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
   let adminPassword = '';
-  for (let i = 0; i < 8; i++) {
-    adminPassword += chars.charAt(Math.floor(Math.random() * chars.length));
+  if (customPassword) {
+    adminPassword = String(customPassword);
+  } else {
+    for (let i = 0; i < 8; i++) {
+      adminPassword += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
   }
 
   await userModel.create({

@@ -14,7 +14,6 @@ exports.ROLES = ['sales', 'teamLead', 'leadManager', 'admin', 'superAdmin'];
 const userSchema = new mongoose.Schema(
   {
     organizationName: { type: String, alias: 'organization_name' },
-    name: { type: String, default: '' },
     firstName: { type: String, default: '' },
     lastName: { type: String, default: '' },
     email: { type: String, required: true, unique: true, lowercase: true, trim: true },
@@ -80,7 +79,9 @@ function shapePublic(u) {
   return {
     _id: u._id,
     id: u._id,
-    name: u.name,
+    firstName: u.firstName || '',
+    lastName: u.lastName || '',
+    name: `${u.firstName || ''} ${u.lastName || ''}`.trim() || u.email,
     email: u.email,
     role: u.role,
     industryId: u.industryId || u.industry_id,
@@ -127,7 +128,7 @@ exports.listPaged = async ({
   if (search) {
     const safe = String(search).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     const rx = new RegExp(safe, 'i');
-    filter.$or = [{ email: rx }, { name: rx }];
+    filter.$or = [{ email: rx }, { firstName: rx }, { lastName: rx }];
   }
   const sortSpec = sort && Object.keys(sort).length ? sort : { createdAt: -1 };
   const safePage = Math.max(0, Number(page) || 0);
@@ -163,7 +164,12 @@ exports.create = async (data) => {
 
 exports.update = async (id, patch) => {
   const $set = {};
-  if (patch.name !== undefined) $set.name = patch.name;
+  if (patch.firstName !== undefined || patch.first_name !== undefined) {
+    $set.firstName = patch.firstName !== undefined ? patch.firstName : patch.first_name;
+  }
+  if (patch.lastName !== undefined || patch.last_name !== undefined) {
+    $set.lastName = patch.lastName !== undefined ? patch.lastName : patch.last_name;
+  }
   if (patch.organizationName !== undefined || patch.organization_name !== undefined) {
     $set.organizationName = patch.organizationName !== undefined ? patch.organizationName : patch.organization_name;
   }

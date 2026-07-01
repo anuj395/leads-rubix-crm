@@ -228,7 +228,27 @@ export default function IntegrationsPage() {
           const isActive = p.value === 'Active'
           return (
             <Stack direction="row" spacing={1} sx={{ alignItems: 'center', height: '100%' }}>
-              <Switch size="small" checked={isActive} onChange={() => handleToggleStatus(p.row.id)} />
+              <Switch
+                size="small"
+                checked={isActive}
+                sx={{
+                  '& .MuiSwitch-switchBase': {
+                    color: '#fff',
+                    '&.Mui-checked': {
+                      color: '#fff',
+                      '& + .MuiSwitch-track': {
+                        backgroundColor: '#22c55e',
+                        opacity: 1,
+                      },
+                    },
+                  },
+                  '& .MuiSwitch-track': {
+                    backgroundColor: '#e0e0e0',
+                    opacity: 1,
+                  },
+                }}
+                onChange={() => handleToggleStatus(p.row.id)}
+              />
               <StatusBadge value={p.value} />
             </Stack>
           )

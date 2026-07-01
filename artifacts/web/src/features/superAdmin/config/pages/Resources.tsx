@@ -48,6 +48,8 @@ import { useConfirm } from '@/components/common/ConfirmContext'
 export default function ResourcesPage() {
   const [organizations, setOrganizations] = useState<Organization[]>([])
   const [selectedOrgId, setSelectedOrgId] = useState<string>('')
+  const [industries, setIndustries] = useState<Industry[]>([])
+  const [selectedIndustryState, setSelectedIndustryState] = useState<string>('')
   const [resourceScreens, setResourceScreens] = useState<Screen[]>([])
   const [activeTab, setActiveTab] = useState(0)
   const [selectedRowIds, setSelectedRowIds] = useState<any[]>([])
@@ -88,11 +90,16 @@ export default function ResourcesPage() {
     void (async () => {
       try {
         setLoading(true)
-        const [orgsData, scrs] = await Promise.all([
+        const [orgsData, scrs, inds] = await Promise.all([
           listOrganizationsPaged({ page: 0, pageSize: 100 }),
-          getScreens()
+          getScreens(),
+          getIndustries(true)
         ])
         setOrganizations(orgsData.items)
+        setIndustries(inds)
+        if (inds[0]) {
+          setSelectedIndustryState(inds[0].code)
+        }
         
         // Filter screens starting with resource_
         const filtered = scrs.filter((s) => s.key.startsWith('resource_') && s.is_active)
@@ -121,7 +128,7 @@ export default function ResourcesPage() {
   // Load configuration and data for selected screen / organization
   const activeScreen = resourceScreens[activeTab]
   const activeOrg = organizations.find((o) => o.organization_id === selectedOrgId)
-  const selectedIndustry = activeOrg?.industry_id || 'temp0001'
+  const selectedIndustry = activeOrg?.industry_id || selectedIndustryState || 'temp0001'
 
   useEffect(() => {
     setSelectedRowIds([])
@@ -199,7 +206,11 @@ export default function ResourcesPage() {
 
         const connector = path.includes('?') ? '&' : '?'
         const orgParam = selectedOrgId ? `&organization_id=${encodeURIComponent(selectedOrgId)}` : ''
-        const targetUrl = `${path}${connector}industry_code=${encodeURIComponent(selectedIndustry)}${orgParam}`
+        let targetUrl = `${path}${connector}industry_code=${encodeURIComponent(selectedIndustry)}${orgParam}`
+        if (path.includes('options/industries')) {
+          const conn = targetUrl.includes('?') ? '&' : '?'
+          targetUrl += `${conn}launchedOnly=true`
+        }
         
         void (async () => {
           try {
@@ -830,6 +841,20 @@ export default function ResourcesPage() {
           <Typography variant="h5" sx={{ fontWeight: 700 }}>Resources Management</Typography>
           <Typography variant="body2" color="text.secondary">Configure and load lookup resources dynamically per industry.</Typography>
         </Box>
+        <TextField
+          select
+          size="small"
+          label="Select Industry"
+          value={selectedIndustryState}
+          onChange={(e) => setSelectedIndustryState(e.target.value)}
+          sx={{ minWidth: 240 }}
+        >
+          {industries.map((ind) => (
+            <MenuItem key={ind.code} value={ind.code}>
+              {ind.name}
+            </MenuItem>
+          ))}
+        </TextField>
       </Stack>
 
       {resourceScreens.length === 0 ? (

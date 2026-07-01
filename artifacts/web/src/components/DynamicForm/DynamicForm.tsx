@@ -131,6 +131,7 @@ interface Props {
   /** Hide built-in submit/cancel actions when the parent provides its own. */
   hideActions?: boolean
   readOnly?: boolean
+  fullWidthSubmit?: boolean
 }
 
 export function DynamicForm({
@@ -144,6 +145,7 @@ export function DynamicForm({
   headerSlot,
   hideActions = false,
   readOnly = false,
+  fullWidthSubmit = false,
 }: Props) {
   const [fields, setFields] = useState<ResolvedFormField[]>([])
   const [values, setValues] = useState<Record<string, Value>>(initialValues)
@@ -565,20 +567,33 @@ export function DynamicForm({
       )}
 
       {!hideActions && (
-        <Stack direction="row" spacing={2} sx={{ mt: 3, justifyContent: 'flex-end' }}>
-          {readOnly ? (
-            <Button variant="contained" onClick={onCancel}>Close</Button>
-          ) : (
-            <>
-              {onCancel && (
-                <Button onClick={onCancel} disabled={submitting}>Cancel</Button>
-              )}
-              <Button type="submit" variant="contained" disabled={submitting}>
-                {submitting ? <CircularProgress size={18} sx={{ color: 'white' }} /> : submitLabel}
-              </Button>
-            </>
-          )}
-        </Stack>
+        fullWidthSubmit ? (
+          <Button
+            type="submit"
+            variant="contained"
+            fullWidth
+            size="large"
+            disabled={submitting}
+            sx={{ mt: 2.5 }}
+          >
+            {submitting ? <CircularProgress size={18} sx={{ color: 'white' }} /> : submitLabel}
+          </Button>
+        ) : (
+          <Stack direction="row" spacing={2} sx={{ mt: 3, justifyContent: 'flex-end' }}>
+            {readOnly ? (
+              <Button variant="contained" onClick={onCancel}>Close</Button>
+            ) : (
+              <>
+                {onCancel && (
+                  <Button onClick={onCancel} disabled={submitting}>Cancel</Button>
+                )}
+                <Button type="submit" variant="contained" disabled={submitting}>
+                  {submitting ? <CircularProgress size={18} sx={{ color: 'white' }} /> : submitLabel}
+                </Button>
+              </>
+            )}
+          </Stack>
+        )
       )}
     </Box>
   )

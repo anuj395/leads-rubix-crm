@@ -75,7 +75,7 @@ export default function OrganizationsListPage() {
   const [selectedFilterIndustry, setSelectedFilterIndustry] = useState<string>('')
 
   useEffect(() => {
-    getIndustries(false)
+    getIndustries(true)
       .then((inds) => {
         setIndustries(inds)
         if (isSuperAdmin) {
@@ -141,6 +141,22 @@ export default function OrganizationsListPage() {
             <Switch
               size="small"
               checked={isChecked}
+              sx={{
+                '& .MuiSwitch-switchBase': {
+                  color: '#fff',
+                  '&.Mui-checked': {
+                    color: '#fff',
+                    '& + .MuiSwitch-track': {
+                      backgroundColor: '#22c55e',
+                      opacity: 1,
+                    },
+                  },
+                },
+                '& .MuiSwitch-track': {
+                  backgroundColor: '#e0e0e0',
+                  opacity: 1,
+                },
+              }}
               onChange={async (e) => {
                 const nextVal = c.key === 'status'
                   ? (e.target.checked ? 'ACTIVE' : 'INACTIVE')

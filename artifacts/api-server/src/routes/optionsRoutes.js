@@ -68,7 +68,14 @@ const STATES_BY_COUNTRY = {
   ]
 };
 
-router.get('/:key', authenticate, async (req, res) => {
+router.get('/:key', (req, res, next) => {
+  const { key } = req.params;
+  const publicKeys = ['countries', 'states', 'industries', 'country_codes'];
+  if (publicKeys.includes(key)) {
+    return next();
+  }
+  return authenticate(req, res, next);
+}, async (req, res) => {
   const { key } = req.params;
   
   if (key === 'countries') {
@@ -103,7 +110,12 @@ router.get('/:key', authenticate, async (req, res) => {
   if (key === 'industries') {
     try {
       const Industry = mongoose.model('Industry');
-      const list = await Industry.find({ is_active: true, status: 'Launched' }).sort({ name: 1 }).lean().exec();
+      const query = {};
+      if (req.query.launchedOnly === 'true') {
+        query.is_active = true;
+        query.status = 'Launched';
+      }
+      const list = await Industry.find(query).sort({ name: 1 }).lean().exec();
       const options = list.map(ind => ({ value: ind.code, label: ind.name }));
       return res.json({ items: options });
     } catch (err) {

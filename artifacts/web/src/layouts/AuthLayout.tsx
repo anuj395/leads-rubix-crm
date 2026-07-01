@@ -2,13 +2,17 @@ import Box from '@mui/material/Box'
 import Container from '@mui/material/Container'
 import Stack from '@mui/material/Stack'
 import Typography from '@mui/material/Typography'
-import { Outlet } from 'react-router-dom'
+import { Outlet, useLocation } from 'react-router-dom'
 import { useTheme } from '@mui/material/styles'
 import { alpha } from '@mui/material/styles'
 
+import { useState } from 'react'
+
 export default function AuthLayout() {
   const theme = useTheme()
+  const location = useLocation()
   const isDark = theme.palette.mode === 'dark'
+  const [isWider, setIsWider] = useState(false)
 
   return (
     <Box
@@ -125,8 +129,11 @@ export default function AuthLayout() {
             sx={{
               flex: '0 0 auto',
               width: '100%',
-              // Full width on mobile, capped on larger screens
-              maxWidth: { xs: '100%', sm: 420, md: 420 },
+              // Widen layout to 720px for multi-field signup only when industry is selected; standard 420px otherwise
+              maxWidth: (location.pathname === '/signup' && isWider)
+                ? { xs: '100%', sm: 720, md: 720 }
+                : { xs: '100%', sm: 420, md: 420 },
+              transition: 'max-width 300ms cubic-bezier(0.4, 0, 0.2, 1)',
               order: { xs: 1, md: 2 },
               minWidth: 0,
             }}
@@ -150,7 +157,7 @@ export default function AuthLayout() {
                 }}
               />
             </Box>
-            <Outlet />
+            <Outlet context={{ setIsWider }} />
           </Box>
         </Stack>
       </Container>

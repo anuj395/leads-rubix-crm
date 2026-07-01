@@ -3,6 +3,8 @@ export type UserRole = 'admin' | 'leadManager' | 'sales' | 'superAdmin' | 'teamL
 export interface AuthenticatedUser {
   email: string
   id: string
+  firstName?: string
+  lastName?: string
   name: string
   role: UserRole
   industry_id?: string

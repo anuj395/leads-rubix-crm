@@ -26,7 +26,7 @@ async function safeList<T>(path: string): Promise<T[]> {
   return (res.data?.items ?? []) as T[]
 }
 
-export async function getIndustries(activeOnly = true): Promise<Industry[]> {
+export async function getIndustries(activeOnly = false): Promise<Industry[]> {
   const path = activeOnly ? 'industries?active=true' : 'industries'
   return safeList<Industry>(path)
 }

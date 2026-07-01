@@ -50,15 +50,13 @@ exports.resolve = async (req, res, next) => {
   try {
     const { screen_key, industry_code, role_key } = req.body || {};
 
-    // Access control: only superAdmins may resolve a (industry, role) other
-    // than their own. For everyone else we ignore client-supplied
-    // industry_code / role_key and force the resolver to fall back to req.user
-    // — preventing IDOR-style cross-scope config exposure.
     const isSuperAdmin = req.user?.role === 'superAdmin';
+    const isGuestSignup = !req.user && screen_key === 'organization';
+
     const out = await permissionService.resolve({
       screen_key,
-      industry_code: isSuperAdmin ? industry_code : undefined,
-      role_key: isSuperAdmin ? role_key : undefined,
+      industry_code: (isSuperAdmin || isGuestSignup) ? industry_code : undefined,
+      role_key: (isSuperAdmin || isGuestSignup) ? (role_key || 'admin') : undefined,
       authedUser: req.user,
     });
     res.json(out);
